@@ -1,0 +1,76 @@
+# REVIEW WORK PACKAGE: WP-XX_NAME
+
+## Your Task
+Review `work-packages/WP-XX_NAME.md` for completeness, accuracy, and executability. This blueprint will be handed to an executor agent — it must be flawless.
+
+## Source Documents (Read These)
+
+1. `docs/templates/WORK_PACKAGE_TEMPLATE.md` — Verify format compliance
+2. `docs/15_MASTER_IMPLEMENTATION_CHECKLIST.md` — Verify scope coverage
+3. [Relevant spec docs per WP scope] — Verify technical accuracy
+4. `docs/ProjectAnswers.md` — Verify decisions
+5. `docs/14_DEVELOPER_HANDBOOK_AND_CODING_STANDARDS.md` — Verify standards
+
+## CRITICAL NEW RULE: Verify Referenced Documents Exist
+
+Before citing or validating any reference, **check the project tree** to confirm the document exists.
+
+- If WP-XX references `docs/adr/ADR-003.md` → check if that file exists
+- If WP-XX references `docs/12_TESTING_STRATEGY_QA_SPECIFICATION.md` → check if that file exists
+- If WP-XX references any document not in the project tree → flag as MISSING DEPENDENCY
+
+**Do NOT treat a missing document as authoritative.** If a spec (e.g., IDS) references a document that doesn't exist, note: "Spec X references Y, but Y does not exist in project tree. This is a dangling reference in the spec, not a WP issue — but executor must verify against available docs."
+
+## What You Must Check
+
+### 1. Format Compliance
+- All required sections present per WORK_PACKAGE_TEMPLATE.md
+- Numbering consistent and complete
+
+### 2. Scope Completeness
+- All tasks from Master Checklist covered
+- Nothing missing from spec docs
+
+### 3. Technical Accuracy
+- All technical details match spec docs
+- All referenced subsections exist in spec docs
+- **NEW:** All documents referenced by WP-XX exist in project tree
+
+### 4. Decision Verification
+- ProjectAnswers.md values used correctly
+- [PENDING] values clearly marked, not guessed
+- Secret handling rule correct
+
+### 5. Deliverables Verification
+- Every deliverable listed with format and location
+- File paths consistent with WP-01 project structure
+- No missing deliverables
+
+### 6. Testing Requirements
+- Coverage targets specified
+- Specific scenarios listed
+- **NEW:** Test IDs verified against actual TSQS content, not placeholders
+
+### 7. Manual Steps
+- All owner steps documented
+- Verification commands provided
+- Environment templates provided
+
+### 8. Risks & Blockers
+- Risks identified with probability/impact/mitigation
+- Pending decisions listed as risks
+- **NEW:** Missing referenced documents listed as risks
+
+## Output
+
+Produce a review report with:
+
+1. **PASS/FAIL per section** — List each check as PASS or FAIL
+2. **Issues Found** — Gaps, inaccuracies, missing items, **dangling references**
+3. **Recommendations** — Specific fixes needed
+4. **Missing Dependencies** — List any documents referenced but not found in project tree
+5. **Overall Verdict** — APPROVED or NEEDS REVISION
+
+If NEEDS REVISION, list exactly what must be changed.
+
+Do not modify WP-XX. Only report findings.

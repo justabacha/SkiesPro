@@ -3,23 +3,26 @@ import app from '../src/index';
 
 describe('Health Check Endpoints', () => {
   describe('GET /health', () => {
-    it('should return 200 with status ok and timestamp', async () => {
+    it('should return 200 with system health status', async () => {
       const response = await request(app).get('/health');
       
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('status', 'ok');
-      expect(response.body).toHaveProperty('timestamp');
-      expect(new Date(response.body.timestamp)).toBeInstanceOf(Date);
+      expect(response.body).toHaveProperty('status');
+      expect(['healthy', 'degraded', 'unhealthy']).toContain(response.body.status);
+      expect(response.body).toHaveProperty('version');
+      expect(response.body).toHaveProperty('uptime_seconds');
+      expect(response.body).toHaveProperty('dependencies');
       expect(response.headers['x-correlation-id']).toBeDefined();
     });
   });
 
   describe('GET /ready', () => {
-    it('should return 200 with status ready and checks object', async () => {
+    it('should return 200 or 503 with readiness status', async () => {
       const response = await request(app).get('/ready');
       
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('status', 'ready');
+      expect([200, 503]).toContain(response.status);
+      expect(response.body).toHaveProperty('status');
+      expect(['ready', 'not_ready']).toContain(response.body.status);
       expect(response.body).toHaveProperty('checks');
       expect(typeof response.body.checks).toBe('object');
       expect(response.headers['x-correlation-id']).toBeDefined();

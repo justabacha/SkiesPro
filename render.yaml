@@ -1,0 +1,30 @@
+services:
+  # Prometheus
+  - type: web
+    name: skiespro-prometheus
+    runtime: docker
+    plan: free
+    dockerfilePath: ./monitoring/Dockerfile.prometheus
+    envVars:
+      - key: PORT
+        value: 9090
+    disk:
+      name: prometheus-data
+      mountPath: /prometheus
+      sizeGB: 1
+
+  # Grafana
+  - type: web
+    name: skiespro-grafana
+    runtime: docker
+    plan: free
+    dockerfilePath: ./monitoring/Dockerfile.grafana
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: GF_SECURITY_ADMIN_PASSWORD
+        generateValue: true
+    disk:
+      name: grafana-data
+      mountPath: /var/lib/grafana
+      sizeGB: 1

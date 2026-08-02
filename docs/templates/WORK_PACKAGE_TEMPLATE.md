@@ -61,6 +61,15 @@ Every executable task handed to a developer, AI agent, or contractor. Copy this 
 
 **RULE:** If ProjectAnswers.md shows `[PENDING]`, ask the owner. If the value is answered, use it. Never guess.
 
+### §2.5 Secret Handling Rule
+
+**NEVER hardcode secrets, API keys, passwords, or connection strings in code.**
+
+- Read `.env.example` for variable NAMES only
+- Use `process.env.VAR_NAME` in all code
+- Document: "Owner must configure .env before running"
+- Never ask owner for actual secret values
+
 ---
 
 ## §3 What You'll Build
