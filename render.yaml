@@ -1,4 +1,35 @@
 services:
+  # Your SkiesPro App
+  - type: web
+    name: skiespro-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: MONITORING_PLATFORM
+        value: prometheus
+      - key: MONITORING_URL
+        fromService:
+          name: skiespro-prometheus
+          type: web
+          property: hostport
+      - key: LOG_PLATFORM
+        value: loki
+      - key: CACHE_PROVIDER
+        value: redis
+
   # Prometheus
   - type: web
     name: skiespro-prometheus
