@@ -18,11 +18,4 @@ export const securityHeaders = helmet({
   referrerPolicy: {
     policy: 'strict-origin-when-cross-origin',
   },
-  permissionsPolicy: {
-    features: {
-      camera: ["'none'"],
-      microphone: ["'none'"],
-      geolocation: ["'none'"],
-    },
-  },
 });

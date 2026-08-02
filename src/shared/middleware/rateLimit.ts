@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { cacheClient, KEY_PATTERNS, DEFAULT_TTLS } from '../../infrastructure/cache';
+import { cacheClient } from '../../infrastructure/cache';
 
 interface RateLimitConfig {
   windowMs: number;

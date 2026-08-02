@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { body, validationResult, param, query } from 'express-validator';
+import { validationResult } from 'express-validator';
 
 export const validateBody = (schema: any) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
