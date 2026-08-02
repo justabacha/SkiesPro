@@ -11,7 +11,7 @@
 | # | Item | Decision | Why |
 |---|------|----------|-----|
 | 1 | Business name | **SKIESPRO** | You provided |
-| 2 | Node.js version | **20.x LTS** | Standard, stable |
+| 2 | Node.js version | **22.x LTS** | Supabase requires Node 22+, WebSocket support |
 | 3 | Backend framework | **Express.js** | Industry standard |
 | 4 | Package manager | **npm** | Default |
 | 5 | Language | **TypeScript** | Type safety |
