@@ -4,5 +4,6 @@ global:
 scrape_configs:
   - job_name: 'skiespro-app'
     static_configs:
-      - targets: ['skiespro-api:3000']
+      - targets: ['skiespro-api-njuw.onrender.com']
     metrics_path: /metrics
+    scheme: https
