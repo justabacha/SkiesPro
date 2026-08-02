@@ -8,10 +8,6 @@ services:
     envVars:
       - key: PORT
         value: 9090
-    disk:
-      name: prometheus-data
-      mountPath: /prometheus
-      sizeGB: 1
 
   # Grafana
   - type: web
@@ -24,7 +20,3 @@ services:
         value: 3000
       - key: GF_SECURITY_ADMIN_PASSWORD
         generateValue: true
-    disk:
-      name: grafana-data
-      mountPath: /var/lib/grafana
-      sizeGB: 1
