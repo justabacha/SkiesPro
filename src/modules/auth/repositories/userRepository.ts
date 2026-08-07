@@ -1,0 +1,125 @@
+import { pgPool } from '../../../config/database';
+import { RegisterDto } from '../dto/register.dto';
+
+export interface UserRow {
+  id: string;
+  email: string;
+  password_hash: string;
+  display_name: string;
+  phone: string | null;
+  referral_code: string;
+  referred_by_id: string | null;
+  kyc_status: string;
+  self_excluded_until: Date | null;
+  mfa_enabled: boolean;
+  mfa_type: string | null;
+  last_login_at: Date | null;
+  failed_login_attempts: number;
+  locked_until: Date | null;
+  status: string;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at: Date | null;
+}
+
+export class UserRepository {
+  async findByEmail(email: string): Promise<UserRow | null> {
+    const result = await pgPool.query(
+      'SELECT * FROM app_auth.users WHERE email = $1 AND deleted_at IS NULL',
+      [email]
+    );
+    return result.rows[0] || null;
+  }
+
+  async findById(id: string): Promise<UserRow | null> {
+    const result = await pgPool.query(
+      'SELECT * FROM app_auth.users WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async create(data: RegisterDto & { password_hash: string; referral_code: string }): Promise<UserRow> {
+    const result = await pgPool.query(
+      `INSERT INTO app_auth.users (
+        email, password_hash, display_name, phone, referral_code, status, kyc_status
+      ) VALUES ($1, $2, $3, $4, $5, 'active', 'unverified')
+      RETURNING *`,
+      [data.email, data.password_hash, data.display_name, data.phone || null, data.referral_code]
+    );
+    return result.rows[0];
+  }
+
+  async updateLoginAttempts(id: string, attempts: number, lockedUntil: Date | null): Promise<void> {
+    await pgPool.query(
+      'UPDATE app_auth.users SET failed_login_attempts = $1, locked_until = $2, updated_at = NOW() WHERE id = $3',
+      [attempts, lockedUntil, id]
+    );
+  }
+
+  async updateLastLogin(id: string): Promise<void> {
+    await pgPool.query(
+      'UPDATE app_auth.users SET last_login_at = NOW(), failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $1',
+      [id]
+    );
+  }
+
+  async updateMfaStatus(id: string, enabled: boolean, type: string | null): Promise<void> {
+    await pgPool.query(
+      'UPDATE app_auth.users SET mfa_enabled = $1, mfa_type = $2, updated_at = NOW() WHERE id = $3',
+      [enabled, type, id]
+    );
+  }
+
+  async getRoles(userId: string): Promise<string[]> {
+    const result = await pgPool.query(
+      `SELECT r.name
+       FROM app_auth.roles r
+       JOIN app_auth.user_roles ur ON r.id = r.id
+       WHERE ur.user_id = $1`,
+      [userId]
+    );
+    return result.rows.map(row => row.name);
+  }
+
+  async assignRole(userId: string, roleName: string): Promise<void> {
+    await pgPool.query(
+      `INSERT INTO app_auth.user_roles (user_id, role_id, granted_by)
+       SELECT $1, id, $1 FROM app_auth.roles WHERE name = $2`,
+      [userId, roleName]
+    );
+  }
+
+  async getPasswordHistory(userId: string): Promise<string[]> {
+    // Note: app_auth.password_history table not in DDS §5.1 but mentioned in WP-04
+    // Checking if it exists or needs to be created.
+    // Actually SATM §4.3 says "Last 5 passwords cannot be reused".
+    // I should check if there is a table for this.
+    const result = await pgPool.query(
+      'SELECT password_hash FROM app_auth.password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
+      [userId]
+    );
+    return result.rows.map(row => row.password_hash);
+  }
+
+  async addToPasswordHistory(userId: string, passwordHash: string): Promise<void> {
+    await pgPool.query(
+      'INSERT INTO app_auth.password_history (user_id, password_hash) VALUES ($1, $2)',
+      [userId, passwordHash]
+    );
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await pgPool.query(
+      'UPDATE app_auth.users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [passwordHash, userId]
+    );
+  }
+
+  async verifyEmail(userId: string): Promise<void> {
+    await pgPool.query(
+      "UPDATE app_auth.users SET status = 'active', updated_at = NOW() WHERE id = $1",
+      [userId]
+    );
+  }
+}

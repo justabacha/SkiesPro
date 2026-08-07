@@ -44,7 +44,7 @@ The following deviations from `docs/06_DATABASE_DESIGN_SPECIFICATION.md` have be
 
 | Table | Column | DDS Values | Migration Values | Impact | Future Action |
 |-------|--------|------------|------------------|--------|---------------|
-| `app_auth.users.kyc_status` | `kyc_status` | unverified/pending/verified/rejected | none/pending/approved/rejected | MEDIUM - Different semantics | Update in WP-03 |
+| `app_auth.users.kyc_status` | `kyc_status` | unverified/pending/verified/rejected | unverified/pending/verified/rejected | NONE - Fixed in migration 024 | - |
 | `trading.binary_contracts.status` | `status` | draft/active/settling/won/lost/draw/cancelled/archived | active/settling/won/lost/draw/cancelled | MEDIUM - Missing 'draft' and 'archived' | Update in WP-05 |
 | `trading.contract_events.event_type` | `event_type` | created/stake_locked/expired/settling_acquired/settled/won/lost/draw/cancelled/archived | created/price_update/extended/settled/cancelled | MEDIUM - Different event types | Update in WP-05 |
 | `pricing.candles.granularity_seconds` | `granularity_seconds` | 60/300/900/3600/86400 | Any positive integer | LOW - Less restrictive | Already fixed in migration 021 |

@@ -1,6 +1,5 @@
 import request from 'supertest';
 import app from '../src/index';
-import { pgPool } from '../src/config/database';
 
 describe('Health Check Endpoints', () => {
   describe('GET /health', () => {
@@ -54,9 +53,5 @@ describe('Health Check Endpoints', () => {
       expect(response.body).toHaveProperty('error', 'Not Found');
       expect(response.body).toHaveProperty('path', '/non-existent');
     });
-  });
-
-  afterAll(async () => {
-    await pgPool.end();
   });
 });

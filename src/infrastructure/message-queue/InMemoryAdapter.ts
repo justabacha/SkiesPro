@@ -12,6 +12,7 @@ interface QueuedMessage {
 export class InMemoryAdapter implements IMessageQueue {
   private queues: Map<string, QueuedMessage[]> = new Map();
   private handlers: Map<string, MessageHandler> = new Map();
+  private timers: Set<NodeJS.Timeout> = new Set();
   private retryConfig = {
     initialDelay: 1000,
     maxDelay: 60000,
@@ -89,12 +90,14 @@ export class InMemoryAdapter implements IMessageQueue {
           this.retryConfig.maxDelay
         );
 
-        setTimeout(async () => {
+        const timer = setTimeout(async () => {
+          this.timers.delete(timer);
           const handler = this.handlers.get(queueName);
           if (handler) {
             await this.processMessage(message, handler);
           }
         }, delay);
+        this.timers.add(timer);
         return;
       }
     }
@@ -116,6 +119,10 @@ export class InMemoryAdapter implements IMessageQueue {
   }
 
   async close(): Promise<void> {
+    for (const timer of this.timers) {
+      clearTimeout(timer);
+    }
+    this.timers.clear();
     this.queues.clear();
     this.handlers.clear();
   }

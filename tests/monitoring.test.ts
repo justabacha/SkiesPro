@@ -1,6 +1,5 @@
 import { MetricsCollector } from '../src/shared/monitoring/MetricsCollector';
 import { HealthChecker } from '../src/shared/monitoring/HealthChecker';
-import { pgPool } from '../src/config/database';
 
 const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;
 
@@ -135,11 +134,5 @@ describe('HealthChecker', () => {
       const health = await checker.getSystemHealth();
       expect(['healthy', 'degraded', 'unhealthy']).toContain(health.status);
     });
-  });
-
-  afterAll(async () => {
-    if (!skipDatabaseTests) {
-      await pgPool.end();
-    }
   });
 });

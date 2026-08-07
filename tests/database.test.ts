@@ -11,12 +11,6 @@ beforeAll(async () => {
   }
 });
 
-afterAll(async () => {
-  if (!skipDatabaseTests) {
-    await pgPool.end();
-  }
-});
-
 describe('Database Connection', () => {
   test('should connect to database successfully', async () => {
     if (skipDatabaseTests) return;
