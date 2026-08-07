@@ -1,5 +1,6 @@
 import request from 'supertest';
 import app from '../src/index';
+import { pgPool } from '../src/config/database';
 
 describe('Health Check Endpoints', () => {
   describe('GET /health', () => {
@@ -7,8 +8,7 @@ describe('Health Check Endpoints', () => {
       const response = await request(app).get('/health');
       
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('status');
-      expect(['healthy', 'degraded', 'unhealthy']).toContain(response.body.status);
+      expect(response.body.status).toBe('healthy');
       expect(response.body).toHaveProperty('version');
       expect(response.body).toHaveProperty('uptime_seconds');
       expect(response.body).toHaveProperty('dependencies');
@@ -17,12 +17,11 @@ describe('Health Check Endpoints', () => {
   });
 
   describe('GET /ready', () => {
-    it('should return 200 or 503 with readiness status', async () => {
+    it('should return 200 with readiness status', async () => {
       const response = await request(app).get('/ready');
       
-      expect([200, 503]).toContain(response.status);
-      expect(response.body).toHaveProperty('status');
-      expect(['ready', 'not_ready']).toContain(response.body.status);
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('ready');
       expect(response.body).toHaveProperty('checks');
       expect(typeof response.body.checks).toBe('object');
       expect(response.headers['x-correlation-id']).toBeDefined();
@@ -55,5 +54,9 @@ describe('Health Check Endpoints', () => {
       expect(response.body).toHaveProperty('error', 'Not Found');
       expect(response.body).toHaveProperty('path', '/non-existent');
     });
+  });
+
+  afterAll(async () => {
+    await pgPool.end();
   });
 });

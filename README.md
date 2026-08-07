@@ -132,17 +132,29 @@ docker ps
 - **GET** `/health` - Returns service health status
   ```json
   {
-    "status": "ok",
-    "timestamp": "2026-07-29T00:00:00.000Z"
+    "status": "healthy",
+    "version": "1.0.0",
+    "uptime_seconds": 123,
+    "dependencies": {
+      "postgresql": { "status": "healthy", "latency_ms": 15 },
+      "redis_sessions": { "status": "healthy", "latency_ms": 5 },
+      "redis_pricing": { "status": "healthy", "latency_ms": 5 },
+      "message_broker": { "status": "healthy", "latency_ms": 10 }
+    }
   }
   ```
 
 ### Readiness Check
-- **GET** `/ready` - Returns service readiness status
+- **GET** `/ready` - Returns service readiness status (200 OK or 503 Service Unavailable)
   ```json
   {
     "status": "ready",
-    "checks": {}
+    "checks": {
+      "postgresql": { "status": "healthy", "latency_ms": 15 },
+      "redis_sessions": { "status": "healthy", "latency_ms": 5 },
+      "redis_pricing": { "status": "healthy", "latency_ms": 5 },
+      "message_broker": { "status": "healthy", "latency_ms": 10 }
+    }
   }
   ```
 
@@ -166,10 +178,37 @@ The project uses GitHub Actions for continuous integration and deployment. The p
 ## Environment Variables
 
 See `.env.example` for all available environment variables. Key variables include:
+
+### Server & App
 - `PORT` - Server port (default: 3000)
-- `NODE_ENV` - Environment (development/production)
+- `NODE_ENV` - Environment (development/production/test)
 - `CORS_ORIGIN` - Allowed CORS origin
 - `LOG_LEVEL` - Logging level (info/warn/error)
+
+### Database (Supabase/PostgreSQL)
+- `DATABASE_URL` - PostgreSQL connection string (e.g., `postgresql://postgres:password@db.project-ref.supabase.co:5432/postgres`)
+- `SUPABASE_URL` - Supabase project URL (e.g., `https://project-ref.supabase.co`)
+- `SUPABASE_ANON_KEY` - Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+
+### Redis & Message Queue
+- `REDIS_URL` - Redis connection URL
+- `MESSAGE_BROKER_URL` - Message broker connection URL (e.g., RabbitMQ)
+
+## Troubleshooting
+
+### Database Connection Issues (`ENOTFOUND`)
+If you see `getaddrinfo ENOTFOUND` for your database host in tests or during startup:
+1. **Check `.env` file**: Ensure `DATABASE_URL` is correctly set and has no typos.
+2. **Supabase Project Status**: Verify that your Supabase project is active and not paused.
+3. **Network/Firewall**: Ensure your environment has access to the internet and can reach `*.supabase.co`.
+4. **DNS Cache**: Sometimes flushing your DNS cache or using a different DNS provider (like 8.8.8.8) helps.
+5. **VPN**: If you are using a VPN, try disconnecting or ensuring it allows traffic to your database host.
+
+### Tests Hanging
+If tests fail to exit gracefully:
+1. Ensure all database pools and network connections are closed in `afterAll` blocks.
+2. Check for unref'd timers or open handles using `npm test -- --detectOpenHandles`.
 
 ## Contributing
 

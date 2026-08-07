@@ -1,12 +1,13 @@
 import { checkDatabaseConnection, pgPool } from '../src/config/database';
 
-// Skip database tests if DATABASE_URL is not set
-const skipDatabaseTests = !process.env.DATABASE_URL;
+// Skip database tests if DATABASE_URL is not set or if explicitly skipped
+const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;
 
 // Global setup and teardown
 beforeAll(async () => {
   if (skipDatabaseTests) {
-    console.warn('Skipping database tests - DATABASE_URL not set');
+    console.log('Skipping database tests — SKIP_DB_TESTS set or DATABASE_URL missing');
+    return;
   }
 });
 

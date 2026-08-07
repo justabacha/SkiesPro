@@ -1,5 +1,8 @@
 import { MetricsCollector } from '../src/shared/monitoring/MetricsCollector';
 import { HealthChecker } from '../src/shared/monitoring/HealthChecker';
+import { pgPool } from '../src/config/database';
+
+const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;
 
 describe('MetricsCollector', () => {
   let collector: MetricsCollector;
@@ -91,6 +94,7 @@ describe('HealthChecker', () => {
 
   describe('checkPostgreSQL', () => {
     it('should return healthy status when database is accessible', async () => {
+      if (skipDatabaseTests) return;
       const result = await checker.checkPostgreSQL();
       expect(result.status).toBe('healthy');
       expect(result.latency_ms).toBeDefined();
@@ -131,5 +135,11 @@ describe('HealthChecker', () => {
       const health = await checker.getSystemHealth();
       expect(['healthy', 'degraded', 'unhealthy']).toContain(health.status);
     });
+  });
+
+  afterAll(async () => {
+    if (!skipDatabaseTests) {
+      await pgPool.end();
+    }
   });
 });

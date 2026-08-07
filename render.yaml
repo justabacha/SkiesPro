@@ -1,5 +1,4 @@
 services:
-  # Your SkiesPro App
   - type: web
     name: skiespro-api
     runtime: docker
@@ -18,36 +17,3 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: MONITORING_PLATFORM
-        value: prometheus
-      - key: MONITORING_URL
-        fromService:
-          name: skiespro-prometheus
-          type: web
-          property: hostport
-      - key: LOG_PLATFORM
-        value: loki
-      - key: CACHE_PROVIDER
-        value: redis
-
-  # Prometheus
-  - type: web
-    name: skiespro-prometheus
-    runtime: docker
-    plan: free
-    dockerfilePath: ./monitoring/Dockerfile.prometheus
-    envVars:
-      - key: PORT
-        value: 9090
-
-  # Grafana
-  - type: web
-    name: skiespro-grafana
-    runtime: docker
-    plan: free
-    dockerfilePath: ./monitoring/Dockerfile.grafana
-    envVars:
-      - key: PORT
-        value: 3000
-      - key: GF_SECURITY_ADMIN_PASSWORD
-        generateValue: true

@@ -1,16 +1,11 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import client from 'prom-client';
 import { config } from './config/app';
 import { correlationIdMiddleware } from './shared/middleware/correlationId';
 import { requestLogger } from './shared/middleware/logger';
 import routes from './infrastructure/routes';
 import { logger } from './shared/middleware/logger';
-
-// Prometheus metrics setup
-const register = new client.Registry();
-client.collectDefaultMetrics({ register });
 
 const app: Application = express();
 
@@ -36,12 +31,6 @@ app.use(requestLogger);
 // Routes
 app.use('/', routes);
 
-// Prometheus metrics endpoint
-app.get('/metrics', async (_req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
-
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
@@ -65,8 +54,10 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
 
 const PORT = config.port;
 
-app.listen(PORT, () => {
-  logger.info(`Server started on port ${PORT} in ${config.nodeEnv} mode`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    logger.info(`Server started on port ${PORT} in ${config.nodeEnv} mode`);
+  });
+}
 
 export default app;
