@@ -101,12 +101,8 @@ export class HealthChecker {
       message_broker: messageBroker,
     };
 
-    const allHealthy = Object.values(dependencies).every(
-      (dep) => dep.status === 'healthy'
-    );
-    const anyUnhealthy = Object.values(dependencies).some(
-      (dep) => dep.status === 'unhealthy'
-    );
+    const allHealthy = Object.values(dependencies).every((dep) => dep.status === 'healthy');
+    const anyUnhealthy = Object.values(dependencies).some((dep) => dep.status === 'unhealthy');
 
     const status = allHealthy ? 'healthy' : anyUnhealthy ? 'unhealthy' : 'degraded';
 

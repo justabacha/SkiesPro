@@ -14,10 +14,9 @@ export interface MfaRow {
 
 export class MfaRepository {
   async findByUserId(userId: string): Promise<MfaRow | null> {
-    const result = await pgPool.query(
-      'SELECT * FROM app_auth.mfa_tokens WHERE user_id = $1',
-      [userId]
-    );
+    const result = await pgPool.query('SELECT * FROM app_auth.mfa_tokens WHERE user_id = $1', [
+      userId,
+    ]);
     return result.rows[0] || null;
   }
 
@@ -33,7 +32,7 @@ export class MfaRepository {
 
   async verify(userId: string): Promise<void> {
     await pgPool.query(
-      "UPDATE app_auth.mfa_tokens SET is_enabled = TRUE, verified_at = NOW(), enabled_at = NOW() WHERE user_id = $1",
+      'UPDATE app_auth.mfa_tokens SET is_enabled = TRUE, verified_at = NOW(), enabled_at = NOW() WHERE user_id = $1',
       [userId]
     );
   }

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0F1117" />
+    <meta name="description" content="SkiesPro Binary Trading Platform" />
+    <title>SkiesPro | Binary Trading Platform</title>
+
+    <!-- Blocking script to prevent hydration flash -->
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme');
+          var supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (!theme && supportDark) theme = 'dark';
+          if (!theme) theme = 'light';
+          document.documentElement.classList.add(theme);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

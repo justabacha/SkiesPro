@@ -84,6 +84,7 @@
 Clear description of what's IN scope:
 
 - [ ] Project folder structure per DHCS §2 (backend, frontend, shared, config, infrastructure)
+- [ ] Frontend directory structure defined for future WP-01.1
 - [ ] Git repository initialization with .gitignore
 - [ ] Base configuration files (package.json, tsconfig.json, .eslintrc, .prettierrc)
 - [ ] Docker setup (Dockerfile, docker-compose.yml if Docker = Yes)
@@ -102,7 +103,8 @@ Clear description of what's NOT included:
 ### §3.3 Deliverables
 | Deliverable | Format | Location |
 |-------------|--------|----------|
-| Source code folder structure | Directories | `src/`, `src/modules/`, `src/shared/`, `src/config/`, `src/infrastructure/` |
+| Source code folder structure (Backend) | Directories | `backend/src/`, `backend/src/modules/`, `backend/src/shared/`, `backend/src/config/`, `backend/src/infrastructure/` |
+| Source code folder structure (Frontend) | Directories | `frontend/` (Note: Frontend scaffolding handled in WP-01.1) |
 | Configuration files | JSON/TS/YAML | Root directory (package.json, tsconfig.json, .eslintrc, .prettierrc) |
 | Docker files | Dockerfile, docker-compose.yml | `docker/` or root directory |
 | CI configuration | YAML | `.github/workflows/` or `.gitlab-ci.yml` or equivalent |

@@ -36,7 +36,7 @@ function scrubSecrets(obj: any): any {
   for (const [key, value] of Object.entries(obj)) {
     const keyLower = key.toLowerCase();
     const isSecret = SECRET_PATTERNS.some((pattern) => pattern.test(keyLower));
-    
+
     if (isSecret && typeof value === 'string') {
       scrubbed[key] = '[REDACTED]';
     } else if (typeof value === 'object') {

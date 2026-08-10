@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-primary: #FFFFFF;
+    --color-bg-secondary: #F8F9FA;
+    --color-bg-tertiary: #F0F2F5;
+    --color-text-primary: #1A1D23;
+    --color-text-secondary: #6B7280;
+    --color-text-tertiary: #9CA3AF;
+    --color-border: #E5E7EB;
+    --color-border-hover: #D1D5DB;
+  }
+
+  .dark {
+    --color-bg-primary: #0F1117;
+    --color-bg-secondary: #1A1D26;
+    --color-bg-tertiary: #262933;
+    --color-text-primary: #F3F4F6;
+    --color-text-secondary: #9CA3AF;
+    --color-text-tertiary: #6B7280;
+    --color-border: #2D313E;
+    --color-border-hover: #3D4151;
+  }
+
+  body {
+    @apply bg-bg-light-primary text-text-light-primary font-sans transition-colors duration-200;
+  }
+
+  .dark body {
+    @apply bg-bg-dark-primary text-text-dark-primary;
+  }
+
+  /* Accessibility: Visible focus ring */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand ring-offset-2;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-delay: -1ms !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      background-attachment: initial !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0s !important;
+      transition-delay: 0s !important;
+    }
+  }
+}
+
+@layer components {
+  .btn-buy-up {
+    @apply bg-success text-white hover:bg-success/90 active:scale-[0.97] disabled:opacity-40;
+  }
+
+  .btn-buy-down {
+    @apply bg-danger text-white hover:bg-danger/90 active:scale-[0.97] disabled:opacity-40;
+  }
+}

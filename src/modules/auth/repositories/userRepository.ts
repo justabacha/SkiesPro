@@ -10,6 +10,7 @@ export interface UserRow {
   referral_code: string;
   referred_by_id: string | null;
   kyc_status: string;
+  avatar_url: string | null;
   self_excluded_until: Date | null;
   mfa_enabled: boolean;
   mfa_type: string | null;
@@ -39,7 +40,9 @@ export class UserRepository {
     return result.rows[0] || null;
   }
 
-  async create(data: RegisterDto & { password_hash: string; referral_code: string }): Promise<UserRow> {
+  async create(
+    data: RegisterDto & { password_hash: string; referral_code: string }
+  ): Promise<UserRow> {
     const result = await pgPool.query(
       `INSERT INTO app_auth.users (
         email, password_hash, display_name, phone, referral_code, status, kyc_status
@@ -79,7 +82,7 @@ export class UserRepository {
        WHERE ur.user_id = $1`,
       [userId]
     );
-    return result.rows.map(row => row.name);
+    return result.rows.map((row) => row.name);
   }
 
   async assignRole(userId: string, roleName: string): Promise<void> {
@@ -99,7 +102,7 @@ export class UserRepository {
       'SELECT password_hash FROM app_auth.password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
       [userId]
     );
-    return result.rows.map(row => row.password_hash);
+    return result.rows.map((row) => row.password_hash);
   }
 
   async addToPasswordHistory(userId: string, passwordHash: string): Promise<void> {
@@ -121,5 +124,66 @@ export class UserRepository {
       "UPDATE app_auth.users SET status = 'active', updated_at = NOW() WHERE id = $1",
       [userId]
     );
+  }
+
+  async updateProfile(
+    userId: string,
+    data: { display_name?: string; phone?: string }
+  ): Promise<UserRow> {
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (data.display_name !== undefined) {
+      fields.push(`display_name = $${idx++}`);
+      values.push(data.display_name);
+    }
+    if (data.phone !== undefined) {
+      fields.push(`phone = $${idx++}`);
+      values.push(data.phone);
+    }
+
+    if (fields.length === 0) {
+      const user = await this.findById(userId);
+      if (!user) throw new Error('User not found');
+      return user;
+    }
+
+    values.push(userId);
+    const result = await pgPool.query(
+      `UPDATE app_auth.users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    return result.rows[0];
+  }
+
+  async updateAvatar(userId: string, avatarUrl: string): Promise<UserRow> {
+    const result = await pgPool.query(
+      'UPDATE app_auth.users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [avatarUrl, userId]
+    );
+    return result.rows[0];
+  }
+
+  async getProfile(userId: string): Promise<UserRow | null> {
+    return this.findById(userId);
+  }
+
+  async getKycStatus(userId: string): Promise<string | null> {
+    const result = await pgPool.query('SELECT kyc_status FROM app_auth.users WHERE id = $1', [
+      userId,
+    ]);
+    return result.rows[0]?.kyc_status || null;
+  }
+
+  async initiateKyc(userId: string): Promise<UserRow> {
+    const result = await pgPool.query(
+      "UPDATE app_auth.users SET kyc_status = 'pending', updated_at = NOW() WHERE id = $1 AND kyc_status IN ('unverified', 'rejected') RETURNING *",
+      [userId]
+    );
+    if (result.rowCount === 0) {
+      throw new Error('KYC initiation failed: Invalid current status');
+    }
+    return result.rows[0];
   }
 }

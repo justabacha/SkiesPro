@@ -12,7 +12,11 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -52,7 +56,7 @@ export const authorize = (permissions: string[] = []) => {
       return;
     }
 
-    const hasPermission = permissions.every(p => user.permissions.includes(p));
+    const hasPermission = permissions.every((p) => user.permissions.includes(p));
     if (!hasPermission) {
       res.status(403).json({ error: 'Insufficient permissions' });
       return;

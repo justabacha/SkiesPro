@@ -58,7 +58,7 @@ export function rateLimit(configName: keyof typeof RATE_LIMIT_CONFIGS) {
 
     try {
       const currentHits = await cacheClient.incr('sessions', key);
-      
+
       if (currentHits === 1) {
         await cacheClient.expire('sessions', key, config.windowMs / 1000);
       }
@@ -66,7 +66,10 @@ export function rateLimit(configName: keyof typeof RATE_LIMIT_CONFIGS) {
       const resetAt = new Date(Date.now() + config.windowMs);
 
       res.setHeader('X-RateLimit-Limit', config.maxRequests.toString());
-      res.setHeader('X-RateLimit-Remaining', Math.max(0, config.maxRequests - currentHits).toString());
+      res.setHeader(
+        'X-RateLimit-Remaining',
+        Math.max(0, config.maxRequests - currentHits).toString()
+      );
       res.setHeader('X-RateLimit-Reset', resetAt.toISOString());
 
       if (currentHits > config.maxRequests) {

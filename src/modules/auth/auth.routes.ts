@@ -13,7 +13,9 @@ router.post(
   rateLimit('unauthenticated'),
   [
     body('email').isEmail().normalizeEmail(),
-    body('password').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/),
+    body('password')
+      .isLength({ min: 8 })
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/),
     body('display_name').isLength({ min: 2, max: 100 }).trim(),
     body('phone').optional().isMobilePhone('any'),
   ],
@@ -32,10 +34,7 @@ router.get(
 router.post(
   '/login',
   rateLimit('login'),
-  [
-    body('email').isEmail().normalizeEmail(),
-    body('password').notEmpty(),
-  ],
+  [body('email').isEmail().normalizeEmail(), body('password').notEmpty()],
   (req: Request, res: Response) => controller.login(req, res)
 );
 
@@ -43,10 +42,7 @@ router.post(
 router.post(
   '/mfa/verify',
   rateLimit('login'),
-  [
-    body('userId').isUUID(),
-    body('totp_code').isLength({ min: 6, max: 6 }).isNumeric(),
-  ],
+  [body('userId').isUUID(), body('totp_code').isLength({ min: 6, max: 6 }).isNumeric()],
   (req: Request, res: Response) => controller.verifyMfa(req, res)
 );
 
@@ -72,15 +68,14 @@ router.post(
 router.post(
   '/reset-password',
   rateLimit('passwordReset'),
-  [
-    body('token').notEmpty(),
-    body('new_password').isLength({ min: 8 }),
-  ],
+  [body('token').notEmpty(), body('new_password').isLength({ min: 8 })],
   (req: Request, res: Response) => controller.resetPassword(req, res)
 );
 
 // MFA Setup (authenticated)
-router.post('/mfa/setup', authenticate, (req: Request, res: Response) => controller.setupMfa(req, res));
+router.post('/mfa/setup', authenticate, (req: Request, res: Response) =>
+  controller.setupMfa(req, res)
+);
 router.post(
   '/mfa/verify-setup',
   authenticate,

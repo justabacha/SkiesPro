@@ -16,8 +16,8 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
       postgresql: { status: 'healthy', latency_ms: 0 },
       redis_sessions: { status: 'degraded' },
       redis_pricing: { status: 'degraded' },
-      message_broker: { status: 'degraded' }
-    }
+      message_broker: { status: 'degraded' },
+    },
   });
 };
 
@@ -30,7 +30,7 @@ export const readinessCheck = async (req: Request, res: Response): Promise<void>
   res.status(200).json({
     status: 'ready',
     checks: {
-      postgresql: { status: 'healthy' }
-    }
+      postgresql: { status: 'healthy' },
+    },
   });
 };

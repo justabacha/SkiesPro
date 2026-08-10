@@ -165,157 +165,150 @@ Standards are enforced through multiple layers:
 
 ### 3.1 Backend Structure
 
+The backend code resides in the `backend/` directory. The `src/` directory within `backend/` contains only backend logic.
+
 ```
-src/
-├── modules/
-│   ├── auth/
-│   │   ├── controllers/
-│   │   │   ├── AuthController.ts
-│   │   │   └── MfaController.ts
-│   │   ├── services/
-│   │   │   ├── AuthService.ts
-│   │   │   ├── TokenService.ts
-│   │   │   └── MfaService.ts
-│   │   ├── repositories/
-│   │   │   ├── UserRepository.ts
-│   │   │   └── SessionRepository.ts
-│   │   ├── dto/
-│   │   │   ├── RegisterDto.ts
-│   │   │   ├── LoginDto.ts
-│   │   │   └── MfaVerifyDto.ts
-│   │   ├── validators/
-│   │   │   ├── RegisterValidator.ts
-│   │   │   └── LoginValidator.ts
-│   │   ├── events/
-│   │   │   ├── UserRegisteredEvent.ts
-│   │   │   └── SessionCreatedEvent.ts
-│   │   ├── workers/
-│   │   │   └── EmailVerificationWorker.ts
-│   │   ├── tests/
-│   │   │   ├── unit/
-│   │   │   │   ├── AuthService.test.ts
-│   │   │   │   └── TokenService.test.ts
-│   │   │   └── integration/
-│   │   │       └── AuthFlow.test.ts
-│   │   └── README.md
-│   ├── wallet/
-│   │   ├── controllers/
-│   │   ├── services/
-│   │   ├── repositories/
-│   │   ├── dto/
-│   │   ├── validators/
-│   │   ├── events/
-│   │   ├── workers/
-│   │   ├── tests/
-│   │   └── README.md
-│   ├── trading/
-│   ├── payments/
-│   ├── pricing/
-│   ├── compliance/
-│   ├── referral/
-│   ├── notifications/
-│   ├── admin/
-│   └── reporting/
-├── shared/
-│   ├── middleware/
-│   │   ├── AuthMiddleware.ts
-│   │   ├── RateLimitMiddleware.ts
-│   │   └── CorrelationMiddleware.ts
-│   ├── utils/
-│   │   ├── Logger.ts
-│   │   ├── Validator.ts
-│   │   └── Crypto.ts
-│   ├── types/
-│   │   ├── User.ts
-│   │   ├── Wallet.ts
-│   │   └── Trade.ts
-│   ├── constants/
-│   │   ├── Errors.ts
-│   │   └── Limits.ts
-│   └── exceptions/
-│       ├── DomainException.ts
-│       └── ValidationException.ts
-├── config/
-│   ├── database.ts
-│   ├── redis.ts
-│   ├── broker.ts
-│   └── app.ts
-└── infrastructure/
-    ├── database/
-    │   ├── migrations/
-    │   └── seeds/
-    ├── message-queue/
-    │   └── publishers/
-    └── cache/
-        └── clients/
+backend/
+├── src/
+│   ├── modules/
+│   │   ├── auth/
+│   │   │   ├── controllers/
+│   │   │   │   ├── AuthController.ts
+│   │   │   │   └── MfaController.ts
+│   │   │   ├── services/
+│   │   │   │   ├── AuthService.ts
+│   │   │   │   ├── TokenService.ts
+│   │   │   │   └── MfaService.ts
+│   │   │   ├── repositories/
+│   │   │   │   ├── UserRepository.ts
+│   │   │   │   └── SessionRepository.ts
+│   │   │   ├── dto/
+│   │   │   │   ├── RegisterDto.ts
+│   │   │   │   ├── LoginDto.ts
+│   │   │   │   └── MfaVerifyDto.ts
+│   │   │   ├── validators/
+│   │   │   │   ├── RegisterValidator.ts
+│   │   │   │   └── LoginValidator.ts
+│   │   │   ├── events/
+│   │   │   │   ├── UserRegisteredEvent.ts
+│   │   │   │   └── SessionCreatedEvent.ts
+│   │   │   ├── workers/
+│   │   │   │   └── EmailVerificationWorker.ts
+│   │   │   ├── tests/
+│   │   │   │   ├── unit/
+│   │   │   │   │   ├── AuthService.test.ts
+│   │   │   │   │   └── TokenService.test.ts
+│   │   │   │   └── integration/
+│   │   │   │       └── AuthFlow.test.ts
+│   │   │   └── README.md
+│   │   ├── wallet/
+│   │   ├── trading/
+│   │   ├── payments/
+│   │   ├── pricing/
+│   │   ├── compliance/
+│   │   ├── referral/
+│   │   ├── notifications/
+│   │   ├── admin/
+│   │   └── reporting/
+│   ├── shared/
+│   │   ├── middleware/
+│   │   │   ├── AuthMiddleware.ts
+│   │   │   ├── RateLimitMiddleware.ts
+│   │   │   └── CorrelationMiddleware.ts
+│   │   ├── utils/
+│   │   │   ├── Logger.ts
+│   │   │   ├── Validator.ts
+│   │   │   └── Crypto.ts
+│   │   ├── types/
+│   │   │   ├── User.ts
+│   │   │   ├── Wallet.ts
+│   │   │   └── Trade.ts
+│   │   ├── constants/
+│   │   │   ├── Errors.ts
+│   │   │   └── Limits.ts
+│   │   └── exceptions/
+│   │       ├── DomainException.ts
+│   │       └── ValidationException.ts
+│   ├── config/
+│   │   ├── database.ts
+│   │   ├── redis.ts
+│   │   ├── broker.ts
+│   │   └── app.ts
+│   └── infrastructure/
+│       ├── database/
+│       │   ├── migrations/
+│       │   └── seeds/
+│       ├── message-queue/
+│       │   └── publishers/
+│       └── cache/
+│           └── clients/
+├── package.json
+└── tsconfig.json
 ```
 
 **Reference:** IMP §2 (Project Structure), SAD §4 (Module Organization)
 
 ### 3.2 Frontend Structure
 
+The frontend is a standalone React application located in the `frontend/` directory.
+
 ```
-src/
-├── modules/
-│   ├── auth/
+frontend/
+├── src/
+│   ├── modules/
+│   │   ├── auth/
+│   │   │   ├── components/
+│   │   │   │   ├── LoginForm.tsx
+│   │   │   │   ├── RegisterForm.tsx
+│   │   │   │   └── MfaForm.tsx
+│   │   │   ├── containers/
+│   │   │   │   ├── AuthContainer.tsx
+│   │   │   │   └── MfaContainer.tsx
+│   │   │   ├── services/
+│   │   │   │   └── AuthService.ts
+│   │   │   ├── hooks/
+│   │   │   │   ├── useAuth.ts
+│   │   │   │   └── useMfa.ts
+│   │   │   ├── types/
+│   │   │   │   └── Auth.types.ts
+│   │   │   ├── tests/
+│   │   │   │   ├── LoginForm.test.tsx
+│   │   │   │   └── AuthService.test.ts
+│   │   │   └── README.md
+│   │   ├── trading/
+│   │   ├── wallet/
+│   │   ├── dashboard/
+│   │   ├── profile/
+│   │   └── admin/
+│   ├── shared/
 │   │   ├── components/
-│   │   │   ├── LoginForm.tsx
-│   │   │   ├── RegisterForm.tsx
-│   │   │   └── MfaForm.tsx
-│   │   ├── containers/
-│   │   │   ├── AuthContainer.tsx
-│   │   │   └── MfaContainer.tsx
-│   │   ├── services/
-│   │   │   └── AuthService.ts
+│   │   │   ├── Button.tsx
+│   │   │   ├── Input.tsx
+│   │   │   └── Modal.tsx
+│   │   ├── context/
+│   │   │   └── ThemeContext.tsx
 │   │   ├── hooks/
-│   │   │   ├── useAuth.ts
-│   │   │   └── useMfa.ts
-│   │   ├── types/
-│   │   │   └── Auth.types.ts
-│   │   ├── tests/
-│   │   │   ├── LoginForm.test.tsx
-│   │   │   └── AuthService.test.ts
-│   │   └── README.md
-│   ├── trading/
-│   │   ├── components/
-│   │   │   ├── TradePanel.tsx
-│   │   │   ├── PriceChart.tsx
-│   │   │   └── OpenPositions.tsx
-│   │   ├── containers/
+│   │   │   ├── useApi.ts
+│   │   │   └── useWebSocket.ts
 │   │   ├── services/
-│   │   ├── hooks/
+│   │   │   ├── ApiClient.ts
+│   │   │   └── WebSocketClient.ts
+│   │   ├── utils/
+│   │   │   ├── formatters.ts
+│   │   │   └── validators.ts
 │   │   ├── types/
-│   │   ├── tests/
-│   │   └── README.md
-│   ├── wallet/
-│   ├── dashboard/
-│   ├── profile/
-│   └── admin/
-├── shared/
-│   ├── components/
-│   │   ├── Button.tsx
-│   │   ├── Input.tsx
-│   │   └── Modal.tsx
-│   ├── hooks/
-│   │   ├── useApi.ts
-│   │   └── useWebSocket.ts
-│   ├── services/
-│   │   ├── ApiClient.ts
-│   │   └── WebSocketClient.ts
-│   ├── utils/
-│   │   ├── formatters.ts
-│   │   └── validators.ts
-│   ├── types/
-│   │   └── Api.types.ts
-│   └── constants/
-│       └── Errors.ts
-├── config/
-│   ├── api.ts
-│   └── theme.ts
-└── infrastructure/
-    ├── api/
-    │   └── generated/
-    └── websocket/
+│   │   │   └── Api.types.ts
+│   │   └── constants/
+│   │       └── Errors.ts
+│   ├── config/
+│   ├── styles/
+│   │   └── globals.css
+│   └── infrastructure/
+│       ├── api/
+│       │   └── generated/
+│       └── websocket/
+├── package.json
+└── tsconfig.json
 ```
 
 **Reference:** UDS §2 (Design System), IMP §3 (Frontend Structure)

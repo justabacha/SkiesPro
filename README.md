@@ -14,26 +14,36 @@ A modern binary trading platform built with TypeScript, Express.js, and followin
 
 ## Project Structure
 
+This project is organized as a monorepo containing both backend and frontend applications.
+
 ```
 skiespro/
-├── src/
-│   ├── modules/           # Business logic modules
-│   ├── shared/            # Shared utilities and middleware
-│   │   ├── middleware/    # Express middleware (logging, correlation ID)
-│   │   ├── utils/         # Utility functions
-│   │   ├── types/         # TypeScript type definitions
-│   │   └── constants/     # Application constants
-│   ├── config/            # Configuration files
-│   └── infrastructure/    # Infrastructure setup (routes, health checks)
-├── tests/                 # Test files
-├── docker/                # Docker configuration
-├── .github/               # GitHub Actions workflows
-└── docs/                  # Documentation
+├── backend/               # Backend application
+│   ├── src/
+│   │   ├── modules/       # Business logic modules
+│   │   ├── shared/        # Backend shared utilities
+│   │   ├── config/        # Configuration files
+│   │   └── index.ts       # Entry point
+│   ├── migrations/        # Database migrations
+│   ├── tests/             # Backend tests
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend/              # Frontend application (Vite + React)
+│   ├── src/
+│   │   ├── modules/       # Frontend feature modules
+│   │   ├── shared/        # Frontend shared components, hooks, etc.
+│   │   ├── pages/         # Page components
+│   │   └── main.tsx       # Entry point
+│   ├── package.json
+│   └── tsconfig.json
+├── docs/                  # Project documentation
+├── work-packages/         # Implementation work packages
+└── docker/                # Docker configuration
 ```
 
 ## Prerequisites
 
-- Node.js 20.x or higher
+- Node.js 22.x or higher
 - npm
 - Docker (optional, for containerized deployment)
 
@@ -41,42 +51,47 @@ skiespro/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/[YOUR_USERNAME]/skiespro.git
+git clone https://github.com/justabacha/skiespro.git
 cd skiespro
 ```
 
-2. Install dependencies:
+2. Install dependencies for both backend and frontend:
 ```bash
+# Install root/backend dependencies
 npm install
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
 ```
 
-3. Create environment file:
+3. Create environment file in the root/backend:
 ```bash
 cp .env.example .env
 ```
 
-4. Edit `.env` with your configuration values (see `.env.example` for reference)
+4. Edit `.env` with your configuration values.
 
 ## Development
 
-### Run the development server:
+### Run the backend server:
 ```bash
 npm run dev
 ```
-
 The server will start on `http://localhost:3000`
 
-### Run tests:
+### Run the frontend application:
+```bash
+cd frontend
+npm run dev
+```
+The frontend will start on `http://localhost:5173` (proxies `/api` to port 3000)
+
+### Run backend tests:
 ```bash
 npm test
 ```
 
-### Run tests with coverage:
-```bash
-npm run test:coverage
-```
-
-### Run linter:
+### Run backend linter:
 ```bash
 npm run lint
 ```

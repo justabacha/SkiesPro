@@ -93,7 +93,13 @@ export class AuthService {
     const roles = await this.userRepo.getRoles(user.id);
     const permissions: string[] = []; // Placeholder
 
-    const tokens = await this.tokenService.createSession(user.id, roles[0] || 'trader', permissions, ip, userAgent);
+    const tokens = await this.tokenService.createSession(
+      user.id,
+      roles[0] || 'trader',
+      permissions,
+      ip,
+      userAgent
+    );
 
     return {
       ...tokens,
@@ -127,7 +133,13 @@ export class AuthService {
     const roles = await this.userRepo.getRoles(user.id);
     const permissions: string[] = [];
 
-    const tokens = await this.tokenService.createSession(user.id, roles[0] || 'trader', permissions, ip, userAgent);
+    const tokens = await this.tokenService.createSession(
+      user.id,
+      roles[0] || 'trader',
+      permissions,
+      ip,
+      userAgent
+    );
 
     return {
       ...tokens,
@@ -183,7 +195,13 @@ export class AuthService {
     const roles = await this.userRepo.getRoles(userId);
     const permissions: string[] = [];
 
-    const tokens = await this.tokenService.createSession(userId, roles[0] || 'trader', permissions, ip, userAgent);
+    const tokens = await this.tokenService.createSession(
+      userId,
+      roles[0] || 'trader',
+      permissions,
+      ip,
+      userAgent
+    );
 
     return {
       ...tokens,

@@ -9,12 +9,27 @@ export class TokenService {
   private sessionRepo: SessionRepository;
 
   constructor() {
-    this.privateKey = Buffer.from(process.env.JWT_PRIVATE_KEY || '', 'base64').toString('utf8');
-    this.publicKey = Buffer.from(process.env.JWT_PUBLIC_KEY || '', 'base64').toString('utf8');
+    const privB64 = process.env.JWT_PRIVATE_KEY || '';
+    const pubB64 = process.env.JWT_PUBLIC_KEY || '';
+
+    this.privateKey = this.loadKey(privB64);
+    this.publicKey = this.loadKey(pubB64);
+
     this.sessionRepo = new SessionRepository();
   }
 
-  generateAccessToken(userId: string, role: string, permissions: string[]): { token: string; jti: string } {
+  private loadKey(key: string): string {
+    if (key.includes('-----BEGIN')) {
+      return key.replace(/\\n/g, '\n');
+    }
+    return Buffer.from(key, 'base64').toString('utf8');
+  }
+
+  generateAccessToken(
+    userId: string,
+    role: string,
+    permissions: string[]
+  ): { token: string; jti: string } {
     const jti = uuidv4();
     const token = jwt.sign(
       {
@@ -38,7 +53,13 @@ export class TokenService {
     return { token, hash };
   }
 
-  async createSession(userId: string, role: string, permissions: string[], ip: string | null, userAgent: string | null) {
+  async createSession(
+    userId: string,
+    role: string,
+    permissions: string[],
+    ip: string | null,
+    userAgent: string | null
+  ) {
     const { token: accessToken, jti } = this.generateAccessToken(userId, role, permissions);
     const { token: refreshToken, hash: refreshTokenHash } = this.generateRefreshToken();
 

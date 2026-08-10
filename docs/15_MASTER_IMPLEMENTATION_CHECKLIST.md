@@ -526,7 +526,7 @@ These phases can run in parallel with critical path phases once their dependenci
 
 **Phase Duration:** 6-8 weeks  
 **Critical Path:** ✅ Yes  
-**Prerequisites:** Phase 2-6 complete (can start in parallel with backend phases)
+**Prerequisites:** Phase 2-6 complete (can start in parallel with backend phases). **Note: Phase 10 requires WP-01.1 (Frontend Scaffolding) to be complete first.**
 
 | # | Feature / Task | Module | Effort | Prerequisites | Dependencies | Documents | Acceptance Criteria | Deliverable | Validation | Status | Owner | Notes |
 |---|---------------|--------|--------|---------------|--------------|-----------|---------------------|-------------|------------|--------|-------|-------|

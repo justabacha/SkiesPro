@@ -6,10 +6,7 @@ export class CacheClient {
   private pricingCluster: ICache;
   private failClosedMode: boolean = false;
 
-  constructor(
-    sessionsAdapter?: ICache,
-    pricingAdapter?: ICache
-  ) {
+  constructor(sessionsAdapter?: ICache, pricingAdapter?: ICache) {
     this.sessionsCluster = sessionsAdapter || new InMemoryAdapter();
     this.pricingCluster = pricingAdapter || new InMemoryAdapter();
   }

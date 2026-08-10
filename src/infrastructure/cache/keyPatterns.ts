@@ -8,7 +8,7 @@ export const KEY_PATTERNS = {
   },
   PRICING: {
     LATEST_PRICE: (symbol: string) => `price:${symbol}:latest`,
-    CANDLE: (symbol: string, granularity: string, epoch: number) => 
+    CANDLE: (symbol: string, granularity: string, epoch: number) =>
       `candle:${symbol}:${granularity}:${epoch}`,
     EXPOSURE: (symbol: string) => `exposure:${symbol}`,
   },

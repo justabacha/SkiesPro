@@ -42,7 +42,7 @@
 ### §2.4 Decisions Pending
 | Item | Status | Why Needed | Blocker? |
 |------|--------|------------|----------|
-| Avatar Storage | `[PENDING]` | Storage for user profile images | No (Skip for MVP or use URL string) |
+| Avatar Storage | **RESOLVED** | Supabase Storage bucket `avatars` | No |
 
 ### §2.5 Secret Handling Rule
 **NEVER hardcode secrets.** Use `process.env.VAR_NAME`.
@@ -55,8 +55,9 @@
 Implementation of a simplified User Profile and KYC tracking system:
 
 - [ ] **Database Column**: Add `avatar_url` to `app_auth.users` table.
+- [ ] **Avatar Upload**: `POST /api/v1/users/profile/avatar` — multipart upload, store in Supabase Storage, delete old avatar on replacement.
 - [ ] **Get Profile**: `GET /api/v1/users/profile` — returns authenticated user's data (email, display_name, phone, avatar_url, kyc_status).
-- [ ] **Update Profile**: `PUT /api/v1/users/profile` — allows updating `display_name`, `phone`, and `avatar_url`.
+- [ ] **Update Profile**: `PUT /api/v1/users/profile` — allows updating `display_name` and `phone` only.
 - [ ] **Get KYC Status**: `GET /api/v1/users/kyc/status` — returns current KYC status string.
 - [ ] **Initiate KYC**: `POST /api/v1/users/kyc/initiate` — transition status from `unverified` to `pending`. Logs the initiation.
 
@@ -73,6 +74,7 @@ Implementation of a simplified User Profile and KYC tracking system:
 | User Module Code | TypeScript Files | `src/modules/user/` |
 | Repository Update | TypeScript Files | `src/modules/auth/repositories/userRepository.ts` |
 | DTOs & Validators | TypeScript Files | `src/modules/user/dto/` |
+| Supabase Storage Client | TypeScript File | `src/shared/storage/supabaseStorage.ts` |
 | Unit & Integration Tests | Jest Files | `tests/user/` |
 
 ---
@@ -95,12 +97,17 @@ Reference **ADS §8** & **ADS §15**.
 |--------|------|-------------|----------|------|------------|
 | GET | /api/v1/users/profile | None | `ProfileResponseDto` | JWT | 60/min |
 | PUT | /api/v1/users/profile | `UpdateProfileDto` | `ProfileResponseDto` | JWT | 10/min |
+| POST | /api/v1/users/profile/avatar | multipart/form-data (image) | `{ avatar_url }` | JWT | 5/hour |
 | GET | /api/v1/users/kyc/status | None | `KycStatusDto` | JWT | 60/min |
 | POST | /api/v1/users/kyc/initiate | None | `KycStatusDto` | JWT | 5/hour |
 
 ### §4.4 Security Requirements
 - **Owner-Only**: Users must only be able to view and update their own profile (enforced via `req.user.sub` from JWT).
-- **Validation**: `display_name` (2-100 chars), `phone` (valid E.164 if provided).
+- **Validation**: 
+    - `display_name` (2-100 chars).
+    - `phone`: Validate with E.164 regex. Accept any E.164 format but `+2547...` is preferred for Kenya users.
+- **Avatar Upload**: Validate file type (JPEG/PNG), file size (≤2MB), scan for malicious content if possible. Reject on validation failure.
+- **Storage Cleanup**: On successful new avatar upload, delete previous avatar object from Supabase Storage to maintain 1:1 user-to-avatar ratio. File path: `avatars/{user_id}/{timestamp}_{filename}`.
 
 ---
 
@@ -108,6 +115,15 @@ Reference **ADS §8** & **ADS §15**.
 
 ### §5.1 Database Migration
 The executor will provide `migrations/025_add_avatar_url.sql`. You must run it in the Supabase SQL Editor.
+
+### §5.2 Supabase Storage Setup
+- Create `avatars` bucket in Supabase with public access enabled. 
+- Set file size limit to 2MB.
+
+### §5.3 CORS Configuration
+- CORS is only required if the frontend uploads directly to Supabase Storage.
+- Since the backend handles avatar upload via POST /api/v1/users/profile/avatar, CORS is NOT needed for MVP.
+- If you later enable direct frontend uploads, configure CORS in Supabase Dashboard → Storage → Policies.
 
 ---
 
@@ -131,6 +147,7 @@ The executor will provide `migrations/025_add_avatar_url.sql`. You must run it i
 ### §7.2 Functional Verification
 - [ ] Call `GET /profile` → verify all fields return correctly.
 - [ ] Call `PUT /profile` → verify `display_name` changes.
+- [ ] Upload avatar → verify old avatar deleted from Supabase Storage, new avatar_url returned and persisted.
 - [ ] Call `POST /kyc/initiate` → verify status becomes `pending`.
 
 ---
@@ -147,4 +164,4 @@ The executor will provide `migrations/025_add_avatar_url.sql`. You must run it i
 ## §9 Risks & Blockers
 | Risk | Probability | Impact | Mitigation | Owner |
 |------|-------------|--------|------------|-------|
-| Avatar Storage missing | Low | Low | Use external URL strings for MVP | Executor |
+| Avatar upload abuse | Low | Medium | File size/type limits, rate limiting, per-user storage quota | Executor |
