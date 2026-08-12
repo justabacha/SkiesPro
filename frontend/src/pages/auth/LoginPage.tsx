@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { loginSchema, LoginInput } from '@/shared/utils/validation/authSchemas';
 import { useAuth } from '@/shared/hooks/useAuth';
 import {
@@ -11,11 +11,15 @@ import {
   Container,
   Stack
 } from '@/shared/components';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useEffect } from 'react';
 
 export const LoginPage = () => {
-  const { login, isLoading, error, requiresMfa } = useAuth();
+  const { login, isLoading, error, requiresMfa, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const registered = location.state?.registered;
+  const passwordReset = location.state?.passwordReset;
 
   const {
     register,
@@ -25,12 +29,19 @@ export const LoginPage = () => {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginInput) => {
-    await login(data);
-    if (!requiresMfa && !error) {
+  useEffect(() => {
+    if (isAuthenticated) {
       navigate('/');
     } else if (requiresMfa) {
       navigate('/verify-otp');
+    }
+  }, [isAuthenticated, requiresMfa, navigate]);
+
+  const onSubmit = async (data: LoginInput) => {
+    try {
+      await login(data);
+    } catch (err) {
+      // Error is handled in context and displayed via state
     }
   };
 
@@ -51,6 +62,20 @@ export const LoginPage = () => {
           <Card className="p-8">
             <form onSubmit={handleSubmit(onSubmit)}>
               <Stack gap="md">
+                {registered && !error && (
+                  <div className="p-3 rounded-md bg-success-light border border-success/20 flex items-center gap-2 text-success text-sm">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Registration successful! Please sign in.
+                  </div>
+                )}
+
+                {passwordReset && !error && (
+                  <div className="p-3 rounded-md bg-success-light border border-success/20 flex items-center gap-2 text-success text-sm">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Password reset successful! Please sign in.
+                  </div>
+                )}
+
                 {error && (
                   <div className="p-3 rounded-md bg-danger-light border border-danger/20 flex items-center gap-2 text-danger text-sm">
                     <AlertCircle className="h-4 w-4" />

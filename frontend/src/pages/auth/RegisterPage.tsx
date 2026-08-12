@@ -11,13 +11,18 @@ import {
   Container,
   Stack,
   PhoneInput,
-  PasswordInput
+  PasswordInput,
+  Modal
 } from '@/shared/components';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { useState } from 'react';
 
 export const RegisterPage = () => {
   const { register: signup, isLoading, error } = useAuth();
   const navigate = useNavigate();
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [formData, setFormData] = useState<RegisterInput | null>(null);
 
   const {
     register,
@@ -27,12 +32,43 @@ export const RegisterPage = () => {
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = async (data: RegisterInput) => {
-    await signup(data);
-    if (!error) {
-      navigate('/login');
+  const preSubmit = (data: RegisterInput) => {
+    setFormData(data);
+    setIsConfirmModalOpen(true);
+  };
+
+  const onConfirmSubmit = async () => {
+    if (!formData) return;
+    setIsConfirmModalOpen(false);
+    try {
+      await signup(formData);
+      setIsSuccess(true);
+      setTimeout(() => navigate('/login', { state: { registered: true } }), 2000);
+    } catch (err) {
+      // Error handled in context
     }
   };
+
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-light-tertiary dark:bg-bg-dark-primary py-12 px-4 sm:px-6 lg:px-8">
+        <Container className="max-w-md text-center">
+          <Card className="p-8">
+            <Stack gap="md" align="center">
+              <CheckCircle2 className="h-12 w-12 text-success" />
+              <h2 className="text-2xl font-bold text-text-light-primary dark:text-text-dark-primary">Registration Successful!</h2>
+              <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+                Your account has been created. Redirecting to login...
+              </p>
+              <Link to="/login" className="w-full">
+                <Button variant="secondary" className="w-full">Go to Login</Button>
+              </Link>
+            </Stack>
+          </Card>
+        </Container>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-light-tertiary dark:bg-bg-dark-primary py-12 px-4 sm:px-6 lg:px-8">
@@ -49,7 +85,7 @@ export const RegisterPage = () => {
           </div>
 
           <Card className="p-8">
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(preSubmit)}>
               <Stack gap="md">
                 {error && (
                   <div className="p-3 rounded-md bg-danger-light border border-danger/20 flex items-center gap-2 text-danger text-sm">
@@ -125,6 +161,45 @@ export const RegisterPage = () => {
           </p>
         </Stack>
       </Container>
+
+      <Modal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        title="Confirm Details"
+      >
+        <Stack gap="lg">
+          <div className="p-4 rounded-md bg-bg-light-tertiary dark:bg-bg-dark-tertiary border border-border-light dark:border-border-dark">
+            <Stack gap="sm">
+              <div className="flex justify-between">
+                <span className="text-xs text-text-light-tertiary uppercase font-bold tracking-wider">Name</span>
+                <span className="text-sm font-medium">{formData?.displayName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-text-light-tertiary uppercase font-bold tracking-wider">Email</span>
+                <span className="text-sm font-medium">{formData?.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-text-light-tertiary uppercase font-bold tracking-wider">Phone</span>
+                <span className="text-sm font-medium">{formData?.phone}</span>
+              </div>
+            </Stack>
+          </div>
+
+          <div className="flex items-start gap-2 p-3 rounded-md bg-info-light border border-info/20 text-info text-xs">
+            <Info className="h-4 w-4 shrink-0" />
+            <p>Please ensure your email and phone number are correct for account verification.</p>
+          </div>
+
+          <Stack direction="row" gap="md" justify="end">
+            <Button variant="ghost" onClick={() => setIsConfirmModalOpen(false)}>
+              Edit Details
+            </Button>
+            <Button variant="primary" onClick={onConfirmSubmit} isLoading={isLoading}>
+              Confirm & Register
+            </Button>
+          </Stack>
+        </Stack>
+      </Modal>
     </div>
   );
 };

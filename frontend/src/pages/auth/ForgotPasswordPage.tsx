@@ -8,14 +8,19 @@ import {
   FormGroup,
   Card,
   Container,
-  Stack
+  Stack,
+  Modal
 } from '@/shared/components';
 import { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react';
+import { apiClient } from '@/shared/services/apiClient';
 
 export const ForgotPasswordPage = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [formData, setFormData] = useState<ForgotPasswordInput | null>(null);
 
   const {
     register,
@@ -25,12 +30,24 @@ export const ForgotPasswordPage = () => {
     resolver: zodResolver(forgotPasswordSchema),
   });
 
-  const onSubmit = async (_data: ForgotPasswordInput) => {
+  const preSubmit = (data: ForgotPasswordInput) => {
+    setFormData(data);
+    setIsConfirmModalOpen(true);
+  };
+
+  const onConfirmSubmit = async () => {
+    if (!formData) return;
+    setIsConfirmModalOpen(false);
     setIsLoading(true);
-    // Mock API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setIsSubmitted(true);
+    setError(null);
+    try {
+      await apiClient.post('/api/v1/auth/forgot-password', formData);
+      setIsSubmitted(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -68,8 +85,15 @@ export const ForgotPasswordPage = () => {
           </div>
 
           <Card className="p-8">
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(preSubmit)}>
               <Stack gap="md">
+                {error && (
+                  <div className="p-3 rounded-md bg-danger-light border border-danger/20 flex items-center gap-2 text-danger text-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    {error}
+                  </div>
+                )}
+
                 <FormGroup label="Email Address" error={errors.email?.message}>
                   <Input
                     {...register('email')}
@@ -91,6 +115,29 @@ export const ForgotPasswordPage = () => {
           </Card>
         </Stack>
       </Container>
+
+      <Modal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        title="Request Password Reset"
+      >
+        <Stack gap="lg">
+          <div className="flex items-center gap-3">
+            <HelpCircle className="h-10 w-10 text-brand" />
+            <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+              Are you sure you want to send a password reset link to <span className="font-bold">{formData?.email}</span>?
+            </p>
+          </div>
+          <Stack direction="row" gap="md" justify="end">
+            <Button variant="ghost" onClick={() => setIsConfirmModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={onConfirmSubmit} isLoading={isLoading}>
+              Send Link
+            </Button>
+          </Stack>
+        </Stack>
+      </Modal>
     </div>
   );
 };

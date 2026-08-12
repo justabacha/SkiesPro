@@ -33,7 +33,7 @@ export const pgPool = new Pool({
   connectionString: databaseConfig.url,
   max: 20,
   idleTimeoutMillis: 60000,
-  connectionTimeoutMillis: process.env.NODE_ENV === 'test' ? 2000 : 10000,
+  connectionTimeoutMillis: process.env.NODE_ENV === 'test' ? 5000 : 10000,
 });
 
 // Health check function

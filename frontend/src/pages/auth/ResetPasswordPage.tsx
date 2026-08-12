@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { resetPasswordSchema, ResetPasswordInput } from '@/shared/utils/validation/authSchemas';
 import {
   Button,
@@ -8,15 +8,21 @@ import {
   Card,
   Container,
   Stack,
-  PasswordInput
+  PasswordInput,
+  Modal
 } from '@/shared/components';
-import { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertCircle, ShieldQuestion } from 'lucide-react';
+import { apiClient } from '@/shared/services/apiClient';
 
 export const ResetPasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [formData, setFormData] = useState<ResetPasswordInput | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   const {
     register,
@@ -26,13 +32,28 @@ export const ResetPasswordPage = () => {
     resolver: zodResolver(resetPasswordSchema),
   });
 
-  const onSubmit = async (_data: ResetPasswordInput) => {
+  useEffect(() => {
+    if (!token) {
+      setError('Invalid or missing reset token.');
+    }
+  }, [token]);
+
+  const preSubmit = (data: ResetPasswordInput) => {
+    setFormData(data);
+    setIsConfirmModalOpen(true);
+  };
+
+  const onConfirmSubmit = async () => {
+    if (!token || !formData) return;
+    setIsConfirmModalOpen(false);
     setIsLoading(true);
     setError(null);
     try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      navigate('/login');
+      await apiClient.post('/api/v1/auth/reset-password', {
+        token,
+        new_password: formData.password,
+      });
+      navigate('/login', { state: { passwordReset: true } });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -54,7 +75,7 @@ export const ResetPasswordPage = () => {
           </div>
 
           <Card className="p-8">
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(preSubmit)}>
               <Stack gap="md">
                 {error && (
                   <div className="p-3 rounded-md bg-danger-light border border-danger/20 flex items-center gap-2 text-danger text-sm">
@@ -68,6 +89,7 @@ export const ResetPasswordPage = () => {
                     {...register('password')}
                     placeholder="••••••••"
                     error={!!errors.password}
+                    disabled={!token}
                   />
                 </FormGroup>
 
@@ -76,10 +98,11 @@ export const ResetPasswordPage = () => {
                     {...register('confirmPassword')}
                     placeholder="••••••••"
                     error={!!errors.confirmPassword}
+                    disabled={!token}
                   />
                 </FormGroup>
 
-                <Button type="submit" className="w-full" isLoading={isLoading}>
+                <Button type="submit" className="w-full" isLoading={isLoading} disabled={!token}>
                   Reset Password
                 </Button>
               </Stack>
@@ -87,6 +110,29 @@ export const ResetPasswordPage = () => {
           </Card>
         </Stack>
       </Container>
+
+      <Modal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        title="Confirm Password Reset"
+      >
+        <Stack gap="lg">
+          <div className="flex items-center gap-3">
+            <ShieldQuestion className="h-10 w-10 text-brand" />
+            <p className="text-sm text-text-light-secondary dark:text-text-dark-secondary">
+              Are you sure you want to update your password? This will sign you out of all other devices.
+            </p>
+          </div>
+          <Stack direction="row" gap="md" justify="end">
+            <Button variant="ghost" onClick={() => setIsConfirmModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={onConfirmSubmit} isLoading={isLoading}>
+              Update Password
+            </Button>
+          </Stack>
+        </Stack>
+      </Modal>
     </div>
   );
 };

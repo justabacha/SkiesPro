@@ -12,9 +12,10 @@ import {
   Stack
 } from '@/shared/components';
 import { AlertCircle, ShieldCheck } from 'lucide-react';
+import { useEffect } from 'react';
 
 export const MfaPage = () => {
-  const { verifyMfa, isLoading, error } = useAuth();
+  const { verifyMfa, isLoading, error, isAuthenticated, userId } = useAuth();
   const navigate = useNavigate();
 
   const {
@@ -25,10 +26,20 @@ export const MfaPage = () => {
     resolver: zodResolver(mfaSchema),
   });
 
-  const onSubmit = async (data: MfaInput) => {
-    await verifyMfa(data.totpCode);
-    if (!error) {
+  useEffect(() => {
+    if (isAuthenticated) {
       navigate('/');
+    } else if (!userId) {
+      // If we don't have a userId, we shouldn't be here
+      navigate('/login');
+    }
+  }, [isAuthenticated, userId, navigate]);
+
+  const onSubmit = async (data: MfaInput) => {
+    try {
+      await verifyMfa(data.totpCode);
+    } catch (err) {
+      // Error is handled in context
     }
   };
 

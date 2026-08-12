@@ -6,12 +6,17 @@ import { MfaPage } from '@/pages/auth/MfaPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { Placeholder } from '@/shared/components/Placeholder';
+import { ProtectedRoute } from '@/shared/components/ProtectedRoute';
 import DesignSystemPage from '@/pages/DesignSystem';
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Placeholder title="Dashboard" /> },
       { path: 'trade', element: <Placeholder title="Trading Engine" /> },

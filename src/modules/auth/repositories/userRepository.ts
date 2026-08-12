@@ -78,7 +78,7 @@ export class UserRepository {
     const result = await pgPool.query(
       `SELECT r.name
        FROM app_auth.roles r
-       JOIN app_auth.user_roles ur ON r.id = r.id
+       JOIN app_auth.user_roles ur ON r.id = ur.role_id
        WHERE ur.user_id = $1`,
       [userId]
     );
