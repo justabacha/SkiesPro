@@ -1,15 +1,12 @@
-import { WalletRepository } from '../repositories/walletRepository';
 import { LedgerRepository } from '../repositories/ledgerRepository';
 import { pgPool } from '../../../config/database';
 import { logger } from '../../../shared/middleware/logger';
 import { Decimal } from 'decimal.js';
 
 export class ReconciliationWorker {
-  private walletRepo: WalletRepository;
   private ledgerRepo: LedgerRepository;
 
   constructor() {
-    this.walletRepo = new WalletRepository();
     this.ledgerRepo = new LedgerRepository();
   }
 
