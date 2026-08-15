@@ -6,6 +6,7 @@ import { MfaPage } from '@/pages/auth/MfaPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { EmailVerificationPage } from '@/pages/auth/EmailVerificationPage';
+import { WalletPage } from '@/pages/wallet/WalletPage';
 import { Placeholder } from '@/shared/components/Placeholder';
 import { ProtectedRoute, PublicRoute } from '@/shared/components';
 import DesignSystemPage from '@/pages/DesignSystem';
@@ -21,7 +22,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Placeholder title="Dashboard" /> },
       { path: 'trade', element: <Placeholder title="Trading Engine" /> },
-      { path: 'wallet', element: <Placeholder title="Wallet & Payments" /> },
+      { path: 'wallet', element: <WalletPage /> },
       { path: 'history', element: <Placeholder title="Trade History" /> },
       { path: 'referrals', element: <Placeholder title="Referral System" /> },
       { path: 'kyc', element: <Placeholder title="KYC Verification" /> },

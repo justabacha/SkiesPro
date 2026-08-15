@@ -1,6 +1,8 @@
 import { Bell, Moon, Sun, User, LogOut, Menu, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { useWallet } from '@/shared/hooks/useWallet';
+import { formatKES } from '@/shared/utils/currencyUtils';
 import { Button, Modal, Stack } from '@/shared/components';
 import { useState, useRef, useEffect } from 'react';
 
@@ -11,6 +13,7 @@ interface NavbarProps {
 export const Navbar = ({ onMenuClick }: NavbarProps) => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { balance } = useWallet();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,8 +53,8 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
 
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden sm:flex items-center px-3 py-1 rounded-full bg-bg-light-tertiary dark:bg-bg-dark-tertiary">
-              <span className="text-xs font-medium text-text-light-secondary dark:text-text-dark-secondary mr-2">BALANCE</span>
-              <span className="text-sm font-mono font-bold">$0.00</span>
+              <span className="text-xs font-medium text-text-light-secondary dark:text-text-dark-secondary mr-2 uppercase">KES Balance</span>
+              <span className="text-sm font-mono font-bold">{formatKES(balance?.available_balance || '0', false)}</span>
             </div>
 
             <div className="flex items-center gap-1">
