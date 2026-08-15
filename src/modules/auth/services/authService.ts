@@ -1,9 +1,11 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { pgPool } from '../../../config/database';
 import { UserRepository } from '../repositories/userRepository';
 import { TokenService } from './tokenService';
 import { MfaService } from './mfaService';
 import { MfaRepository } from '../repositories/mfaRepository';
+import { OutboxRepository } from '../repositories/outboxRepository';
 import { RegisterDto } from '../dto/register.dto';
 import { logger } from '../../../shared/middleware/logger';
 
@@ -21,7 +23,8 @@ export class AuthService {
   }
 
   async register(data: RegisterDto) {
-    const existingUser = await this.userRepo.findByEmail(data.email);
+    const email = data.email.toLowerCase().trim();
+    const existingUser = await this.userRepo.findByEmail(email);
     if (existingUser) {
       throw new Error('Email already registered');
     }
@@ -30,30 +33,60 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(data.password, saltRounds);
     const referralCode = uuidv4().split('-')[0].toUpperCase();
 
-    const user = await this.userRepo.create({
-      ...data,
-      password_hash: passwordHash,
-      referral_code: referralCode,
-    });
+    const client = await pgPool.connect();
+    try {
+      await client.query('BEGIN');
 
-    await this.userRepo.assignRole(user.id, 'trader');
-    await this.userRepo.addToPasswordHistory(user.id, passwordHash);
+      const userRepoTx = new UserRepository(client);
+      const outboxRepoTx = new OutboxRepository(client);
 
-    logger.info('User registered', { userId: user.id, email: user.email });
+      const user = await userRepoTx.create({
+        ...data,
+        email, // Use normalized email
+        password_hash: passwordHash,
+        referral_code: referralCode,
+      });
 
-    return {
-      id: user.id,
-      email: user.email,
-      display_name: user.display_name,
-      status: user.status,
-      kyc_status: user.kyc_status,
-      mfa_enabled: user.mfa_enabled,
-      created_at: user.created_at.toISOString(),
-    };
+      await userRepoTx.assignRole(user.id, 'trader');
+      await userRepoTx.addToPasswordHistory(user.id, passwordHash);
+
+      // Emit UserRegisteredEvent to outbox
+      await outboxRepoTx.create({
+        event_type: 'UserRegisteredEvent',
+        aggregate_type: 'User',
+        aggregate_id: user.id,
+        payload: {
+          userId: user.id,
+          email: user.email,
+          displayName: user.display_name,
+          currency: process.env.BASE_CURRENCY || 'KES'
+        }
+      });
+
+      await client.query('COMMIT');
+
+      logger.info('User registered with outbox event', { userId: user.id, email: user.email });
+
+      return {
+        id: user.id,
+        email: user.email,
+        display_name: user.display_name,
+        status: user.status,
+        kyc_status: user.kyc_status,
+        mfa_enabled: user.mfa_enabled,
+        created_at: user.created_at.toISOString(),
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async login(email: string, password: string, ip: string | null, userAgent: string | null) {
-    const user = await this.userRepo.findByEmail(email);
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.userRepo.findByEmail(normalizedEmail);
 
     if (!user) {
       throw new Error('Invalid credentials');

@@ -64,7 +64,7 @@
 
 **NEVER hardcode secrets, API keys, passwords, or connection strings in code.**
 
-- Use `import.meta.env.VITE_API_URL` for the backend URL.
+- Use `import.meta.env.VITE_API_BASE_URL` for the backend URL.
 - Reference `.env.example` for variable names.
 
 ---
@@ -158,7 +158,7 @@ Reference UDS §5 for screen specs.
 ### §5.1 Environment Configuration
 ```bash
 # Ensure frontend/.env contains the backend URL
-VITE_API_URL=http://localhost:3000
+VITE_API_BASE_URL=http://localhost:3000
 ```
 
 ### §5.2 Verification Steps

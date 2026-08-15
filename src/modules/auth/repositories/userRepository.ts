@@ -1,4 +1,5 @@
-import { pgPool } from '../../../config/database';
+import { PoolClient } from 'pg';
+import { BaseRepository } from '../../../shared/repositories/baseRepository';
 import { RegisterDto } from '../dto/register.dto';
 
 export interface UserRow {
@@ -23,9 +24,13 @@ export interface UserRow {
   deleted_at: Date | null;
 }
 
-export class UserRepository {
+export class UserRepository extends BaseRepository {
+  constructor(client?: PoolClient) {
+    super(client);
+  }
+
   async findByEmail(email: string): Promise<UserRow | null> {
-    const result = await pgPool.query(
+    const result = await this.query<UserRow>(
       'SELECT * FROM app_auth.users WHERE email = $1 AND deleted_at IS NULL',
       [email]
     );
@@ -33,7 +38,7 @@ export class UserRepository {
   }
 
   async findById(id: string): Promise<UserRow | null> {
-    const result = await pgPool.query(
+    const result = await this.query<UserRow>(
       'SELECT * FROM app_auth.users WHERE id = $1 AND deleted_at IS NULL',
       [id]
     );
@@ -43,7 +48,7 @@ export class UserRepository {
   async create(
     data: RegisterDto & { password_hash: string; referral_code: string }
   ): Promise<UserRow> {
-    const result = await pgPool.query(
+    const result = await this.query<UserRow>(
       `INSERT INTO app_auth.users (
         email, password_hash, display_name, phone, referral_code, status, kyc_status
       ) VALUES ($1, $2, $3, $4, $5, 'active', 'unverified')
@@ -54,28 +59,28 @@ export class UserRepository {
   }
 
   async updateLoginAttempts(id: string, attempts: number, lockedUntil: Date | null): Promise<void> {
-    await pgPool.query(
+    await this.query(
       'UPDATE app_auth.users SET failed_login_attempts = $1, locked_until = $2, updated_at = NOW() WHERE id = $3',
       [attempts, lockedUntil, id]
     );
   }
 
   async updateLastLogin(id: string): Promise<void> {
-    await pgPool.query(
+    await this.query(
       'UPDATE app_auth.users SET last_login_at = NOW(), failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $1',
       [id]
     );
   }
 
   async updateMfaStatus(id: string, enabled: boolean, type: string | null): Promise<void> {
-    await pgPool.query(
+    await this.query(
       'UPDATE app_auth.users SET mfa_enabled = $1, mfa_type = $2, updated_at = NOW() WHERE id = $3',
       [enabled, type, id]
     );
   }
 
   async getRoles(userId: string): Promise<string[]> {
-    const result = await pgPool.query(
+    const result = await this.query(
       `SELECT r.name
        FROM app_auth.roles r
        JOIN app_auth.user_roles ur ON r.id = ur.role_id
@@ -86,7 +91,7 @@ export class UserRepository {
   }
 
   async assignRole(userId: string, roleName: string): Promise<void> {
-    await pgPool.query(
+    await this.query(
       `INSERT INTO app_auth.user_roles (user_id, role_id, granted_by)
        SELECT $1, id, $1 FROM app_auth.roles WHERE name = $2`,
       [userId, roleName]
@@ -94,11 +99,7 @@ export class UserRepository {
   }
 
   async getPasswordHistory(userId: string): Promise<string[]> {
-    // Note: app_auth.password_history table not in DDS §5.1 but mentioned in WP-04
-    // Checking if it exists or needs to be created.
-    // Actually SATM §4.3 says "Last 5 passwords cannot be reused".
-    // I should check if there is a table for this.
-    const result = await pgPool.query(
+    const result = await this.query(
       'SELECT password_hash FROM app_auth.password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
       [userId]
     );
@@ -106,21 +107,21 @@ export class UserRepository {
   }
 
   async addToPasswordHistory(userId: string, passwordHash: string): Promise<void> {
-    await pgPool.query(
+    await this.query(
       'INSERT INTO app_auth.password_history (user_id, password_hash) VALUES ($1, $2)',
       [userId, passwordHash]
     );
   }
 
   async updatePassword(userId: string, passwordHash: string): Promise<void> {
-    await pgPool.query(
+    await this.query(
       'UPDATE app_auth.users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
       [passwordHash, userId]
     );
   }
 
   async verifyEmail(userId: string): Promise<void> {
-    await pgPool.query(
+    await this.query(
       "UPDATE app_auth.users SET status = 'active', updated_at = NOW() WHERE id = $1",
       [userId]
     );
@@ -150,7 +151,7 @@ export class UserRepository {
     }
 
     values.push(userId);
-    const result = await pgPool.query(
+    const result = await this.query(
       `UPDATE app_auth.users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`,
       values
     );
@@ -158,7 +159,7 @@ export class UserRepository {
   }
 
   async updateAvatar(userId: string, avatarUrl: string): Promise<UserRow> {
-    const result = await pgPool.query(
+    const result = await this.query(
       'UPDATE app_auth.users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
       [avatarUrl, userId]
     );
@@ -170,14 +171,14 @@ export class UserRepository {
   }
 
   async getKycStatus(userId: string): Promise<string | null> {
-    const result = await pgPool.query('SELECT kyc_status FROM app_auth.users WHERE id = $1', [
+    const result = await this.query('SELECT kyc_status FROM app_auth.users WHERE id = $1', [
       userId,
     ]);
     return result.rows[0]?.kyc_status || null;
   }
 
   async initiateKyc(userId: string): Promise<UserRow> {
-    const result = await pgPool.query(
+    const result = await this.query(
       "UPDATE app_auth.users SET kyc_status = 'pending', updated_at = NOW() WHERE id = $1 AND kyc_status IN ('unverified', 'rejected') RETURNING *",
       [userId]
     );

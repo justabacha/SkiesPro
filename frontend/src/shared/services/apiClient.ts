@@ -1,4 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || '';
+const getBaseUrl = () => {
+  const base = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '';
+  return base.endsWith('/') ? base.slice(0, -1) : base;
+};
+
+const API_BASE = getBaseUrl();
 
 class ApiClient {
   private accessToken: string | null = null;
@@ -8,7 +13,20 @@ class ApiClient {
   }
 
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_URL}${path}`;
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+    let url: string;
+    if (API_BASE) {
+      // Avoid double /api/v1 if both base and path contain it
+      if (API_BASE.endsWith('/api/v1') && normalizedPath.startsWith('/api/v1')) {
+        url = `${API_BASE}${normalizedPath.substring(7)}`;
+      } else {
+        url = `${API_BASE}${normalizedPath}`;
+      }
+    } else {
+      url = normalizedPath;
+    }
+
     const headers = {
       'Content-Type': 'application/json',
       ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
@@ -22,7 +40,10 @@ class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || errorData.message || 'An unexpected error occurred');
+      const errorMessage = typeof errorData.error === 'string'
+        ? errorData.error
+        : (errorData.error?.message || errorData.message || 'An unexpected error occurred');
+      throw new Error(errorMessage);
     }
 
     if (response.status === 204) {

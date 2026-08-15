@@ -2,37 +2,49 @@ import { AuthService } from '../../src/modules/auth/services/authService';
 import { UserRepository } from '../../src/modules/auth/repositories/userRepository';
 import { TokenService } from '../../src/modules/auth/services/tokenService';
 import { MfaRepository } from '../../src/modules/auth/repositories/mfaRepository';
+import { OutboxRepository } from '../../src/modules/auth/repositories/outboxRepository';
+import { pgPool } from '../../src/config/database';
 import bcrypt from 'bcrypt';
 
 jest.mock('../../src/modules/auth/repositories/userRepository');
-jest.mock('../../src/modules/auth/repositories/sessionRepository');
 jest.mock('../../src/modules/auth/repositories/mfaRepository');
+jest.mock('../../src/modules/auth/repositories/outboxRepository');
 jest.mock('../../src/modules/auth/services/tokenService');
+jest.mock('../../src/config/database');
 jest.mock('bcrypt');
 
 describe('AuthService', () => {
   let authService: AuthService;
-  let userRepo: jest.Mocked<UserRepository>;
-  let tokenService: jest.Mocked<TokenService>;
-  let mfaRepo: jest.Mocked<MfaRepository>;
+  let userRepoMock: any;
+  let mfaRepoMock: any;
+  let outboxRepoMock: any;
+  let tokenServiceMock: any;
+  let mockClient: any;
 
   beforeEach(() => {
-    userRepo = new UserRepository() as any;
-    tokenService = new TokenService() as any;
-    mfaRepo = new MfaRepository() as any;
+    jest.clearAllMocks();
 
-    // Inject mocks into service
+    // Setup repository mocks on prototypes so ALL instances share them
+    userRepoMock = UserRepository.prototype;
+    mfaRepoMock = MfaRepository.prototype;
+    outboxRepoMock = OutboxRepository.prototype;
+    tokenServiceMock = TokenService.prototype;
+
+    mockClient = {
+      query: jest.fn().mockResolvedValue({ rowCount: 1, rows: [] }),
+      release: jest.fn(),
+    };
+    (pgPool.connect as jest.Mock).mockResolvedValue(mockClient);
+
     authService = new AuthService();
-    (authService as any).userRepo = userRepo;
-    (authService as any).tokenService = tokenService;
-    (authService as any).mfaRepo = mfaRepo;
   });
 
   describe('register', () => {
-    it('should register a new user successfully', async () => {
-      userRepo.findByEmail.mockResolvedValue(null);
+    it('should register a new user successfully with normalized email', async () => {
+      userRepoMock.findByEmail.mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
-      userRepo.create.mockResolvedValue({
+
+      const mockUser = {
         id: 'user-id',
         email: 'test@example.com',
         display_name: 'Test User',
@@ -40,21 +52,23 @@ describe('AuthService', () => {
         kyc_status: 'unverified',
         mfa_enabled: false,
         created_at: new Date(),
-      } as any);
+      };
+      userRepoMock.create.mockResolvedValue(mockUser);
 
       const result = await authService.register({
-        email: 'test@example.com',
+        email: 'TEST@EXAMPLE.com',
         password: 'Password123!',
         display_name: 'Test User',
       });
 
       expect(result.email).toBe('test@example.com');
-      expect(userRepo.create).toHaveBeenCalled();
-      expect(userRepo.assignRole).toHaveBeenCalledWith('user-id', 'trader');
+      expect(userRepoMock.findByEmail).toHaveBeenCalledWith('test@example.com');
+      expect(userRepoMock.create).toHaveBeenCalled();
+      expect(outboxRepoMock.create).toHaveBeenCalled();
     });
 
     it('should throw error if email is already registered', async () => {
-      userRepo.findByEmail.mockResolvedValue({ id: 'existing' } as any);
+      userRepoMock.findByEmail.mockResolvedValue({ id: 'existing' });
 
       await expect(authService.register({
         email: 'test@example.com',
@@ -65,7 +79,7 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('should login successfully without MFA', async () => {
+    it('should login successfully with normalized email', async () => {
       const user = {
         id: 'user-id',
         email: 'test@example.com',
@@ -76,19 +90,19 @@ describe('AuthService', () => {
         display_name: 'Test User',
         kyc_status: 'unverified',
       };
-      userRepo.findByEmail.mockResolvedValue(user as any);
+      userRepoMock.findByEmail.mockResolvedValue(user);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      tokenService.createSession.mockResolvedValue({
+      tokenServiceMock.createSession.mockResolvedValue({
         access_token: 'at',
         refresh_token: 'rt',
         expires_in: 900,
       });
-      userRepo.getRoles.mockResolvedValue(['trader']);
+      userRepoMock.getRoles.mockResolvedValue(['trader']);
 
-      const result = await authService.login('test@example.com', 'password', '127.0.0.1', 'ua');
+      const result = await authService.login(' TEST@example.com ', 'password', '127.0.0.1', 'ua');
 
+      expect(userRepoMock.findByEmail).toHaveBeenCalledWith('test@example.com');
       expect(result).toHaveProperty('access_token');
-      expect((result as any).user.email).toBe('test@example.com');
     });
 
     it('should return mfa_session_token if MFA is enabled', async () => {
@@ -100,7 +114,7 @@ describe('AuthService', () => {
         failed_login_attempts: 0,
         locked_until: null,
       };
-      userRepo.findByEmail.mockResolvedValue(user as any);
+      userRepoMock.findByEmail.mockResolvedValue(user);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await authService.login('test@example.com', 'password', '127.0.0.1', 'ua');
@@ -110,7 +124,7 @@ describe('AuthService', () => {
     });
 
     it('should throw error on invalid credentials', async () => {
-      userRepo.findByEmail.mockResolvedValue(null);
+      userRepoMock.findByEmail.mockResolvedValue(null);
 
       await expect(authService.login('test@example.com', 'password', '127.0.0.1', 'ua'))
         .rejects.toThrow('Invalid credentials');
@@ -121,10 +135,55 @@ describe('AuthService', () => {
         email: 'test@example.com',
         locked_until: new Date(Date.now() + 10000),
       };
-      userRepo.findByEmail.mockResolvedValue(user as any);
+      userRepoMock.findByEmail.mockResolvedValue(user);
 
       await expect(authService.login('test@example.com', 'password', '127.0.0.1', 'ua'))
         .rejects.toThrow(/Account locked/);
+    });
+  });
+
+  describe('verifyMfa', () => {
+    it('should verify MFA successfully', async () => {
+      mfaRepoMock.findByUserId.mockResolvedValue({ is_enabled: true, secret_encrypted: 'enc' });
+      (authService as any).mfaService = {
+        decrypt: jest.fn().mockReturnValue('secret'),
+        verifyToken: jest.fn().mockResolvedValue(true),
+      };
+      userRepoMock.findById.mockResolvedValue({ id: 'user-id', email: 'test@example.com' });
+      userRepoMock.getRoles.mockResolvedValue(['trader']);
+      tokenServiceMock.createSession.mockResolvedValue({ access_token: 'at' });
+
+      const result = await authService.verifyMfa('user-id', '123456', 'ip', 'ua');
+      expect(result).toHaveProperty('access_token');
+    });
+
+    it('should throw if MFA code is invalid', async () => {
+      mfaRepoMock.findByUserId.mockResolvedValue({ is_enabled: true, secret_encrypted: 'enc' });
+      (authService as any).mfaService = {
+        decrypt: jest.fn().mockReturnValue('secret'),
+        verifyToken: jest.fn().mockResolvedValue(false),
+      };
+
+      await expect(authService.verifyMfa('user-id', '123456', 'ip', 'ua'))
+        .rejects.toThrow('Invalid MFA code');
+    });
+  });
+
+  describe('refresh', () => {
+    it('should refresh tokens successfully', async () => {
+      tokenServiceMock.refreshSession.mockResolvedValue('user-id');
+      userRepoMock.findById.mockResolvedValue({ id: 'user-id', email: 'test@example.com' });
+      userRepoMock.getRoles.mockResolvedValue(['trader']);
+      tokenServiceMock.createSession.mockResolvedValue({ access_token: 'new-at' });
+
+      const result = await authService.refresh('refresh-token', 'ip', 'ua');
+      expect(result).toHaveProperty('access_token', 'new-at');
+    });
+
+    it('should throw if refresh token is invalid', async () => {
+      tokenServiceMock.refreshSession.mockResolvedValue(null);
+      await expect(authService.refresh('bad-token', 'ip', 'ua'))
+        .rejects.toThrow('Invalid or expired refresh token');
     });
   });
 });

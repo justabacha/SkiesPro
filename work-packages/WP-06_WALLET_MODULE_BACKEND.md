@@ -32,7 +32,7 @@
 ### §2.2 Documents to Read
 | Document | Sections | Why Needed |
 |----------|----------|------------|
-| docs/ProjectAnswers.md | §C (M-Pesa Payments) | Supported currencies, limits, and processing rules. |
+| docs/ProjectAnswers.md | §C (M-Pesa Payments) | Supported currencies (KES), limits, and processing rules. |
 | docs/06_DATABASE_DESIGN_SPECIFICATION.md | §5.9, §5.10, §5.11, §8, §9 | Wallet/Ledger schema, transaction design, and concurrency strategy. |
 | docs/07_API_DESIGN_SPECIFICATION.md | §9 (Wallet), §10 (Payment) | Endpoint contracts, DTO shapes, and idempotency requirements. |
 | docs/09_SECURITY_ARCHITECTURE_AND_THREAT_MODEL.md | §17.1 (Wallet/Payments) | Security controls: `SELECT FOR UPDATE`, immutable ledger, HMAC signatures. |
@@ -52,7 +52,7 @@
 | Balance Data Type | NUMERIC(16,4) | DDS §18.4 |
 | Locking Strategy | `SELECT FOR UPDATE` (Pessimistic) | ADR-009 |
 | Ledger Pattern | Immutable Double-Entry | ADR-007, DDS §10.3 |
-| Base Currency | USD (default) | DDS §5.9 |
+| Base Currency | **KES** (default) | ProjectAnswers.md §C7, DDS §5.9 |
 | Supported Currencies | USD, KES, EUR, GBP | DDS §5.9 |
 | Precision Rule | 4 decimal places for balances | DDS §18.4 |
 | Min Deposit (KES) | 500 KES | ProjectAnswers.md §C7 |
@@ -80,12 +80,13 @@
 ### §3.1 Scope
 Clear description of what's IN scope:
 
-- [ ] **Wallet Core**: Logic for wallet creation upon user registration.
-- [ ] **Balance Management**: Atomic available/locked/total balance tracking.
-- [ ] **Double-Entry Ledger**: Immutable audit trail for every fund movement.
+- [ ] **Auth Refactor**: Update `AuthService.register` to emit a `UserRegisteredEvent` to `events.event_outbox`.
+- [ ] **Wallet Core**: Logic for wallet creation triggered by user registration events.
+- [ ] **Balance Management**: Atomic `balance` and `locked_balance` tracking.
+- [ ] **Real-time Balance Column**: Add and maintain a calculated `available_balance` column via triggers.
+- [ ] **Double-Entry Ledger**: Immutable audit trail for every fund movement (Debits/Credits).
 - [ ] **Financial APIs**: Endpoints for balance checks, ledger history, and statements.
 - [ ] **Payment Requests**: Logic for initiating deposits and withdrawal requests.
-- [ ] **Internal Fund Movements**: Services for locking stakes (for trading) and processing payouts.
 - [ ] **Idempotency Layer**: Enforcement of `Idempotency-Key` for all financial POSTs.
 - [ ] **Async Jobs**: Daily reconciliation worker (Balance sum vs Ledger sum).
 
@@ -97,11 +98,12 @@ Clear description of what's IN scope:
 ### §3.3 Deliverables
 | Deliverable | Format | Location |
 |-------------|--------|----------|
+| Available Balance Migration | SQL File | `migrations/026_add_available_balance_trigger.sql` |
 | Wallet Module | Folder | `src/modules/wallet/` |
 | Payment Module | Folder | `src/modules/payments/` |
-| Wallet Migrations | SQL Files | `migrations/` |
 | Wallet APIs | TS Files | `src/modules/wallet/controllers/` |
 | Ledger Services | TS Files | `src/modules/wallet/services/` |
+| Outbox Producer | TS Code | Updated `src/modules/auth/services/authService.ts` |
 | Reconciliation Worker | TS File | `src/modules/wallet/workers/reconciliationWorker.ts` |
 | Test Suite | TS Files | `tests/wallet/`, `tests/payments/` |
 
@@ -113,15 +115,18 @@ Clear description of what's IN scope:
 - **Service Pattern**: WalletService (Balance/Status) and LedgerService (Entries/Double-entry).
 - **Transaction Pattern**: BEGIN → SELECT FOR UPDATE wallet → Validate → Perform logic → INSERT Ledger → UPDATE Wallet → COMMIT.
 - **Outbox Pattern**: Financial events (Credit/Debit) must be written to `events.event_outbox` in the same transaction (ADR-011).
+- **Double-Entry Invariant**: Every financial operation MUST produce balanced entries: `SUM(credits) - SUM(debits) = 0` for any `transaction_id`.
 - **Rounding**: Round to 4 decimal places using a safe decimal library (e.g., `decimal.js` or `bignumber.js`).
 
 ### §4.2 Database
 | Table | Purpose | Key Columns | Constraints |
 |-------|---------|-------------|-------------|
-| `wallet.wallets` | User balances | `user_id`, `balance`, `locked_balance`, `available_balance` | balance >= 0 |
-| `wallet.ledger_entries` | Immutable audit trail | `transaction_id`, `amount`, `entry_type`, `balance_after` | INSERT-only |
+| `wallet.wallets` | User balances | `user_id`, `balance`, `locked_balance`, `available_balance` | `available_balance` >= 0 |
+| `wallet.ledger_entries` | Immutable audit trail | `transaction_id`, `amount`, `entry_type`, `reference_type` | INSERT-only |
 | `payments.deposits` | Deposit tracking | `gateway_reference`, `amount`, `status` | UNIQUE ref |
 | `payments.withdrawals` | Withdrawal tracking | `amount`, `net_amount`, `fee`, `status` | amount > 0 |
+
+**Note**: All foreign keys to users must reference **`app_auth.users`**.
 
 ### §4.3 API Endpoints
 | Method | Path | Request DTO | Response | Auth | Rate Limit |
@@ -135,9 +140,9 @@ Clear description of what's IN scope:
 | Requirement | Implementation | Reference |
 |-------------|---------------|-----------|
 | Double-Spend Prevention | `SELECT FOR UPDATE` on wallet row | ADR-009 |
-| Non-Negative Balance | CHECK constraint + Pre-check in Service | DDS §10.2 |
+| Non-Negative Available Balance | CHECK constraint + Pre-check in Service | DDS §10.2 |
 | Ledger Immutability | Restricted DB User Permissions (SELECT/INSERT only) | DDS §10.4 |
-| KYC Enforcement | Withdrawal service must check `auth.users.kyc_status == 'verified'` | SATM §17.1 |
+| KYC Enforcement | Withdrawal service must check `app_auth.users.kyc_status == 'verified'` | SATM §17.1 |
 
 ---
 
@@ -153,7 +158,7 @@ REVOKE UPDATE, DELETE ON wallet.ledger_entries FROM app_wallet;
 ### §5.2 Environment Configuration
 Add these variables to your local `.env`:
 ```bash
-# Minimums (in base units)
+# Minimums (in base units - KES)
 MIN_DEPOSIT_KES=500
 MIN_WITHDRAWAL_KES=1500
 WITHDRAWAL_FEE_PERCENT=2
@@ -189,10 +194,11 @@ ts-node scripts/reconcile-wallets.ts
 - [ ] Audit logs are created for every balance adjustment.
 
 ### §7.2 Functional Verification
-- [ ] Registering a user creates a corresponding `wallet.wallets` row.
+- [ ] User registration emits `UserRegisteredEvent`.
+- [ ] `UserRegisteredEvent` triggers the creation of a `wallet.wallets` row.
 - [ ] Deposit initiation returns a 201 and creates a `pending` deposit record.
 - [ ] Withdrawal request fails if `available_balance` < `amount`.
-- [ ] Every balance change has a corresponding `credit` and `debit` ledger entry (groups by `transaction_id`).
+- [ ] Every balance change has balanced `credit` and `debit` ledger entries.
 - [ ] Reconciliation worker returns "Balanced" for a clean state.
 
 ---
@@ -224,6 +230,7 @@ The Ledger is the source of truth. If `wallets.balance` and `SUM(ledger_entries)
 | Date | Change | By |
 |------|--------|-----|
 | 2026-08-12 | Created WP-06 Blueprint | AI Agent |
+| 2026-08-12 | Revised for Codebase Alignment (Audit v1) | AI Auditor |
 
 ---
 
