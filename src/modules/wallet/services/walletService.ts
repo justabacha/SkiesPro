@@ -44,7 +44,13 @@ export class WalletService {
     }
   }
 
-  async credit(userId: string, amount: Decimal, referenceType: string, referenceId?: string, description?: string): Promise<WalletRow> {
+  async credit(
+    userId: string,
+    amount: Decimal,
+    referenceType: string,
+    referenceId?: string,
+    description?: string
+  ): Promise<WalletRow> {
     return this.withTransaction(async (client) => {
       const walletRepo = new WalletRepository(client);
       const ledgerService = new LedgerService(client);
@@ -79,7 +85,13 @@ export class WalletService {
     });
   }
 
-  async debit(userId: string, amount: Decimal, referenceType: string, referenceId?: string, description?: string): Promise<WalletRow> {
+  async debit(
+    userId: string,
+    amount: Decimal,
+    referenceType: string,
+    referenceId?: string,
+    description?: string
+  ): Promise<WalletRow> {
     return this.withTransaction(async (client) => {
       const walletRepo = new WalletRepository(client);
       const ledgerService = new LedgerService(client);
@@ -119,7 +131,13 @@ export class WalletService {
     });
   }
 
-  async lockFunds(userId: string, amount: Decimal, _referenceType: string, _referenceId?: string, _description?: string): Promise<WalletRow> {
+  async lockFunds(
+    userId: string,
+    amount: Decimal,
+    _referenceType: string,
+    _referenceId?: string,
+    _description?: string
+  ): Promise<WalletRow> {
     return this.withTransaction(async (client) => {
       const walletRepo = new WalletRepository(client);
       const wallet = await walletRepo.findByUserIdForUpdate(userId);

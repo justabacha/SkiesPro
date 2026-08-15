@@ -69,9 +69,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data.access_token) {
       apiClient.setAccessToken(data.access_token);
     }
-    if (data.refresh_token) {
-      localStorage.setItem('refresh_token', data.refresh_token);
-    }
     if (data.user) {
       setState((prev) => ({
         ...prev,
@@ -83,6 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         mfaSessionToken: null,
         userId: null,
       }));
+      // Clear MFA session if it existed
+      sessionStorage.removeItem('mfa_session');
     }
   }, []);
 
@@ -93,13 +92,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data } = response;
 
       if (data.requires_mfa) {
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
+        const mfaData = {
           requiresMfa: true,
           mfaSessionToken: data.mfa_session_token || null,
           userId: data.userId || null,
+        };
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          ...mfaData,
         }));
+        sessionStorage.setItem('mfa_session', JSON.stringify(mfaData));
         return;
       }
 
@@ -153,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Logout failed', err);
     } finally {
       apiClient.setAccessToken(null);
-      localStorage.removeItem('refresh_token');
+      sessionStorage.removeItem('mfa_session');
       setState({
         user: null,
         isAuthenticated: false,
@@ -167,26 +170,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refresh = useCallback(async () => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) {
-      setState((prev) => ({ ...prev, isLoading: false }));
-      return;
-    }
-
     try {
-      const response = await apiClient.post<AuthResponse>('/api/v1/auth/refresh', {
-        refresh_token: refreshToken,
-      });
+      const response = await apiClient.post<AuthResponse>('/api/v1/auth/refresh');
       setAuthData(response.data);
     } catch (err) {
-      console.error('Token refresh failed', err);
-      localStorage.removeItem('refresh_token');
+      // If refresh fails, it just means no valid session exists
       apiClient.setAccessToken(null);
       setState((prev) => ({ ...prev, isLoading: false, isAuthenticated: false }));
     }
   }, [setAuthData]);
 
   useEffect(() => {
+    // Check for persisted MFA session first
+    const persistedMfa = sessionStorage.getItem('mfa_session');
+    if (persistedMfa) {
+      try {
+        const mfaData = JSON.parse(persistedMfa);
+        setState((prev) => ({ ...prev, ...mfaData, isLoading: false }));
+        return;
+      } catch (e) {
+        sessionStorage.removeItem('mfa_session');
+      }
+    }
+
     refresh();
   }, [refresh]);
 

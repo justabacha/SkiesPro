@@ -12,3 +12,5 @@ export { default as PasswordInput } from './PasswordInput';
 export { default as PhoneInput } from './PhoneInput';
 export { default as Container } from './Container';
 export { default as Stack } from './Stack';
+export * from './ProtectedRoute';
+export * from './PublicRoute';

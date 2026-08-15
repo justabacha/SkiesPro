@@ -5,8 +5,9 @@ import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { MfaPage } from '@/pages/auth/MfaPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
+import { EmailVerificationPage } from '@/pages/auth/EmailVerificationPage';
 import { Placeholder } from '@/shared/components/Placeholder';
-import { ProtectedRoute } from '@/shared/components/ProtectedRoute';
+import { ProtectedRoute, PublicRoute } from '@/shared/components';
 import DesignSystemPage from '@/pages/DesignSystem';
 
 export const router = createBrowserRouter([
@@ -32,11 +33,19 @@ export const router = createBrowserRouter([
   },
   {
     path: '/login',
-    element: <LoginPage />,
+    element: (
+      <PublicRoute>
+        <LoginPage />
+      </PublicRoute>
+    ),
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: (
+      <PublicRoute>
+        <RegisterPage />
+      </PublicRoute>
+    ),
   },
   {
     path: '/verify-otp',
@@ -44,11 +53,23 @@ export const router = createBrowserRouter([
   },
   {
     path: '/forgot-password',
-    element: <ForgotPasswordPage />,
+    element: (
+      <PublicRoute>
+        <ForgotPasswordPage />
+      </PublicRoute>
+    ),
   },
   {
     path: '/reset-password',
-    element: <ResetPasswordPage />,
+    element: (
+      <PublicRoute>
+        <ResetPasswordPage />
+      </PublicRoute>
+    ),
+  },
+  {
+    path: '/verify-email',
+    element: <EmailVerificationPage />,
   },
   {
     path: '*',

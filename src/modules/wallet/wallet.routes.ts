@@ -8,16 +8,12 @@ const controller = new WalletController();
 
 router.use(authenticate);
 
-router.get(
-  '/balance',
-  rateLimit('authenticated'),
-  (req: Request, res: Response) => controller.getBalance(req, res)
+router.get('/balance', rateLimit('authenticated'), (req: Request, res: Response) =>
+  controller.getBalance(req, res)
 );
 
-router.get(
-  '/ledger',
-  rateLimit('authenticated'),
-  (req: Request, res: Response) => controller.getLedger(req, res)
+router.get('/ledger', rateLimit('authenticated'), (req: Request, res: Response) =>
+  controller.getLedger(req, res)
 );
 
 export default router;

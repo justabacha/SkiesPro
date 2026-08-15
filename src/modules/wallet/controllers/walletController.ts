@@ -22,9 +22,9 @@ export class WalletController {
           balance: wallet.balance,
           locked_balance: wallet.locked_balance,
           available_balance: wallet.available_balance,
-          currency: wallet.currency
+          currency: wallet.currency,
         },
-        meta: { request_id: req.correlationId }
+        meta: { request_id: req.correlationId },
       });
     } catch (error) {
       logger.error('Failed to get balance', { error: (error as Error).message });
@@ -44,15 +44,16 @@ export class WalletController {
         cursor as string
       );
 
-      const nextCursor = entries.length > 0 ? entries[entries.length - 1].created_at.toISOString() : undefined;
+      const nextCursor =
+        entries.length > 0 ? entries[entries.length - 1].created_at.toISOString() : undefined;
 
       res.status(200).json({
         data: entries,
         meta: {
           next_cursor: nextCursor,
           has_more: entries.length === (limit ? parseInt(limit as string, 10) : 20),
-          request_id: req.correlationId
-        }
+          request_id: req.correlationId,
+        },
       });
     } catch (error) {
       logger.error('Failed to get ledger', { error: (error as Error).message });

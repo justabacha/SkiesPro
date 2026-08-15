@@ -8,7 +8,7 @@ import {
   DepositInitiateDto,
   DepositResponseDto,
   WithdrawRequestDto,
-  WithdrawResponseDto
+  WithdrawResponseDto,
 } from '../dto/payment.dto';
 
 export class PaymentService {
@@ -20,7 +20,11 @@ export class PaymentService {
     this.userRepo = new UserRepository();
   }
 
-  async initiateDeposit(userId: string, data: DepositInitiateDto, idempotencyKey: string): Promise<DepositResponseDto> {
+  async initiateDeposit(
+    userId: string,
+    data: DepositInitiateDto,
+    idempotencyKey: string
+  ): Promise<DepositResponseDto> {
     const cached = await this.paymentRepo.findIdempotencyKey(idempotencyKey);
     if (cached) return cached;
 
@@ -36,37 +40,36 @@ export class PaymentService {
     // 1. Create idempotency key first to satisfy FK if exists (and prevent concurrent same key)
     await this.paymentRepo.saveIdempotencyKey(idempotencyKey, { status: 'processing' });
 
-    try {
-      const deposit = await this.paymentRepo.createDeposit({
-        user_id: userId,
-        gateway_id: data.gateway_id,
-        gateway_reference: gatewayReference,
-        amount: data.amount,
-        fee: '0.0000',
-        net_amount: data.amount,
-        currency: data.currency,
-        status: 'pending',
-        webhook_payload: null,
-        idempotency_key: idempotencyKey
-      });
+    const deposit = await this.paymentRepo.createDeposit({
+      user_id: userId,
+      gateway_id: data.gateway_id,
+      gateway_reference: gatewayReference,
+      amount: data.amount,
+      fee: '0.0000',
+      net_amount: data.amount,
+      currency: data.currency,
+      status: 'pending',
+      webhook_payload: null,
+      idempotency_key: idempotencyKey,
+    });
 
-      const response: DepositResponseDto = {
-        id: deposit.id,
-        status: deposit.status,
-        amount: deposit.amount,
-        currency: deposit.currency,
-        gateway_reference: deposit.gateway_reference
-      };
+    const response: DepositResponseDto = {
+      id: deposit.id,
+      status: deposit.status,
+      amount: deposit.amount,
+      currency: deposit.currency,
+      gateway_reference: deposit.gateway_reference,
+    };
 
-      await this.paymentRepo.saveIdempotencyKey(idempotencyKey, response);
-      return response;
-    } catch (error) {
-      // Cleanup key or mark as failed if needed
-      throw error;
-    }
+    await this.paymentRepo.saveIdempotencyKey(idempotencyKey, response);
+    return response;
   }
 
-  async requestWithdrawal(userId: string, data: WithdrawRequestDto, idempotencyKey: string): Promise<WithdrawResponseDto> {
+  async requestWithdrawal(
+    userId: string,
+    data: WithdrawRequestDto,
+    idempotencyKey: string
+  ): Promise<WithdrawResponseDto> {
     const cached = await this.paymentRepo.findIdempotencyKey(idempotencyKey);
     if (cached && cached.status !== 'processing') return cached;
 
@@ -99,7 +102,13 @@ export class PaymentService {
       const paymentRepoTx = new PaymentRepository(client);
 
       // 5. Check available balance and lock funds
-      await walletServiceTx.lockFunds(userId, amount, 'withdrawal', undefined, 'Withdrawal request lock');
+      await walletServiceTx.lockFunds(
+        userId,
+        amount,
+        'withdrawal',
+        undefined,
+        'Withdrawal request lock'
+      );
 
       const withdrawal = await paymentRepoTx.createWithdrawal({
         user_id: userId,
@@ -109,7 +118,7 @@ export class PaymentService {
         net_amount: netAmount.toString(),
         currency: data.currency,
         status: 'pending',
-        idempotency_key: idempotencyKey
+        idempotency_key: idempotencyKey,
       });
 
       const response: WithdrawResponseDto = {
@@ -118,7 +127,7 @@ export class PaymentService {
         amount: withdrawal.amount,
         fee: withdrawal.fee,
         net_amount: withdrawal.net_amount,
-        currency: withdrawal.currency
+        currency: withdrawal.currency,
       };
 
       await paymentRepoTx.saveIdempotencyKey(idempotencyKey, response);

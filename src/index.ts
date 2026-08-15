@@ -1,6 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { config } from './config/app';
 import { correlationIdMiddleware } from './shared/middleware/correlationId';
 import { requestLogger } from './shared/middleware/logger';
@@ -11,6 +12,7 @@ const app: Application = express();
 
 // Security middleware
 app.use(helmet());
+app.use(cookieParser());
 
 // CORS
 app.use(

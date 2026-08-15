@@ -54,7 +54,9 @@ export class PaymentRepository extends BaseRepository {
     );
   }
 
-  async createDeposit(data: Omit<DepositRow, 'id' | 'created_at' | 'completed_at'>): Promise<DepositRow> {
+  async createDeposit(
+    data: Omit<DepositRow, 'id' | 'created_at' | 'completed_at'>
+  ): Promise<DepositRow> {
     const result = await this.query<DepositRow>(
       `INSERT INTO payments.deposits (
         user_id, gateway_id, gateway_reference, amount, fee, net_amount, currency, status, webhook_payload, idempotency_key
@@ -70,13 +72,18 @@ export class PaymentRepository extends BaseRepository {
         data.currency,
         data.status,
         data.webhook_payload,
-        data.idempotency_key
+        data.idempotency_key,
       ]
     );
     return result.rows[0];
   }
 
-  async createWithdrawal(data: Omit<WithdrawalRow, 'id' | 'created_at' | 'completed_at' | 'reviewed_by' | 'review_note' | 'gateway_reference'>): Promise<WithdrawalRow> {
+  async createWithdrawal(
+    data: Omit<
+      WithdrawalRow,
+      'id' | 'created_at' | 'completed_at' | 'reviewed_by' | 'review_note' | 'gateway_reference'
+    >
+  ): Promise<WithdrawalRow> {
     const result = await this.query<WithdrawalRow>(
       `INSERT INTO payments.withdrawals (
         user_id, gateway_id, amount, fee, net_amount, currency, status, idempotency_key
@@ -90,7 +97,7 @@ export class PaymentRepository extends BaseRepository {
         data.net_amount,
         data.currency,
         data.status,
-        data.idempotency_key
+        data.idempotency_key,
       ]
     );
     return result.rows[0];

@@ -35,13 +35,17 @@ export class LedgerRepository extends BaseRepository {
         data.balance_after,
         data.reference_type,
         data.reference_id,
-        data.description
+        data.description,
       ]
     );
     return result.rows[0];
   }
 
-  async findByWalletId(walletId: string, limit: number = 20, cursor?: string): Promise<LedgerRow[]> {
+  async findByWalletId(
+    walletId: string,
+    limit: number = 20,
+    cursor?: string
+  ): Promise<LedgerRow[]> {
     let query = 'SELECT * FROM wallet.ledger_entries WHERE wallet_id = $1';
     const params: any[] = [walletId];
 

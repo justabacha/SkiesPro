@@ -66,8 +66,8 @@ export class AuthService {
           userId: user.id,
           email: user.email,
           displayName: user.display_name,
-          currency: process.env.BASE_CURRENCY || 'KES'
-        }
+          currency: process.env.BASE_CURRENCY || 'KES',
+        },
       });
 
       await client.query('COMMIT');

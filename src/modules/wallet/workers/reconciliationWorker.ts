@@ -28,7 +28,7 @@ export class ReconciliationWorker {
             userId: wallet.user_id,
             walletBalance: walletBalance.toString(),
             ledgerTotal: ledgerTotal.toString(),
-            difference: walletBalance.minus(ledgerTotal).toString()
+            difference: walletBalance.minus(ledgerTotal).toString(),
           });
           // In production, this would trigger an alert or freeze the wallet
         }

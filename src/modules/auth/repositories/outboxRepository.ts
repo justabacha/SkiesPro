@@ -19,7 +19,9 @@ export class OutboxRepository extends BaseRepository {
     super(client);
   }
 
-  async create(data: Pick<OutboxRow, 'event_type' | 'aggregate_type' | 'aggregate_id' | 'payload'>): Promise<OutboxRow> {
+  async create(
+    data: Pick<OutboxRow, 'event_type' | 'aggregate_type' | 'aggregate_id' | 'payload'>
+  ): Promise<OutboxRow> {
     const result = await this.query<OutboxRow>(
       `INSERT INTO events.event_outbox (
         event_type, aggregate_type, aggregate_id, payload

@@ -13,10 +13,9 @@ import {
   Stack
 } from '@/shared/components';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useEffect } from 'react';
 
 export const LoginPage = () => {
-  const { login, isLoading, error, requiresMfa, isAuthenticated } = useAuth();
+  const { login, isLoading, error, requiresMfa } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const registered = location.state?.registered;
@@ -30,17 +29,12 @@ export const LoginPage = () => {
     resolver: zodResolver(loginSchema),
   });
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    } else if (requiresMfa) {
-      navigate('/verify-otp');
-    }
-  }, [isAuthenticated, requiresMfa, navigate]);
-
   const onSubmit = async (data: LoginInput) => {
     try {
       await login(data);
+      if (requiresMfa) {
+        navigate('/verify-otp');
+      }
     } catch (err) {
       // Error is handled in context and displayed via state
     }

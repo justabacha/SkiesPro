@@ -41,6 +41,18 @@ export class AuthController {
         req.ip || null,
         req.get('user-agent') || null
       );
+
+      const authResult = result as any;
+      if (authResult.refresh_token) {
+        res.cookie('refresh_token', authResult.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+        delete authResult.refresh_token;
+      }
+
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
     } catch (error) {
       logger.warn('Login failed', { email: req.body.email, error: (error as Error).message });
@@ -59,6 +71,18 @@ export class AuthController {
         req.ip || null,
         req.get('user-agent') || null
       );
+
+      const authResult = result as any;
+      if (authResult.refresh_token) {
+        res.cookie('refresh_token', authResult.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+        delete authResult.refresh_token;
+      }
+
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
     } catch (error) {
       res.status(401).json({ error: (error as Error).message });
@@ -66,13 +90,30 @@ export class AuthController {
   }
 
   async refresh(req: Request, res: Response): Promise<void> {
-    const { refresh_token } = req.body;
+    const refreshToken = req.cookies.refresh_token || req.body.refresh_token;
+    if (!refreshToken) {
+      res.status(401).json({ error: 'Refresh token missing' });
+      return;
+    }
+
     try {
       const result = await this.authService.refresh(
-        refresh_token,
+        refreshToken,
         req.ip || null,
         req.get('user-agent') || null
       );
+
+      const authResult = result as any;
+      if (authResult.refresh_token) {
+        res.cookie('refresh_token', authResult.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+        delete authResult.refresh_token;
+      }
+
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
     } catch (error) {
       res.status(401).json({ error: (error as Error).message });
@@ -81,6 +122,7 @@ export class AuthController {
 
   async logout(_req: Request, res: Response): Promise<void> {
     // Implementation should revoke current session via tokenService
+    res.clearCookie('refresh_token');
     res.status(200).json({ message: 'Logged out successfully' });
   }
 

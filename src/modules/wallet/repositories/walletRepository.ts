@@ -20,10 +20,9 @@ export class WalletRepository extends BaseRepository {
   }
 
   async findByUserId(userId: string): Promise<WalletRow | null> {
-    const result = await this.query<WalletRow>(
-      'SELECT * FROM wallet.wallets WHERE user_id = $1',
-      [userId]
-    );
+    const result = await this.query<WalletRow>('SELECT * FROM wallet.wallets WHERE user_id = $1', [
+      userId,
+    ]);
     return result.rows[0] || null;
   }
 
