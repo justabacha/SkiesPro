@@ -36,8 +36,8 @@ const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
   },
   login: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5,
-    keyGenerator: (req: Request) => `login:${req.ip}`,
+    maxRequests: 10,
+    keyGenerator: (req: Request) => `login:${req.ip}:${(req.body?.email || '').toLowerCase().trim()}`,
   },
   passwordReset: {
     windowMs: 60 * 60 * 1000, // 1 hour

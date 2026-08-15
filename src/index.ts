@@ -10,6 +10,9 @@ import { logger } from './shared/middleware/logger';
 
 const app: Application = express();
 
+// Trust Render Proxy
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cookieParser());
