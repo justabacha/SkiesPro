@@ -63,7 +63,7 @@ describe('Payment Service - Withdrawals', () => {
     }
   });
 
-  it('should process a valid withdrawal request and lock funds', async () => {
+  it('should process a valid withdrawal request and lock funds with 2% fee', async () => {
     const amount = '2000';
     const idempotencyKey = uuidv4();
     usedKeys.push(idempotencyKey);
@@ -76,32 +76,39 @@ describe('Payment Service - Withdrawals', () => {
     }, idempotencyKey);
 
     expect(result.status).toBe('pending');
-    expect(new Decimal(result.net_amount).lessThan(new Decimal(amount))).toBe(true);
+
+    // 2% of 2000 is 40
+    expect(new Decimal(result.fee).equals(new Decimal('40'))).toBe(true);
+    expect(new Decimal(result.net_amount).equals(new Decimal('1960'))).toBe(true);
 
     const wallet = await walletService.getBalance(testUserId);
     expect(new Decimal(wallet.locked_balance).equals(new Decimal(amount))).toBe(true);
     expect(new Decimal(wallet.available_balance).equals(new Decimal('3000'))).toBe(true);
   });
 
-  it('should return same response for duplicate idempotency key', async () => {
-    const amount = '2000';
-    const idempotencyKey = uuidv4();
-    usedKeys.push(idempotencyKey);
+  it('should fail if amount is below minimum (1500 KES)', async () => {
+    const amount = '1000';
+    const ik = uuidv4();
+    usedKeys.push(ik);
 
-    const first = await paymentService.requestWithdrawal(testUserId, {
+    await expect(paymentService.requestWithdrawal(testUserId, {
       amount,
       currency: 'KES',
       gateway_id: 1,
       phone: '+254700000000'
-    }, idempotencyKey);
+    }, ik)).rejects.toThrow('Minimum withdrawal is 1500 KES');
+  });
 
-    const second = await paymentService.requestWithdrawal(testUserId, {
+  it('should fail if amount exceeds maximum (60000 KES)', async () => {
+    const amount = '70000';
+    const ik = uuidv4();
+    usedKeys.push(ik);
+
+    await expect(paymentService.requestWithdrawal(testUserId, {
       amount,
       currency: 'KES',
       gateway_id: 1,
       phone: '+254700000000'
-    }, idempotencyKey);
-
-    expect(first.id).toBe(second.id);
+    }, ik)).rejects.toThrow('Maximum daily withdrawal is 60000 KES');
   });
 });

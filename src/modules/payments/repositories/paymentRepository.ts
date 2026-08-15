@@ -78,6 +78,33 @@ export class PaymentRepository extends BaseRepository {
     return result.rows[0];
   }
 
+  async findDepositByReference(reference: string): Promise<DepositRow | null> {
+    const result = await this.query<DepositRow>(
+      'SELECT * FROM payments.deposits WHERE gateway_reference = $1',
+      [reference]
+    );
+    return result.rows[0] || null;
+  }
+
+  async findDepositByReferenceForUpdate(reference: string): Promise<DepositRow | null> {
+    const result = await this.query<DepositRow>(
+      'SELECT * FROM payments.deposits WHERE gateway_reference = $1 FOR UPDATE',
+      [reference]
+    );
+    return result.rows[0] || null;
+  }
+
+  async updateDepositStatus(id: string, status: string, webhookPayload?: any): Promise<DepositRow> {
+    const result = await this.query<DepositRow>(
+      `UPDATE payments.deposits
+       SET status = $1::text, webhook_payload = COALESCE($2::jsonb, webhook_payload), completed_at = CASE WHEN $1::text = 'completed' THEN NOW() ELSE completed_at END
+       WHERE id = $3
+       RETURNING *`,
+      [status, webhookPayload ? JSON.stringify(webhookPayload) : null, id]
+    );
+    return result.rows[0];
+  }
+
   async createWithdrawal(
     data: Omit<
       WithdrawalRow,
@@ -101,5 +128,21 @@ export class PaymentRepository extends BaseRepository {
       ]
     );
     return result.rows[0];
+  }
+
+  async findWithdrawalById(id: string): Promise<WithdrawalRow | null> {
+    const result = await this.query<WithdrawalRow>(
+      'SELECT * FROM payments.withdrawals WHERE id = $1',
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async logWebhook(gatewayId: number, headers: any, body: any, signatureValid: boolean): Promise<void> {
+    await this.query(
+      `INSERT INTO payments.payment_webhook_logs (gateway_id, headers, body, signature_valid)
+       VALUES ($1, $2, $3, $4)`,
+      [gatewayId, JSON.stringify(headers), JSON.stringify(body), signatureValid]
+    );
   }
 }
