@@ -37,6 +37,14 @@ export class UserRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
+  async findByPhone(phone: string): Promise<UserRow | null> {
+    const result = await this.query<UserRow>(
+      'SELECT * FROM app_auth.users WHERE phone = $1 AND deleted_at IS NULL',
+      [phone]
+    );
+    return result.rows[0] || null;
+  }
+
   async findById(id: string): Promise<UserRow | null> {
     const result = await this.query<UserRow>(
       'SELECT * FROM app_auth.users WHERE id = $1 AND deleted_at IS NULL',

@@ -29,6 +29,13 @@ export class AuthService {
       throw new Error('Email already registered');
     }
 
+    if (data.phone) {
+      const existingPhone = await this.userRepo.findByPhone(data.phone);
+      if (existingPhone) {
+        throw new Error('Phone number already registered');
+      }
+    }
+
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(data.password, saltRounds);
     const referralCode = uuidv4().split('-')[0].toUpperCase();

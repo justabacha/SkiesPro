@@ -6,6 +6,7 @@ import { useAuth } from '@/shared/hooks/useAuth';
 import {
   Button,
   Input,
+  PasswordInput,
   FormGroup,
   Card,
   Container,
@@ -94,9 +95,8 @@ export const LoginPage = () => {
                 </FormGroup>
 
                 <FormGroup label="Password" error={errors.password?.message}>
-                  <Input
+                  <PasswordInput
                     {...register('password')}
-                    type="password"
                     placeholder="••••••••"
                     autoComplete="current-password"
                     error={!!errors.password}

@@ -40,9 +40,22 @@ class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMessage = typeof errorData.error === 'string'
-        ? errorData.error
-        : (errorData.error?.message || errorData.message || 'An unexpected error occurred');
+
+      // Look for error message in common locations
+      let errorMessage = 'An unexpected error occurred';
+
+      if (typeof errorData.error === 'string') {
+        errorMessage = errorData.error;
+      } else if (errorData.error?.message) {
+        errorMessage = errorData.error.message;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+        // Handle express-validator errors array
+        const firstError = errorData.errors[0];
+        errorMessage = firstError.msg || firstError.message || errorMessage;
+      }
+
       throw new Error(errorMessage);
     }
 
