@@ -25,7 +25,13 @@ export class PaymentController {
       res.status(201).json({ data: result, meta: { request_id: req.correlationId } });
     } catch (error: any) {
       logger.error('Deposit initiation failed', { error: error.message });
-      res.status(400).json({ error: error.message });
+
+      const errorResponse: any = { error: error.message };
+      if (process.env.NODE_ENV !== 'production' && error.rawResponse) {
+        errorResponse.darajaPayload = error.rawResponse;
+      }
+
+      res.status(400).json(errorResponse);
     }
   }
 

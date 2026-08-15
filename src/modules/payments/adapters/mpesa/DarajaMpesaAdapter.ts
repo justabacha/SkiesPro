@@ -86,8 +86,13 @@ export class DarajaMpesaAdapter implements IPaymentGateway {
         customerMessage: response.data.CustomerMessage,
       };
     } catch (error: any) {
-      logger.error('Daraja STK Push failed', { error: error.response?.data || error.message });
-      throw new Error('Payment gateway failed to initiate STK Push');
+      const errorData = error.response?.data;
+      console.error('Daraja STK Push Error Request:', JSON.stringify(payload, null, 2));
+      console.error('Daraja STK Push Error Response:', JSON.stringify(errorData, null, 2));
+
+      const wrappedError: any = new Error('Payment gateway failed to initiate STK Push');
+      wrappedError.rawResponse = errorData;
+      throw wrappedError;
     }
   }
 
