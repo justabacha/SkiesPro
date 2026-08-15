@@ -3,6 +3,7 @@ export interface DepositInitiateDto {
   currency: string;
   gateway_id: number;
   phone?: string;
+  phoneNumber?: string;
 }
 
 export interface DepositResponseDto {

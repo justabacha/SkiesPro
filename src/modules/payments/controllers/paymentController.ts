@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { validationResult } from 'express-validator';
 import { PaymentService } from '../services/paymentService';
 import { PaymentRepository } from '../repositories/paymentRepository';
 import { logger } from '../../../shared/middleware/logger';
@@ -13,6 +14,12 @@ export class PaymentController {
   }
 
   async initiateDeposit(req: Request, res: Response): Promise<void> {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
     const idempotencyKey = req.get('Idempotency-Key');
     if (!idempotencyKey) {
       res.status(400).json({ error: 'Idempotency-Key header is required' });
@@ -36,6 +43,12 @@ export class PaymentController {
   }
 
   async requestWithdrawal(req: Request, res: Response): Promise<void> {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
     const idempotencyKey = req.get('Idempotency-Key');
     if (!idempotencyKey) {
       res.status(400).json({ error: 'Idempotency-Key header is required' });

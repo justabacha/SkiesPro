@@ -20,9 +20,28 @@ router.post(
   '/deposit/initiate',
   rateLimit('authenticated'),
   [
-    body('amount').isNumeric().isLength({ min: 1 }),
-    body('gateway_id').isInt(),
-    body('currency').isString().isLength({ min: 3, max: 3 }),
+    body('amount').isNumeric().withMessage('Amount must be a number').isLength({ min: 1 }),
+    body('gateway_id').isInt().withMessage('Gateway ID must be an integer'),
+    body('currency').isString().isLength({ min: 3, max: 3 }).withMessage('Currency must be 3 characters'),
+    body('phone')
+      .optional()
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Phone number cannot be empty if provided'),
+    body('phoneNumber')
+      .optional()
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Phone number cannot be empty if provided'),
+    // Ensure at least one is provided
+    body().custom((value) => {
+      if (!value.phone && !value.phoneNumber) {
+        throw new Error('Phone number is required');
+      }
+      return true;
+    }),
   ],
   (req: Request, res: Response) => controller.initiateDeposit(req, res)
 );

@@ -21,6 +21,22 @@ export class PaymentService {
     this.userRepo = new UserRepository();
   }
 
+  private normalizePhoneNumber(phone: string): string {
+    // Remove all non-numeric characters
+    const digits = phone.replace(/\D/g, '');
+
+    // Handle cases like +254..., 254..., 07..., 7...
+    if (digits.startsWith('254') && digits.length === 12) {
+      return digits;
+    } else if (digits.startsWith('0') && digits.length === 10) {
+      return `254${digits.substring(1)}`;
+    } else if (digits.length === 9) {
+      return `254${digits}`;
+    }
+
+    return digits;
+  }
+
   async initiateDeposit(userId: string, data: DepositInitiateDto, idempotencyKey: string): Promise<DepositResponseDto> {
     const cached = await this.paymentRepo.findIdempotencyKey(idempotencyKey);
     if (cached && cached.status !== 'processing') return cached;
@@ -42,11 +58,18 @@ export class PaymentService {
     try {
       const gateway = MpesaGatewayFactory.getGateway();
 
+      const rawPhone = data.phoneNumber || data.phone || '';
+      const normalizedPhone = this.normalizePhoneNumber(rawPhone);
+
+      if (!normalizedPhone || normalizedPhone.length < 10) {
+        throw new Error('Valid phone number is required for STK Push');
+      }
+
       // 2. Trigger STK Push
       const mpesaResponse = await gateway.initiateStkPush({
         userId,
         amount: amount.toNumber(),
-        phone: data.phone || '',
+        phone: normalizedPhone,
         idempotencyKey
       });
 
