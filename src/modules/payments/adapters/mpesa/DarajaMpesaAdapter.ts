@@ -72,7 +72,7 @@ export class DarajaMpesaAdapter implements IPaymentGateway {
     };
 
     try {
-      const response = await axios.post(`${this.baseUrl}/mpesa/stkpush/v1/process`, payload, {
+      const response = await axios.post(`${this.baseUrl}/mpesa/stkpush/v1/processrequest`, payload, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

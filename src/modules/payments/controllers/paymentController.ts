@@ -35,7 +35,7 @@ export class PaymentController {
 
       const errorResponse: any = { error: error.message };
       if (process.env.NODE_ENV !== 'production' && error.rawResponse) {
-        errorResponse.darajaPayload = error.rawResponse;
+        errorResponse.darajaError = error.rawResponse;
       }
 
       res.status(400).json(errorResponse);
