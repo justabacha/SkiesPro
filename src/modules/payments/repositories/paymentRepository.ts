@@ -138,7 +138,12 @@ export class PaymentRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
-  async logWebhook(gatewayId: number, headers: any, body: any, signatureValid: boolean): Promise<void> {
+  async logWebhook(
+    gatewayId: number,
+    headers: any,
+    body: any,
+    signatureValid: boolean
+  ): Promise<void> {
     await this.query(
       `INSERT INTO payments.payment_webhook_logs (gateway_id, headers, body, signature_valid)
        VALUES ($1, $2, $3, $4)`,

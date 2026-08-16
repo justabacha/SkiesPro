@@ -1,5 +1,10 @@
 import axios from 'axios';
-import { IPaymentGateway, StkPushRequest, StkPushResponse, TransactionStatusResponse } from './IPaymentGateway';
+import {
+  IPaymentGateway,
+  StkPushRequest,
+  StkPushResponse,
+  TransactionStatusResponse,
+} from './IPaymentGateway';
 import { logger } from '../../../../shared/middleware/logger';
 
 export class DarajaMpesaAdapter implements IPaymentGateway {
@@ -11,9 +16,10 @@ export class DarajaMpesaAdapter implements IPaymentGateway {
   private readonly callbackUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.MPESA_ENVIRONMENT === 'production'
-      ? 'https://api.safaricom.co.ke'
-      : 'https://sandbox.safaricom.co.ke';
+    this.baseUrl =
+      process.env.MPESA_ENVIRONMENT === 'production'
+        ? 'https://api.safaricom.co.ke'
+        : 'https://sandbox.safaricom.co.ke';
     this.consumerKey = process.env.MPESA_CONSUMER_KEY || '';
     this.consumerSecret = process.env.MPESA_CONSUMER_SECRET || '';
     this.passkey = process.env.MPESA_PASSKEY || '';
@@ -25,11 +31,14 @@ export class DarajaMpesaAdapter implements IPaymentGateway {
     const auth = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64');
 
     try {
-      const response = await axios.get(`${this.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
-        headers: {
-          Authorization: `Basic ${auth}`,
-        },
-      });
+      const response = await axios.get(
+        `${this.baseUrl}/oauth/v1/generate?grant_type=client_credentials`,
+        {
+          headers: {
+            Authorization: `Basic ${auth}`,
+          },
+        }
+      );
       return response.data.access_token;
     } catch (error: any) {
       logger.error('Daraja auth failed', { error: error.response?.data || error.message });
@@ -72,11 +81,15 @@ export class DarajaMpesaAdapter implements IPaymentGateway {
     };
 
     try {
-      const response = await axios.post(`${this.baseUrl}/mpesa/stkpush/v1/processrequest`, payload, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const response = await axios.post(
+        `${this.baseUrl}/mpesa/stkpush/v1/processrequest`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
 
       return {
         merchantRequestId: response.data.MerchantRequestID,

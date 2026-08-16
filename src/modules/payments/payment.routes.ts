@@ -8,14 +8,12 @@ const router = Router();
 const controller = new PaymentController();
 
 // Public Callback Routes (Exempt from JWT)
-router.post(
-  '/deposit/callback',
-  (req: Request, res: Response) => controller.handleMpesaCallback(req, res)
+router.post('/deposit/callback', (req: Request, res: Response) =>
+  controller.handleMpesaCallback(req, res)
 );
 
-router.post(
-  '/mpesa/callback',
-  (req: Request, res: Response) => controller.handleMpesaCallback(req, res)
+router.post('/mpesa/callback', (req: Request, res: Response) =>
+  controller.handleMpesaCallback(req, res)
 );
 
 // Protected Routes (Require JWT)
@@ -27,7 +25,10 @@ router.post(
   [
     body('amount').isNumeric().withMessage('Amount must be a number').isLength({ min: 1 }),
     body('gateway_id').isInt().withMessage('Gateway ID must be an integer'),
-    body('currency').isString().isLength({ min: 3, max: 3 }).withMessage('Currency must be 3 characters'),
+    body('currency')
+      .isString()
+      .isLength({ min: 3, max: 3 })
+      .withMessage('Currency must be 3 characters'),
     body('phone')
       .optional()
       .isString()
@@ -51,16 +52,12 @@ router.post(
   (req: Request, res: Response) => controller.initiateDeposit(req, res)
 );
 
-router.get(
-  '/deposit/:id/status',
-  rateLimit('authenticated'),
-  (req: Request, res: Response) => controller.getDepositStatus(req, res)
+router.get('/deposit/:id/status', rateLimit('authenticated'), (req: Request, res: Response) =>
+  controller.getDepositStatus(req, res)
 );
 
-router.post(
-  '/deposit/:id/sync',
-  rateLimit('authenticated'),
-  (req: Request, res: Response) => controller.syncDepositStatus(req, res)
+router.post('/deposit/:id/sync', rateLimit('authenticated'), (req: Request, res: Response) =>
+  controller.syncDepositStatus(req, res)
 );
 
 router.post(

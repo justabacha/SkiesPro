@@ -71,7 +71,7 @@ export class PaymentController {
     if (token !== process.env.MPESA_CALLBACK_TOKEN) {
       logger.warn('Unauthorized M-Pesa callback attempt', {
         ip: req.ip,
-        tokenProvided: !!token
+        tokenProvided: !!token,
       });
       res.status(401).send('Unauthorized');
       return;
