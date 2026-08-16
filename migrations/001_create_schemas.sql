@@ -12,7 +12,7 @@ CREATE SCHEMA IF NOT EXISTS referral;
 CREATE SCHEMA IF NOT EXISTS admin;
 CREATE SCHEMA IF NOT EXISTS config;
 CREATE SCHEMA IF NOT EXISTS notifications;
-CREATE SCHEMA IF NOT EXISTS events;
+CREATE SCHEMA IF NOT EXISTS events
 CREATE SCHEMA IF NOT EXISTS reporting;
 
 -- Grant usage on schemas to appropriate roles (adjust based on Supabase setup)

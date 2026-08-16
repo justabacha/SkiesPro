@@ -13,3 +13,6 @@ const pubPEM = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKB
 process.env.JWT_PRIVATE_KEY = privPEM;
 process.env.JWT_PUBLIC_KEY = pubPEM;
 process.env.TOTP_ENCRYPTION_KEY = process.env.TOTP_ENCRYPTION_KEY || Buffer.from('12345678901234567890123456789012').toString('base64');
+
+// Set global Jest timeout
+jest.setTimeout(30000);

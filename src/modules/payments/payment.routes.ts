@@ -7,13 +7,18 @@ import { rateLimit } from '../../shared/middleware/rateLimit';
 const router = Router();
 const controller = new PaymentController();
 
-// Public Callback Route
+// Public Callback Routes (Exempt from JWT)
 router.post(
   '/deposit/callback',
   (req: Request, res: Response) => controller.handleMpesaCallback(req, res)
 );
 
-// Protected Routes
+router.post(
+  '/mpesa/callback',
+  (req: Request, res: Response) => controller.handleMpesaCallback(req, res)
+);
+
+// Protected Routes (Require JWT)
 router.use(authenticate);
 
 router.post(
