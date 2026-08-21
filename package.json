@@ -16,7 +16,8 @@
     "test:coverage": "jest --coverage",
     "typecheck": "tsc --noEmit",
     "migrate": "ts-node scripts/run-migrations.ts",
-    "migrate:up": "ts-node scripts/run-migrations.ts up"
+    "migrate:up": "ts-node scripts/run-migrations.ts up",
+    "start:price-feed": "ts-node src/modules/pricing/bin/price-feed.ts"
   },
   "keywords": [
     "trading",
@@ -53,7 +54,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwind-merge": "^2.2.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -70,6 +72,7 @@
     "@types/react-dom": "^18.2.18",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^9.0.7",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "autoprefixer": "^10.4.17",

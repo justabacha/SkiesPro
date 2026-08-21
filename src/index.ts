@@ -47,7 +47,7 @@ app.use((req, res) => {
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Unhandled error', {
-    correlationId: req.correlationId,
+    correlationId: (req as any).correlationId,
     error: err.message,
   });
 

@@ -6,7 +6,7 @@ import { logger } from '../shared/middleware/logger';
  * Render uses this to decide if app is alive — 503 = restart loop
  */
 export const healthCheck = async (req: Request, res: Response): Promise<void> => {
-  logger.info('Health check requested', { correlationId: req.correlationId });
+  logger.info('Health check requested', { correlationId: (req as any).correlationId });
 
   res.status(200).json({
     status: 'healthy',
@@ -25,7 +25,7 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
  * Readiness check for MVP - also returns 200
  */
 export const readinessCheck = async (req: Request, res: Response): Promise<void> => {
-  logger.info('Readiness check requested', { correlationId: req.correlationId });
+  logger.info('Readiness check requested', { correlationId: (req as any).correlationId });
 
   res.status(200).json({
     status: 'ready',

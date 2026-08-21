@@ -723,7 +723,7 @@ Middleware chain (applied in order):
 | **Controllers** | `AssetController` — list, detail. `PriceController` — current price, candles, market status. Maps to ADS §12.1–12.4. |
 | **Services** | `PriceFeedIngestionService` — connect to provider WebSocket, normalize ticks, write to `price_ticks` (DDS §5.16), publish to Redis Pub/Sub. `OHLCService` — aggregate ticks into 1m/5m/15m/1H/4H/1D candles (DDS §5.17). `MarketStatusService` — check market hours (DDS §5.18). |
 | **Repositories** | `TickRepository` — `pricing.price_ticks` INSERT + SELECT (DDS §5.16). `CandleRepository` — `pricing.candles` (DDS §5.17). `MarketHoursRepository` — `pricing.market_hours`. |
-| **DTOs** | `PriceResponse` (symbol, price, bid, ask, tickTime). `CandleResponse` (openTime, closeTime, openPrice, highPrice, lowPrice, closePrice, volume). `MarketStatusResponse` (overallStatus, assets). |
+| **DTOs** | `PriceResponse` (symbol, bid_price, ask_price, mid_price, tickTime). `CandleResponse` (openTime, closeTime, openPrice, highPrice, lowPrice, closePrice, volume). `MarketStatusResponse` (overallStatus, assets). |
 | **Validators** | Symbol must exist in `trading.assets`. Granularity must be one of: 60, 300, 900, 3600, 86400. Date range limits. |
 | **Middleware** | Auth required (ADS §12). Rate limit: 60 req/min (ADS §3.7). |
 | **Events** | None (Price Feed writes directly — not event-driven per SAD §5.4). |

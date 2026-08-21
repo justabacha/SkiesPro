@@ -53,7 +53,7 @@ describe('Seed Data Verification', () => {
     if (skipDatabaseTests) return;
     const result = await pgPool.query('SELECT * FROM trading.assets');
     expect(result.rows).toBeDefined();
-    expect(result.rows.length).toBe(5); // EUR/USD, GBP/USD, USD/JPY, Gold, Oil
+    expect(result.rows.length).toBe(7); // EUR/USD, GBP/USD, USD/JPY, Gold, Oil, BTC/USD, ETH/USD
 
     // Verify expected assets exist
     const symbols = result.rows.map((a: any) => a.symbol);
@@ -62,13 +62,15 @@ describe('Seed Data Verification', () => {
     expect(symbols).toContain('USD/JPY');
     expect(symbols).toContain('XAU/USD');
     expect(symbols).toContain('WTI/USD');
+    expect(symbols).toContain('BTC/USD');
+    expect(symbols).toContain('ETH/USD');
   });
 
   test('should have seeded asset configurations', async () => {
     if (skipDatabaseTests) return;
     const result = await pgPool.query('SELECT * FROM trading.asset_config');
     expect(result.rows).toBeDefined();
-    expect(result.rows.length).toBe(5);
+    expect(result.rows.length).toBe(7); // EUR/USD, GBP/USD, USD/JPY, Gold, Oil, BTC/USD, ETH/USD
   });
 
   test('should have seeded payment gateways', async () => {

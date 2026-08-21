@@ -512,7 +512,7 @@ For pricing, Redis Cluster is described. For session state, the same Redis is us
 The settlement worker must use an atomic database operation to transition contract status from `Active` to `Settling` before any financial operation occurs. If this atomic update affects 0 rows, the job is a duplicate and must be discarded. This single change closes the double-settlement vulnerability.
 
 **CR-002: Implement a persistent tick price store**
-The Pricing Service must write every price tick to a persistent time-indexed store (e.g., a `price_ticks` table in PostgreSQL, or a time-series database). Settlement workers must retrieve the settlement price by querying `price_ticks WHERE symbol = ? AND tick_time <= ?` at the contract expiry timestamp. Redis remains for live display only.
+The Pricing Service must write every price tick to a persistent time-indexed store (e.g., a `pricing.price_ticks` table in PostgreSQL, or a time-series database). Settlement workers must retrieve the settlement price by querying `pricing.price_ticks WHERE symbol = ? AND tick_time <= ?` at the contract expiry timestamp and use the `mid_price` column. Redis remains for live display only.
 
 **CR-003: Mandate wallet locking mechanism explicitly**
 The architecture must specify the exact locking strategy for concurrent wallet updates: pessimistic locking (`SELECT FOR UPDATE`) or optimistic locking (version field with retry). The choice must be documented and enforced in the Wallet Module specification.

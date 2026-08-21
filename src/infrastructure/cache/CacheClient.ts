@@ -71,6 +71,17 @@ export class CacheClient {
     }
   }
 
+  async publish(cluster: CacheCluster, channel: string, message: string): Promise<void> {
+    try {
+      const cache = this.getCluster(cluster);
+      if (cache.publish) {
+        await cache.publish(channel, message);
+      }
+    } catch (error) {
+      this.handleCacheError(error);
+    }
+  }
+
   private getCluster(cluster: CacheCluster): ICache {
     return cluster === 'sessions' ? this.sessionsCluster : this.pricingCluster;
   }

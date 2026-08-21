@@ -659,10 +659,10 @@ Retention: 7 years (monthly partitions)
 | :--- | :--- | :--- | :--- | :--- |
 | id | BIGSERIAL | NOT NULL | — | PRIMARY KEY |
 | symbol | VARCHAR(20) | NOT NULL | — | FK → trading.assets(symbol) |
-| price | NUMERIC(18,6) | NOT NULL | — | — |
-| bid | NUMERIC(18,6) | NOT NULL | — | — |
-| ask | NUMERIC(18,6) | NOT NULL | — | — |
-| volume | NUMERIC(18,2) | NULL | — | — |
+| bid_price | NUMERIC(12,6) | NOT NULL | — | CHECK (bid_price > 0) |
+| ask_price | NUMERIC(12,6) | NOT NULL | — | CHECK (ask_price > 0) |
+| mid_price | NUMERIC(12,6) | NOT NULL | — | CHECK (mid_price > 0) |
+| volume | BIGINT | NULL | — | — |
 | tick_time | TIMESTAMPTZ | NOT NULL | — | — |
 | created_at | TIMESTAMPTZ | NOT NULL | NOW() | — |
 

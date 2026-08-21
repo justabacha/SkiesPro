@@ -448,8 +448,8 @@ sequenceDiagram
     Note over Settlement Worker: If affected_rows = 0 → discard (duplicate). <br/>If affected_rows = 1 → proceed (status acquired atomically).
     Settlement Worker->>Database: Fetch Contract Record
     Database-->>Settlement Worker: Contract (Status: Settling, Strike Price, Symbol, User ID, Payout Rate)
-    Settlement Worker->>Database: Query price_ticks WHERE symbol=? AND tick_time<=expiry ORDER BY tick_time DESC LIMIT 1
-    Database-->>Settlement Worker: Expiry Price (from persistent store)
+    Settlement Worker->>Database: Query pricing.price_ticks WHERE symbol=? AND tick_time<=expiry ORDER BY tick_time DESC LIMIT 1
+    Database-->>Settlement Worker: Expiry mid_price (from persistent store)
     Settlement Worker->>Settlement Worker: Compare Strike vs. Expiry Price => Determine Outcome
     alt Win
         Settlement Worker->>Wallet Module: Credit Stake + Payout (via internal API)
@@ -933,7 +933,7 @@ graph TD
 | **Decision** | The authoritative price source for settlement is the persistent `price_ticks` table in PostgreSQL. Redis is a cache for live display only. |
 | **Context** | Redis `price:{symbol}:latest` with 2-second TTL overwrites on each tick and cannot provide the price at an exact contract expiry timestamp. The settlement price must be provably correct and legally defensible. |
 | **Alternatives Considered** | Time-series database (TimescaleDB) — would be optimal at scale but adds infrastructure complexity for V1. Dual-write to Redis + PostgreSQL (selected). Redis with sorted sets and timestamp indexing — still volatile. |
-| **Consequences** | The Pricing Service writes every tick to `price_ticks` (symbol, price NUMERIC(18,6), tick_time TIMESTAMPTZ). Settlement Worker queries `WHERE symbol = ? AND tick_time <= ? ORDER BY tick_time DESC LIMIT 1`. Settlement price is auditable and legally defensible. Increased database write volume. Table partitioning recommended at scale. Retention: 7 years minimum for regulatory compliance. Redis remains for low-latency chart streaming only. |
+| **Consequences** | The Pricing Service writes every tick to `pricing.price_ticks` (symbol, bid_price NUMERIC(12,6), ask_price NUMERIC(12,6), mid_price NUMERIC(12,6), tick_time TIMESTAMPTZ). Settlement Worker queries `WHERE symbol = ? AND tick_time <= ? ORDER BY tick_time DESC LIMIT 1` and uses the `mid_price` column for settlement. Settlement price is auditable and legally defensible. Increased database write volume. Table partitioning recommended at scale. Retention: 7 years minimum for regulatory compliance. Redis remains for low-latency chart streaming only. |
 
 ---
 

@@ -66,6 +66,11 @@ export class InMemoryAdapter implements ICache {
     return Array.from(this.cache.keys()).filter((key) => regex.test(key));
   }
 
+  async publish(_channel: string, _message: string): Promise<void> {
+    // In-memory Pub/Sub mock
+    // In a real implementation with EventEmitter, this could trigger listeners
+  }
+
   async close(): Promise<void> {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);

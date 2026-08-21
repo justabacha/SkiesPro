@@ -102,7 +102,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     logger.info('HTTP Request', {
-      correlationId: req.correlationId,
+      correlationId: (req as any).correlationId,
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,

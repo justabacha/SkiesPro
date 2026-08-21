@@ -5,6 +5,7 @@ export interface ICache {
   incr(key: string): Promise<number>;
   expire(key: string, ttl: number): Promise<void>;
   keys(pattern: string): Promise<string[]>;
+  publish?(channel: string, message: string): Promise<void>;
   close(): Promise<void>;
 }
 
