@@ -39,7 +39,7 @@ export class PricingController {
         granularity: req.query.granularity ? parseInt(req.query.granularity as string) : undefined,
         from: req.query.from as string,
         to: req.query.to as string,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
       };
       const candles = await this.pricingService.getCandles(query);
       res.status(200).json({ data: candles });
@@ -51,8 +51,10 @@ export class PricingController {
   async getStatus(_req: Request, res: Response): Promise<void> {
     try {
       const assets = await this.pricingService.getActiveAssets();
-      const symbols = assets.map(a => a.symbol);
-      const statuses = await Promise.all(symbols.map(s => this.pricingService.getMarketStatus(s)));
+      const symbols = assets.map((a) => a.symbol);
+      const statuses = await Promise.all(
+        symbols.map((s) => this.pricingService.getMarketStatus(s))
+      );
       res.status(200).json({ data: statuses });
     } catch (error: any) {
       logger.error('Error fetching market statuses', { error: error.message });

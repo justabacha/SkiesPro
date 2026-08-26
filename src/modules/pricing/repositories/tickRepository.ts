@@ -24,14 +24,7 @@ export class TickRepository {
       `INSERT INTO pricing.price_ticks (symbol, tick_time, bid_price, ask_price, mid_price, volume)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, symbol, tick_time, bid_price, ask_price, mid_price, volume, created_at`,
-      [
-        tick.symbol,
-        tick.tick_time,
-        tick.bid_price,
-        tick.ask_price,
-        tick.mid_price,
-        tick.volume
-      ]
+      [tick.symbol, tick.tick_time, tick.bid_price, tick.ask_price, tick.mid_price, tick.volume]
     );
     return result.rows[0];
   }
@@ -40,11 +33,20 @@ export class TickRepository {
     if (ticks.length === 0) return;
 
     const values: any[] = [];
-    const placeholders = ticks.map((tick, i) => {
-      const offset = i * 6;
-      values.push(tick.symbol, tick.tick_time, tick.bid_price, tick.ask_price, tick.mid_price, tick.volume);
-      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`;
-    }).join(', ');
+    const placeholders = ticks
+      .map((tick, i) => {
+        const offset = i * 6;
+        values.push(
+          tick.symbol,
+          tick.tick_time,
+          tick.bid_price,
+          tick.ask_price,
+          tick.mid_price,
+          tick.volume
+        );
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`;
+      })
+      .join(', ');
 
     await this.client.query(
       `INSERT INTO pricing.price_ticks (symbol, tick_time, bid_price, ask_price, mid_price, volume)

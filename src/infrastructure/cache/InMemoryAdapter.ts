@@ -1,4 +1,5 @@
 import { ICache } from './ICache';
+import { EventEmitter } from 'events';
 
 interface CacheEntry {
   value: any;
@@ -9,6 +10,8 @@ interface CacheEntry {
 export class InMemoryAdapter implements ICache {
   private cache: Map<string, CacheEntry> = new Map();
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private eventEmitter: EventEmitter = new EventEmitter();
+  private subscriptions: Map<string, Set<(message: string) => void>> = new Map();
 
   constructor() {
     this.startCleanup();
@@ -66,9 +69,27 @@ export class InMemoryAdapter implements ICache {
     return Array.from(this.cache.keys()).filter((key) => regex.test(key));
   }
 
-  async publish(_channel: string, _message: string): Promise<void> {
-    // In-memory Pub/Sub mock
-    // In a real implementation with EventEmitter, this could trigger listeners
+  async publish(channel: string, message: string): Promise<void> {
+    // In-memory Pub/Sub implementation
+    this.eventEmitter.emit(channel, message);
+  }
+
+  async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
+    if (!this.subscriptions.has(channel)) {
+      this.subscriptions.set(channel, new Set());
+    }
+    this.subscriptions.get(channel)!.add(callback);
+    this.eventEmitter.on(channel, callback);
+  }
+
+  async unsubscribe(channel: string): Promise<void> {
+    const callbacks = this.subscriptions.get(channel);
+    if (callbacks) {
+      callbacks.forEach(callback => {
+        this.eventEmitter.removeListener(channel, callback);
+      });
+      this.subscriptions.delete(channel);
+    }
   }
 
   async close(): Promise<void> {
@@ -76,7 +97,17 @@ export class InMemoryAdapter implements ICache {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+    
+    // Clean up subscriptions
+    this.subscriptions.forEach((callbacks, channel) => {
+      callbacks.forEach(callback => {
+        this.eventEmitter.removeListener(channel, callback);
+      });
+    });
+    this.subscriptions.clear();
+    
     this.cache.clear();
+    this.eventEmitter.removeAllListeners();
   }
 
   private startCleanup(): void {

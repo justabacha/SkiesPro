@@ -8,11 +8,11 @@ export const validate = (req: Request, res: Response, next: NextFunction): void 
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Request validation failed',
-        details: errors.array().map(err => ({
+        details: errors.array().map((err) => ({
           field: (err as any).path,
-          message: err.msg
-        }))
-      }
+          message: err.msg,
+        })),
+      },
     });
     return;
   }

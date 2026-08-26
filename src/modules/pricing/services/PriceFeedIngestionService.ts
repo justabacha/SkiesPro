@@ -53,7 +53,10 @@ export class PriceFeedIngestionService {
       await this.tickRepo.saveBatch(ticksToSave);
       // logger.debug(`Saved batch of ${ticksToSave.length} ticks`);
     } catch (error: any) {
-      logger.error('Failed to save tick batch', { error: error.message, count: ticksToSave.length });
+      logger.error('Failed to save tick batch', {
+        error: error.message,
+        count: ticksToSave.length,
+      });
       // Re-add to buffer if failed? risky if it's a persistent error.
       // For now just log.
     }
@@ -93,4 +96,3 @@ export class PriceFeedIngestionService {
     }
   }
 }
-

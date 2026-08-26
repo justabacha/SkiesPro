@@ -3,13 +3,19 @@ import { cacheClient } from '../../../infrastructure/cache';
 export class PriceDistributionService {
   private readonly cluster = 'pricing';
 
-  async distributeTick(symbol: string, bid: string, ask: string, mid: string, time: Date): Promise<void> {
+  async distributeTick(
+    symbol: string,
+    bid: string,
+    ask: string,
+    mid: string,
+    time: Date
+  ): Promise<void> {
     const tickData = {
       symbol,
       bid,
       ask,
       mid,
-      time: time.toISOString()
+      time: time.toISOString(),
     };
 
     const message = JSON.stringify(tickData);

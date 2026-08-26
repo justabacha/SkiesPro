@@ -2,15 +2,18 @@ import { Decimal } from 'decimal.js';
 import { CandleRepository } from '../repositories/candleRepository';
 
 export class OHLCService {
-  private currentCandles: Map<string, {
-    symbol: string;
-    open: Decimal;
-    high: Decimal;
-    low: Decimal;
-    close: Decimal;
-    volume: bigint;
-    openTime: Date;
-  }> = new Map();
+  private currentCandles: Map<
+    string,
+    {
+      symbol: string;
+      open: Decimal;
+      high: Decimal;
+      low: Decimal;
+      close: Decimal;
+      volume: bigint;
+      openTime: Date;
+    }
+  > = new Map();
 
   constructor(private candleRepo: CandleRepository) {}
 
@@ -44,7 +47,7 @@ export class OHLCService {
         low: priceDec,
         close: priceDec,
         volume: volBig,
-        openTime
+        openTime,
       });
     }
   }
@@ -59,7 +62,7 @@ export class OHLCService {
       high_price: candle.high.toString(),
       low_price: candle.low.toString(),
       close_price: candle.close.toString(),
-      volume: candle.volume.toString()
+      volume: candle.volume.toString(),
     });
   }
 
@@ -67,7 +70,8 @@ export class OHLCService {
   async flush(): Promise<void> {
     const now = new Date();
     const granularity = 60;
-    const currentOpenTimeMs = Math.floor(now.getTime() / (granularity * 1000)) * (granularity * 1000);
+    const currentOpenTimeMs =
+      Math.floor(now.getTime() / (granularity * 1000)) * (granularity * 1000);
 
     for (const [key, candle] of this.currentCandles.entries()) {
       if (candle.openTime.getTime() < currentOpenTimeMs) {

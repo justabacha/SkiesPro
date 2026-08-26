@@ -23,14 +23,18 @@ export class PriceValidationService {
 
     // Check for stale price (time travel or extremely delayed ticks)
     if (time.getTime() < last.time.getTime()) {
-      logger.warn(`Stale tick detected for ${symbol}: tick time ${time.toISOString()} is older than last tick ${last.time.toISOString()}`);
+      logger.warn(
+        `Stale tick detected for ${symbol}: tick time ${time.toISOString()} is older than last tick ${last.time.toISOString()}`
+      );
       return false;
     }
 
     // 5% deviation rule
     const deviation = price.minus(last.price).abs().div(last.price);
     if (deviation.greaterThan(this.thresholdPct)) {
-      logger.error(`Abnormal price deviation for ${symbol}: ${deviation.mul(100).toFixed(2)}% (last: ${last.price}, new: ${price})`);
+      logger.error(
+        `Abnormal price deviation for ${symbol}: ${deviation.mul(100).toFixed(2)}% (last: ${last.price}, new: ${price})`
+      );
       return false;
     }
 

@@ -43,7 +43,7 @@ export class CandleRepository {
         candle.high_price,
         candle.low_price,
         candle.close_price,
-        candle.volume
+        candle.volume,
       ]
     );
     return result.rows[0];

@@ -46,7 +46,7 @@ async function main() {
   });
 }
 
-main().catch(err => {
+main().catch((err) => {
   logger.error('Failed to start Pricing Service Daemon', { error: err.message });
   process.exit(1);
 });

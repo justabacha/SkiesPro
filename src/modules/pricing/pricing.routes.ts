@@ -15,10 +15,7 @@ router.get('/assets', (req, res) => controller.getAssets(req, res));
 
 router.get(
   '/assets/:symbol/price',
-  [
-    param('symbol').isString().notEmpty(),
-    validate
-  ],
+  [param('symbol').isString().notEmpty(), validate],
   (req: any, res: any) => controller.getPrice(req, res)
 );
 
@@ -30,7 +27,7 @@ router.get(
     query('from').optional().isISO8601(),
     query('to').optional().isISO8601(),
     query('limit').optional().isInt({ min: 1, max: 1000 }),
-    validate
+    validate,
   ],
   (req: any, res: any) => controller.getCandles(req, res)
 );

@@ -1,5 +1,19 @@
 import { ICache, CacheCluster } from './ICache';
 import { InMemoryAdapter } from './InMemoryAdapter';
+import { RedisAdapter } from './RedisAdapter';
+
+function createDefaultCacheAdapter(cluster: 'sessions' | 'pricing'): ICache {
+  const redisUrl =
+    cluster === 'sessions'
+      ? process.env.SESSIONS_REDIS_URL || process.env.REDIS_URL
+      : process.env.PRICING_REDIS_URL || process.env.REDIS_URL;
+
+  if (redisUrl && redisUrl.trim()) {
+    return new RedisAdapter(redisUrl);
+  }
+
+  return new InMemoryAdapter();
+}
 
 export class CacheClient {
   private sessionsCluster: ICache;
@@ -7,8 +21,8 @@ export class CacheClient {
   private failClosedMode: boolean = false;
 
   constructor(sessionsAdapter?: ICache, pricingAdapter?: ICache) {
-    this.sessionsCluster = sessionsAdapter || new InMemoryAdapter();
-    this.pricingCluster = pricingAdapter || new InMemoryAdapter();
+    this.sessionsCluster = sessionsAdapter || createDefaultCacheAdapter('sessions');
+    this.pricingCluster = pricingAdapter || createDefaultCacheAdapter('pricing');
   }
 
   async get(cluster: CacheCluster, key: string): Promise<any> {
@@ -76,6 +90,32 @@ export class CacheClient {
       const cache = this.getCluster(cluster);
       if (cache.publish) {
         await cache.publish(channel, message);
+      }
+    } catch (error) {
+      this.handleCacheError(error);
+    }
+  }
+
+  async subscribe(
+    cluster: CacheCluster,
+    channel: string,
+    callback: (message: string) => void
+  ): Promise<void> {
+    try {
+      const cache = this.getCluster(cluster);
+      if (cache.subscribe) {
+        await cache.subscribe(channel, callback);
+      }
+    } catch (error) {
+      this.handleCacheError(error);
+    }
+  }
+
+  async unsubscribe(cluster: CacheCluster, channel: string): Promise<void> {
+    try {
+      const cache = this.getCluster(cluster);
+      if (cache.unsubscribe) {
+        await cache.unsubscribe(channel);
       }
     } catch (error) {
       this.handleCacheError(error);

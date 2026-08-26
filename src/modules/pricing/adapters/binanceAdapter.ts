@@ -13,19 +13,21 @@ export class BinanceAdapter {
   private ws: any;
   private readonly baseUrl = 'wss://stream.binance.com:9443/ws';
   private readonly symbolMapping: Record<string, string> = {
-    'EURUSDT': 'EUR/USD',
-    'GBPUSDT': 'GBP/USD',
-    'USDJPY': 'USD/JPY',
-    'PAXGUSDT': 'XAU/USD',
-    'BTCUSDT': 'BTC/USD',
-    'ETHUSDT': 'ETH/USD',
-    'USDCUSDT': 'WTI/USD' // Placeholder for Oil
+    EURUSDT: 'EUR/USD',
+    GBPUSDT: 'GBP/USD',
+    USDJPY: 'USD/JPY',
+    PAXGUSDT: 'XAU/USD',
+    BTCUSDT: 'BTC/USD',
+    ETHUSDT: 'ETH/USD',
+    USDCUSDT: 'WTI/USD', // Placeholder for Oil
   };
 
   constructor(private onTick: (symbol: string, bid: string, ask: string, time: Date) => void) {}
 
   connect() {
-    const streams = Object.keys(this.symbolMapping).map(s => `${s.toLowerCase()}@bookTicker`).join('/');
+    const streams = Object.keys(this.symbolMapping)
+      .map((s) => `${s.toLowerCase()}@bookTicker`)
+      .join('/');
     const url = `${this.baseUrl}/${streams}`;
 
     logger.info(`Connecting to Binance WebSocket: ${url}`);

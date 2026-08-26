@@ -1,13 +1,15 @@
 import { pgPool } from '../../../config/database';
 import { PriceValidationService } from './priceValidationService';
+import { normalizeSymbol } from '../utils/symbolNormalizer';
 
 export class MarketStatusService {
   constructor(private validationService: PriceValidationService) {}
 
   async isMarketOpen(symbol: string): Promise<boolean> {
+    const normalizedSymbol = normalizeSymbol(symbol);
     const result = await pgPool.query(
       `SELECT opens_at, closes_at, timezone, is_24_7 FROM pricing.market_hours WHERE asset_symbol = $1`,
-      [symbol]
+      [normalizedSymbol]
     );
 
     if (result.rowCount === 0) return true; // Default to open if not configured
@@ -16,7 +18,7 @@ export class MarketStatusService {
     if (hours.is_24_7) return true;
 
     // Check if feed is stale
-    if (this.validationService.isStale(symbol)) {
+    if (this.validationService.isStale(normalizedSymbol)) {
       return false;
     }
 
@@ -33,9 +35,10 @@ export class MarketStatusService {
   }
 
   async getMarketHours(symbol: string) {
+    const normalizedSymbol = normalizeSymbol(symbol);
     const result = await pgPool.query(
       `SELECT asset_symbol, opens_at, closes_at, timezone, is_24_7 FROM pricing.market_hours WHERE asset_symbol = $1`,
-      [symbol]
+      [normalizedSymbol]
     );
     return result.rows[0] || null;
   }
