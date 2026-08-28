@@ -5,9 +5,10 @@ import { PriceDistributionService } from './services/priceDistributionService';
 import { OHLCService } from './services/OHLCService';
 import { CandleRepository } from './repositories/candleRepository';
 import { logger } from '../../shared/middleware/logger';
+import { config } from '../../config/app';
 
 export async function bootstrapPriceFeed() {
-  logger.info('Initializing Price Feed Service...');
+  logger.info('Initializing Price Feed Service...', { useMockPrices: config.useMockPrices });
 
   const validationService = new PriceValidationService();
   const tickRepo = new TickRepository();
@@ -19,7 +20,8 @@ export async function bootstrapPriceFeed() {
     validationService,
     tickRepo,
     distributionService,
-    ohlcService
+    ohlcService,
+    config.useMockPrices
   );
 
   ingestionService.start();

@@ -1,3 +1,4 @@
+import WebSocket from 'ws';
 import { logger } from '../../../shared/middleware/logger';
 
 export interface BinanceTick {
@@ -10,7 +11,7 @@ export interface BinanceTick {
 }
 
 export class BinanceAdapter {
-  private ws: any;
+  private ws: WebSocket | null = null;
   private readonly baseUrl = 'wss://stream.binance.com:9443/ws';
   private readonly symbolMapping: Record<string, string> = {
     EURUSDT: 'EUR/USD',
@@ -22,7 +23,10 @@ export class BinanceAdapter {
     USDCUSDT: 'WTI/USD', // Placeholder for Oil
   };
 
-  constructor(private onTick: (symbol: string, bid: string, ask: string, time: Date) => void) {}
+  constructor(
+    private onTick: (symbol: string, bid: string, ask: string, time: Date) => void,
+    private onError?: (error: any) => void
+  ) {}
 
   connect() {
     const streams = Object.keys(this.symbolMapping)
@@ -55,11 +59,13 @@ export class BinanceAdapter {
 
     this.ws.onerror = (error: any) => {
       logger.error('Binance WebSocket error', { error: error.message });
+      if (this.onError) {
+        this.onError(error);
+      }
     };
 
     this.ws.onclose = () => {
-      logger.warn('Binance WebSocket closed. Reconnecting in 5s...');
-      setTimeout(() => this.connect(), 5000);
+      logger.warn('Binance WebSocket closed');
     };
   }
 

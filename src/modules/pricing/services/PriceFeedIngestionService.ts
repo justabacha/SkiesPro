@@ -1,4 +1,5 @@
 import { BinanceAdapter } from '../adapters/binanceAdapter';
+import { MockPriceAdapter } from '../adapters/mockPriceAdapter';
 import { PriceValidationService } from './priceValidationService';
 import { TickRepository, TickRow } from '../repositories/tickRepository';
 import { PriceDistributionService } from './priceDistributionService';
@@ -7,7 +8,8 @@ import { Decimal } from 'decimal.js';
 import { logger } from '../../../shared/middleware/logger';
 
 export class PriceFeedIngestionService {
-  private adapter: BinanceAdapter;
+  private adapter: BinanceAdapter | MockPriceAdapter;
+  private isUsingMock: boolean = false;
   private tickBuffer: Omit<TickRow, 'id' | 'created_at'>[] = [];
   private readonly batchSize = 50;
   private readonly flushInterval = 1000; // 1 second
@@ -16,9 +18,18 @@ export class PriceFeedIngestionService {
     private validationService: PriceValidationService,
     private tickRepo: TickRepository,
     private distributionService: PriceDistributionService,
-    private ohlcService: OHLCService
+    private ohlcService: OHLCService,
+    private useMockFallback: boolean = false
   ) {
-    this.adapter = new BinanceAdapter(this.handleTick.bind(this));
+    if (this.useMockFallback) {
+      this.adapter = new MockPriceAdapter(this.handleTick.bind(this));
+      this.isUsingMock = true;
+    } else {
+      this.adapter = new BinanceAdapter(
+        this.handleTick.bind(this),
+        this.handleBinanceError.bind(this)
+      );
+    }
   }
 
   start() {
@@ -41,6 +52,31 @@ export class PriceFeedIngestionService {
 
   stop() {
     this.adapter.disconnect();
+  }
+
+  private handleBinanceError(error: any) {
+    if (!this.isUsingMock) {
+      logger.warn('Binance connection failed, falling back to mock prices', {
+        error: error.message,
+      });
+      this.switchToMock();
+    }
+  }
+
+  private switchToMock() {
+    this.isUsingMock = true;
+    // Disconnect old adapter if it was Binance
+    if (this.adapter instanceof BinanceAdapter) {
+      try {
+        this.adapter.disconnect();
+      } catch (e) {
+        // Ignore disconnect errors
+      }
+    }
+
+    this.adapter = new MockPriceAdapter(this.handleTick.bind(this));
+    this.adapter.connect();
+    logger.info('Switched to Mock Price Adapter');
   }
 
   private async flushTicks() {
