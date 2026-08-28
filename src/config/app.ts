@@ -15,4 +15,5 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   corsOrigin: parseCorsOrigins(),
   logLevel: process.env.LOG_LEVEL || 'info',
+  enablePriceFeed: process.env.ENABLE_PRICE_FEED === 'true',
 };

@@ -78,6 +78,15 @@ const server = http.createServer(app);
 // Attach WebSocket server
 attachWebSocketServer(server);
 
+// Automatically start price feed if enabled (for single-service deployments like Render Free Tier)
+if (config.enablePriceFeed) {
+  import('./modules/pricing/bootstrap')
+    .then((m) => m.bootstrapPriceFeed())
+    .catch((err) => {
+      logger.error('Failed to auto-start price feed', { error: err.message });
+    });
+}
+
 if (process.env.NODE_ENV !== 'test') {
   server.listen(PORT, () => {
     logger.info(`Server started on port ${PORT} in ${config.nodeEnv} mode`);
