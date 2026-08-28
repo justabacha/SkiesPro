@@ -80,7 +80,7 @@ attachWebSocketServer(server);
 
 // Automatically start price feed if enabled (for single-service deployments like Render Free Tier)
 if (config.enablePriceFeed) {
-  import('./modules/pricing/bootstrap')
+  import('./modules/pricing/bootstrap.js')
     .then((m) => m.bootstrapPriceFeed())
     .catch((err) => {
       logger.error('Failed to auto-start price feed', { error: err.message });
