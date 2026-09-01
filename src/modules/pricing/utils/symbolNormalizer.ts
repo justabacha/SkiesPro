@@ -11,6 +11,8 @@
  */
 
 export function normalizeSymbol(symbol: string): string {
+  if (!symbol) return '';
+
   // If already contains a slash, return as-is
   if (symbol.includes('/')) {
     return symbol.toUpperCase();

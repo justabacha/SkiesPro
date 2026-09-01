@@ -32,14 +32,24 @@ export class ContractController {
   async placeTrade(req: Request, res: Response) {
     try {
       const userId = (req as any).user.sub;
-      const contract = await tradingService.placeTrade(userId, req.body);
+
+      // Map snake_case API request to camelCase Service request
+      const placeTradeRequest = {
+        assetSymbol: req.body.asset_symbol,
+        contractType: req.body.contract_type,
+        stake: req.body.stake,
+        expirySeconds: req.body.expiry_seconds,
+      };
+
+      const contract = await tradingService.placeTrade(userId, placeTradeRequest);
 
       return res.status(201).json({
         status: 'success',
         data: this.mapToResponse(contract),
       });
     } catch (error: any) {
-      console.error('Trade placement failed:', error.message);
+      const errorMessage = error.message || 'An unknown error occurred';
+      console.error('Trade placement failed:', errorMessage);
 
       // Map validation errors to 422
       const validationErrors = [
@@ -53,11 +63,11 @@ export class ContractController {
         'account is not active',
       ];
 
-      const isValidationError = validationErrors.some((msg) => error.message.includes(msg));
+      const isValidationError = validationErrors.some((msg) => errorMessage.includes(msg));
 
       return res.status(isValidationError ? 422 : 400).json({
         status: 'error',
-        message: error.message,
+        message: errorMessage,
       });
     }
   }
@@ -65,7 +75,16 @@ export class ContractController {
   async getHistory(req: Request, res: Response) {
     try {
       const userId = (req as any).user.sub;
-      const trades = await tradingService.getTradeHistory(userId, req.query);
+
+      // Map snake_case filters to camelCase
+      const filters = {
+        status: req.query.status as string,
+        assetSymbol: req.query.asset_symbol as string,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        cursor: req.query.cursor as string,
+      };
+
+      const trades = await tradingService.getTradeHistory(userId, filters);
 
       return res.json({
         status: 'success',
