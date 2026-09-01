@@ -17,16 +17,23 @@ export class SettlementWorker {
 
   async start(): Promise<void> {
     logger.info('Settlement Worker starting...');
-    await messageQueueClient.subscribe('trade.expiry', async (message: string) => {
+    await messageQueueClient.subscribe('trade.expiry', async (payload: any, ack, nack) => {
       try {
-        const payload = JSON.parse(message);
-        if (!payload.contractId) {
-          logger.warn('Received expiry message without contractId', { payload });
+        if (!payload || !payload.contractId) {
+          logger.warn('Received invalid expiry message', { payload });
+          ack();
           return;
         }
+
         await this.settle(payload.contractId);
+        ack();
       } catch (error: any) {
-        logger.error('Failed to process settlement message', { error: error.message, message });
+        logger.error('Failed to process settlement message', {
+          error: error.message,
+          contractId: payload?.contractId
+        });
+        // Nack with requeue so it can be retried
+        nack(true);
       }
     });
   }
