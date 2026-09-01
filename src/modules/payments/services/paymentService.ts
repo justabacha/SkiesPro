@@ -118,6 +118,13 @@ export class PaymentService {
       }
 
       if (resultCode === 0) {
+        // PRODUCTION HARDENING: Check if already completed to prevent double-crediting
+        if (deposit.status === 'completed') {
+          logger.warn('Prevented double-credit attempt on completed deposit', { depositId: deposit.id });
+          await client.query('ROLLBACK');
+          return;
+        }
+
         await paymentRepoTx.updateDepositStatus(deposit.id, 'completed', payload);
 
         await walletServiceTx.credit(
@@ -128,9 +135,10 @@ export class PaymentService {
           `M-Pesa Deposit: ${checkoutRequestId}`
         );
 
-        logger.info('Deposit completed and wallet credited', {
+        logger.info('Deposit completed and wallet credited successfully', {
           depositId: deposit.id,
           userId: deposit.user_id,
+          amount: deposit.net_amount
         });
       } else {
         await paymentRepoTx.updateDepositStatus(deposit.id, 'failed', payload);

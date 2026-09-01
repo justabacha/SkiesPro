@@ -8,14 +8,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class MpesaMockAdapter implements IPaymentGateway {
   async initiateStkPush(request: StkPushRequest): Promise<StkPushResponse> {
+    const mockRef = `ws_CO_${Date.now()}`;
     console.log(
-      `[MpesaMockAdapter] Initiating STK Push for user ${request.userId}, amount ${request.amount}, phone ${request.phone}`
+      `[MpesaMockAdapter] Initiating STK Push for user ${request.userId}, amount ${request.amount}, phone ${request.phone}. Ref: ${mockRef}`
     );
 
-    // Simulate a successful response from Safaricom
     return {
       merchantRequestId: uuidv4(),
-      checkoutRequestId: uuidv4(),
+      checkoutRequestId: mockRef,
       responseCode: '0',
       responseDescription: 'Success. Request accepted for processing',
       customerMessage: 'Success. Request accepted for processing',
@@ -23,7 +23,7 @@ export class MpesaMockAdapter implements IPaymentGateway {
   }
 
   async queryTransactionStatus(checkoutRequestId: string): Promise<TransactionStatusResponse> {
-    console.log(`[MpesaMockAdapter] Querying status for ${checkoutRequestId}`);
+    console.log(`[MpesaMockAdapter] Auto-approving status for ${checkoutRequestId}`);
 
     return {
       merchantRequestId: uuidv4(),
