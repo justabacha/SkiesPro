@@ -4,7 +4,7 @@ import { AssetService } from '../services/assetService.js';
 const assetService = new AssetService();
 
 export class AssetController {
-  async listAssets(_req: Request, res: Response) {
+  listAssets = async (_req: Request, res: Response) => {
     try {
       const assets = await assetService.listAssets();
       return res.json({
@@ -17,9 +17,9 @@ export class AssetController {
         message: error.message,
       });
     }
-  }
+  };
 
-  async getAssetDetail(req: Request, res: Response) {
+  getAssetDetail = async (req: Request, res: Response) => {
     try {
       const { symbol } = req.params;
       const detail = await assetService.getAssetDetail(symbol);
@@ -33,5 +33,5 @@ export class AssetController {
         message: error.message,
       });
     }
-  }
+  };
 }

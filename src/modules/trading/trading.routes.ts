@@ -13,8 +13,8 @@ const contractController = new ContractController();
 const assetController = new AssetController();
 
 // Asset routes
-router.get('/assets', authenticateToken, assetController.listAssets);
-router.get('/assets/:symbol', authenticateToken, assetController.getAssetDetail);
+router.get('/assets', authenticateToken, (req, res) => assetController.listAssets(req, res));
+router.get('/assets/:symbol', authenticateToken, (req, res) => assetController.getAssetDetail(req, res));
 
 // Contract routes
 router.post(
@@ -23,10 +23,10 @@ router.post(
   tradingRateLimit,
   authorizeTrader,
   requireIdempotencyKey,
-  contractController.placeTrade
+  (req, res) => contractController.placeTrade(req, res)
 );
-router.get('/contracts', authenticateToken, contractController.getHistory);
-router.get('/contracts/active', authenticateToken, contractController.getActive);
-router.get('/contracts/:id', authenticateToken, contractController.getById);
+router.get('/contracts', authenticateToken, (req, res) => contractController.getHistory(req, res));
+router.get('/contracts/active', authenticateToken, (req, res) => contractController.getActive(req, res));
+router.get('/contracts/:id', authenticateToken, (req, res) => contractController.getById(req, res));
 
 export default router;

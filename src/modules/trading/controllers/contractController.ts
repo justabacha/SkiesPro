@@ -12,7 +12,7 @@ const pricingService = new PricingService(marketStatusService);
 const tradingService = new TradingService(pricingService);
 
 export class ContractController {
-  private mapToResponse(contract: BinaryContract): TradeResponse {
+  private mapToResponse = (contract: BinaryContract): TradeResponse => {
     return {
       id: contract.id!,
       user_id: contract.userId,
@@ -27,9 +27,9 @@ export class ContractController {
       expiry_time: contract.expiryTime.toISOString(),
       status: contract.status,
     };
-  }
+  };
 
-  async placeTrade(req: Request, res: Response) {
+  placeTrade = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.sub;
 
@@ -70,9 +70,9 @@ export class ContractController {
         message: errorMessage,
       });
     }
-  }
+  };
 
-  async getHistory(req: Request, res: Response) {
+  getHistory = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.sub;
 
@@ -96,9 +96,9 @@ export class ContractController {
         message: error.message,
       });
     }
-  }
+  };
 
-  async getActive(req: Request, res: Response) {
+  getActive = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.sub;
       const trades = await tradingService.getActiveTrades(userId);
@@ -113,9 +113,9 @@ export class ContractController {
         message: error.message,
       });
     }
-  }
+  };
 
-  async getById(req: Request, res: Response) {
+  getById = async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.sub;
       const { id } = req.params;
@@ -131,5 +131,5 @@ export class ContractController {
         message: error.message,
       });
     }
-  }
+  };
 }
