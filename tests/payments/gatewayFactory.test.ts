@@ -1,6 +1,6 @@
-import { MpesaGatewayFactory } from '../../src/modules/payments/adapters/mpesa/MpesaGatewayFactory';
-import { MpesaMockAdapter } from '../../src/modules/payments/adapters/mpesa/MpesaMockAdapter';
-import { DarajaMpesaAdapter } from '../../src/modules/payments/adapters/mpesa/DarajaMpesaAdapter';
+import { MpesaGatewayFactory } from '../../src/modules/payments/adapters/mpesa/MpesaGatewayFactory.js';
+import { MpesaMockAdapter } from '../../src/modules/payments/adapters/mpesa/MpesaMockAdapter.js';
+import { DarajaMpesaAdapter } from '../../src/modules/payments/adapters/mpesa/DarajaMpesaAdapter.js';
 
 describe('MpesaGatewayFactory', () => {
   const originalEnv = process.env;

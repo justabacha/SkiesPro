@@ -1,7 +1,7 @@
-import { UserRepository, UserRow } from '../../auth/repositories/userRepository';
-import { storageClient } from '../../../shared/storage/supabaseStorage';
-import { UpdateProfileDto } from '../dto/UpdateProfileDto';
-import { ProfileResponseDto } from '../dto/ProfileResponseDto';
+import { UserRepository, UserRow } from '../../auth/repositories/userRepository.js';
+import { storageClient } from '../../../shared/storage/supabaseStorage.js';
+import { UpdateProfileDto } from '../dto/UpdateProfileDto.js';
+import { ProfileResponseDto } from '../dto/ProfileResponseDto.js';
 
 export class UserService {
   private userRepo: UserRepository;

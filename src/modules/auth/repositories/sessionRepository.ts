@@ -1,4 +1,4 @@
-import { pgPool } from '../../../config/database';
+import { pgPool } from '../../../config/database.js';
 
 export interface SessionRow {
   id: string;

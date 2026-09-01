@@ -1,6 +1,6 @@
-import { cacheClient } from '../../../infrastructure/cache';
-import { ConnectionManager } from './connectionManager';
-import { logger } from '../../../shared/middleware/logger';
+import { cacheClient } from '../../../infrastructure/cache/index.js';
+import { ConnectionManager } from './connectionManager.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export interface PriceTick {
   symbol: string;

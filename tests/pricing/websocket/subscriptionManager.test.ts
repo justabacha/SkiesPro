@@ -1,5 +1,5 @@
-import { SubscriptionManager } from '../../../src/modules/pricing/websocket/subscriptionManager';
-import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager';
+import { SubscriptionManager } from '../../../src/modules/pricing/websocket/subscriptionManager.js';
+import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager.js';
 
 jest.mock('../../../src/modules/pricing/websocket/connectionManager');
 

@@ -11,14 +11,40 @@ INSERT INTO trading.assets (symbol, name, asset_type, is_active) VALUES
 ON CONFLICT (symbol) DO NOTHING;
 
 -- Insert asset configurations (values from ProjectAnswers.md)
-INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake, min_duration_seconds, max_duration_seconds, payout_ratio, is_tradable)
-VALUES
-('EUR/USD', 500.00, 500000.00, 30, 3600, 0.85, TRUE),
-('GBP/USD', 500.00, 500000.00, 30, 3600, 0.85, TRUE),
-('USD/JPY', 500.00, 500000.00, 30, 3600, 0.85, TRUE),
-('XAU/USD', 500.00, 500000.00, 30, 3600, 0.85, TRUE),
-('WTI/USD', 500.00, 500000.00, 30, 3600, 0.85, TRUE)
-ON CONFLICT (asset_symbol) DO NOTHING;
+DO $$
+DECLARE
+    payout_col TEXT;
+    max_stake_col TEXT;
+    active_col TEXT;
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='asset_config' AND column_name='payout_rate') THEN
+        payout_col := 'payout_rate';
+    ELSE
+        payout_col := 'payout_ratio';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='asset_config' AND column_name='max_stake_per_trade') THEN
+        max_stake_col := 'max_stake_per_trade';
+    ELSE
+        max_stake_col := 'max_stake';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='asset_config' AND column_name='is_active') THEN
+        active_col := 'is_active';
+    ELSE
+        active_col := 'is_tradable';
+    END IF;
+
+    EXECUTE format('
+    INSERT INTO trading.asset_config (asset_symbol, min_stake, %I, min_duration_seconds, max_duration_seconds, %I, %I)
+    VALUES
+    (''EUR/USD'', 500.00, 500000.00, 30, 3600, 0.60, TRUE),
+    (''GBP/USD'', 500.00, 500000.00, 30, 3600, 0.60, TRUE),
+    (''USD/JPY'', 500.00, 500000.00, 30, 3600, 0.60, TRUE),
+    (''XAU/USD'', 500.00, 500000.00, 30, 3600, 0.60, TRUE),
+    (''WTI/USD'', 500.00, 500000.00, 30, 3600, 0.60, TRUE)
+    ON CONFLICT (asset_symbol) DO NOTHING', max_stake_col, payout_col, active_col);
+END $$;
 
 -- Insert market hours (assuming 24/7 for forex, specific hours for commodities)
 INSERT INTO pricing.market_hours (asset_symbol, opens_at, closes_at, timezone, is_24_7)

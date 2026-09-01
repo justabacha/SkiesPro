@@ -1,9 +1,9 @@
-import { AuthService } from '../../src/modules/auth/services/authService';
-import { UserRepository } from '../../src/modules/auth/repositories/userRepository';
-import { TokenService } from '../../src/modules/auth/services/tokenService';
-import { MfaRepository } from '../../src/modules/auth/repositories/mfaRepository';
-import { OutboxRepository } from '../../src/modules/auth/repositories/outboxRepository';
-import { pgPool } from '../../src/config/database';
+import { AuthService } from '../../src/modules/auth/services/authService.js';
+import { UserRepository } from '../../src/modules/auth/repositories/userRepository.js';
+import { TokenService } from '../../src/modules/auth/services/tokenService.js';
+import { MfaRepository } from '../../src/modules/auth/repositories/mfaRepository.js';
+import { OutboxRepository } from '../../src/modules/auth/repositories/outboxRepository.js';
+import { pgPool } from '../../src/config/database.js';
 import bcrypt from 'bcrypt';
 
 jest.mock('../../src/modules/auth/repositories/userRepository');

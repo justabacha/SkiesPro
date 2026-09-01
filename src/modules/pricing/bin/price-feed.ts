@@ -4,8 +4,8 @@ import * as path from 'path';
 // Load env vars
 dotenv.config({ path: path.join(__dirname, '../../../../.env') });
 
-import { bootstrapPriceFeed } from '../bootstrap';
-import { logger } from '../../../shared/middleware/logger';
+import { bootstrapPriceFeed } from '../bootstrap.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 async function main() {
   const ingestionService = await bootstrapPriceFeed();

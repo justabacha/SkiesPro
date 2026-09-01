@@ -1,5 +1,5 @@
-import { TokenService } from '../../src/modules/auth/services/tokenService';
-import { SessionRepository } from '../../src/modules/auth/repositories/sessionRepository';
+import { TokenService } from '../../src/modules/auth/services/tokenService.js';
+import { SessionRepository } from '../../src/modules/auth/repositories/sessionRepository.js';
 
 jest.mock('../../src/modules/auth/repositories/sessionRepository');
 

@@ -936,7 +936,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
     },
     "display": {
       "theme": "dark",
-      "currency": "USD",
+      "currency": "KES",
       "timezone": "Africa/Nairobi"
     }
   },
@@ -1014,7 +1014,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
     "balance": "1500.0000",
     "locked_balance": "200.0000",
     "available_balance": "1300.0000",
-    "currency": "USD"
+    "currency": "KES"
   },
   "meta": { "request_id": "..." }
 }
@@ -1093,7 +1093,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
 ```json
 {
   "amount": "100.00",
-  "currency": "USD",
+  "currency": "KES",
   "gateway_id": 1,
   "phone": "+254712345678" (optional, for mobile money),
   "redirect_url": "https://app.example.com/deposit/complete" (optional, for card)
@@ -1194,7 +1194,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
 ```json
 {
   "amount": "50.00",
-  "currency": "USD",
+  "currency": "KES",
   "gateway_id": 1,
   "phone": "+254712345678",
   "account_details": {} (optional, provider-specific)
@@ -1355,7 +1355,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
     "asset_symbol": "EUR/USD",
     "contract_type": "higher",
     "stake": "50.00",
-    "payout_rate": "0.80",
+    "payout_rate": "0.60",
     "status": "active",
     "strike_price": "1.123450",
     "purchase_time": "2026-07-22T14:30:00.000Z",
@@ -1395,11 +1395,11 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
     "asset_symbol": "EUR/USD",
     "contract_type": "higher",
     "stake": "50.00",
-    "payout_rate": "0.80",
+    "payout_rate": "0.60",
     "status": "won",
     "strike_price": "1.123450",
     "expiry_price": "1.124500",
-    "payout_amount": "90.00",
+    "payout_amount": "80.00",
     "purchase_time": "2026-07-22T14:30:00.000Z",
     "expiry_time": "2026-07-22T14:35:00.000Z",
     "settled_at": "2026-07-22T14:35:01.500Z"

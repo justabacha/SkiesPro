@@ -1,6 +1,6 @@
-import { IPaymentGateway } from './IPaymentGateway';
-import { MpesaMockAdapter } from './MpesaMockAdapter';
-import { DarajaMpesaAdapter } from './DarajaMpesaAdapter';
+import { IPaymentGateway } from './IPaymentGateway.js';
+import { MpesaMockAdapter } from './MpesaMockAdapter.js';
+import { DarajaMpesaAdapter } from './DarajaMpesaAdapter.js';
 
 export class MpesaGatewayFactory {
   static getGateway(): IPaymentGateway {

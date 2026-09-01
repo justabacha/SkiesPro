@@ -1,5 +1,5 @@
-import { WebSocketAuthMiddleware } from '../../../src/modules/pricing/websocket/authMiddleware';
-import { TokenService } from '../../../src/modules/auth/services/tokenService';
+import { WebSocketAuthMiddleware } from '../../../src/modules/pricing/websocket/authMiddleware.js';
+import { TokenService } from '../../../src/modules/auth/services/tokenService.js';
 
 jest.mock('../../../src/modules/auth/services/tokenService');
 

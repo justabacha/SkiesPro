@@ -1,6 +1,6 @@
-import { pgPool } from '../../../config/database';
-import { PriceValidationService } from './priceValidationService';
-import { normalizeSymbol } from '../utils/symbolNormalizer';
+import { pgPool } from '../../../config/database.js';
+import { PriceValidationService } from './priceValidationService.js';
+import { normalizeSymbol } from '../utils/symbolNormalizer.js';
 
 export class MarketStatusService {
   constructor(private validationService: PriceValidationService) {}

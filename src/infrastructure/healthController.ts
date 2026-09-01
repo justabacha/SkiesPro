@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { logger } from '../shared/middleware/logger';
+import { logger } from '../shared/middleware/logger.js';
 
 /**
  * Health check should ALWAYS return 200 for MVP

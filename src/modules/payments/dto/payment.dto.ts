@@ -12,6 +12,7 @@ export interface DepositResponseDto {
   amount: string;
   currency: string;
   gateway_reference: string;
+  customer_message?: string;
 }
 
 export interface WithdrawRequestDto {

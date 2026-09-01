@@ -154,7 +154,7 @@ graph TD
 
 ### Module: Trading & Execution Engine
 *   **Purpose**: Manage the lifecycle of binary options contracts.
-*   **Inputs**: Target asset, direction, stake, duration.
+*   **Inputs**: Target asset, contract type, stake, duration.
 *   **Outputs**: Active trade records, locked balances, strike prices.
 *   **Business Rules**: Reject trades if execution latency is high. Reject contracts exceeding active asset limits.
 *   **Dependencies**: Wallets & Ledger, Market Data.
@@ -162,7 +162,7 @@ graph TD
 
 | ID | Description | Inputs | Outputs | Dependencies |
 | :--- | :--- | :--- | :--- | :--- |
-| **FR-TRD-001** | **Trade Placement**: Validate balance and buy a contract. | Asset, Stake, Expiry. | Contract ID, Strike Price. | FR-WLT-001 |
+| **FR-TRD-001** | **Trade Placement**: Validate balance and buy a contract. | Asset, Contract Type, Stake, Expiry. | Contract ID, Strike Price. | FR-WLT-001 |
 | **FR-TRD-002** | **Strike Price Capture**: Timestamp and lock the asset price. | Asset symbol. | Entry Strike Price. | FR-TRD-001 |
 | **FR-TRD-003** | **Active Trades Query**: List active user contracts. | User ID. | List of open contracts. | FR-TRD-001 |
 
@@ -295,7 +295,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    Trader->>API Gateway: Click Place Contract (Symbol, Direction, Stake, Expiry)
+    Trader->>API Gateway: Click Place Contract (Symbol, Contract Type, Stake, Expiry)
     API Gateway->>Database: Execute Transaction (Lock Stake / Verify Balance)
     API Gateway->>Redis Cache: Retrieve Current Price Tick
     API Gateway->>Database: Log Contract (Strike, Expiry Time, Status: Active)

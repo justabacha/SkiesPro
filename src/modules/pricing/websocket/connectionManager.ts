@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '../../../shared/middleware/logger';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export interface ConnectionInfo {
   id: string;
@@ -168,7 +168,7 @@ export class ConnectionManager {
     }
 
     let sentCount = 0;
-    userConns.forEach(connectionId => {
+    userConns.forEach((connectionId) => {
       if (this.sendToConnection(connectionId, message)) {
         sentCount++;
       }
@@ -201,7 +201,7 @@ export class ConnectionManager {
     }
 
     const connections: ConnectionInfo[] = [];
-    userConnIds.forEach(connId => {
+    userConnIds.forEach((connId) => {
       const conn = this.connections.get(connId);
       if (conn) {
         connections.push(conn);
@@ -223,14 +223,14 @@ export class ConnectionManager {
       // Check for timeout
       const now = new Date();
       const timeSinceLastSeen = now.getTime() - connection.lastSeen.getTime();
-      
+
       if (timeSinceLastSeen >= this.TIMEOUT_MS) {
         logger.warn('Connection timeout, closing', {
           connectionId: connection.id,
           userId: connection.userId,
           timeSinceLastSeen,
         });
-        
+
         if (connection.socket.readyState === WebSocket.OPEN) {
           connection.socket.close(4001, 'Timeout');
         }
@@ -301,7 +301,7 @@ export class ConnectionManager {
         }
       });
 
-      deadConnections.forEach(connId => {
+      deadConnections.forEach((connId) => {
         this.removeConnection(connId);
       });
 
@@ -319,7 +319,7 @@ export class ConnectionManager {
     totalSubscriptions: number;
   } {
     let totalSubscriptions = 0;
-    this.connections.forEach(conn => {
+    this.connections.forEach((conn) => {
       totalSubscriptions += conn.subscriptions.size;
     });
 

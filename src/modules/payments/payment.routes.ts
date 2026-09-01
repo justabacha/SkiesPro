@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { body } from 'express-validator';
-import { PaymentController } from './controllers/paymentController';
-import { authenticate } from '../../shared/middleware/authMiddleware';
-import { rateLimit } from '../../shared/middleware/rateLimit';
+import { PaymentController } from './controllers/paymentController.js';
+import { authenticate } from '../../shared/middleware/authMiddleware.js';
+import { rateLimit } from '../../shared/middleware/rateLimit.js';
 
 const router = Router();
 const controller = new PaymentController();

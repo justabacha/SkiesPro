@@ -1,7 +1,7 @@
 import request from 'supertest';
-import app from '../../src/index';
-import { TokenService } from '../../src/modules/auth/services/tokenService';
-import { UserRepository } from '../../src/modules/auth/repositories/userRepository';
+import app from '../../src/index.js';
+import { TokenService } from '../../src/modules/auth/services/tokenService.js';
+import { UserRepository } from '../../src/modules/auth/repositories/userRepository.js';
 
 jest.mock('../../src/modules/auth/repositories/userRepository');
 

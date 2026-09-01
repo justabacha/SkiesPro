@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { UserController } from './controllers/UserController';
-import { authenticate } from '../../shared/middleware/authMiddleware';
-import { rateLimit } from '../../shared/middleware/rateLimit';
-import { updateProfileValidator } from './validators/ProfileValidator';
+import { UserController } from './controllers/UserController.js';
+import { authenticate } from '../../shared/middleware/authMiddleware.js';
+import { rateLimit } from '../../shared/middleware/rateLimit.js';
+import { updateProfileValidator } from './validators/ProfileValidator.js';
 
 const router = Router();
 const controller = new UserController();

@@ -17,10 +17,10 @@ SET value = '60000'::jsonb
 WHERE key = 'withdrawal.max_amount';
 
 -- ============================================================================
--- Update trade.default_payout_ratio from 0.85 to 0.80 (80%)
+-- Update trade.default_payout_ratio from 0.85 to 0.60 (60%)
 -- ============================================================================
 UPDATE config.platform_settings 
-SET value = '0.80'::jsonb
+SET value = '0.60'::jsonb
 WHERE key = 'trade.default_payout_ratio';
 
 -- ============================================================================

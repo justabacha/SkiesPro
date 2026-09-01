@@ -4,10 +4,10 @@ export {
   metricsCollector,
   type MetricData,
   type MetricsAdapter,
-} from './MetricsCollector';
+} from './MetricsCollector.js';
 export {
   HealthChecker,
   healthChecker,
   type HealthCheckResult,
   type SystemHealth,
-} from './HealthChecker';
+} from './HealthChecker.js';

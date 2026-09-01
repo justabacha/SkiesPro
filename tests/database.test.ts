@@ -1,4 +1,4 @@
-import { checkDatabaseConnection, pgPool } from '../src/config/database';
+import { checkDatabaseConnection, pgPool } from '../src/config/database.js';
 
 // Skip database tests if DATABASE_URL is not set or if explicitly skipped
 const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;

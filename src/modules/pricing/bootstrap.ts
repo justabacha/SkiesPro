@@ -1,11 +1,11 @@
-import { PriceFeedIngestionService } from './services/PriceFeedIngestionService';
-import { PriceValidationService } from './services/priceValidationService';
-import { TickRepository } from './repositories/tickRepository';
-import { PriceDistributionService } from './services/priceDistributionService';
-import { OHLCService } from './services/OHLCService';
-import { CandleRepository } from './repositories/candleRepository';
-import { logger } from '../../shared/middleware/logger';
-import { config } from '../../config/app';
+import { PriceFeedIngestionService } from './services/PriceFeedIngestionService.js';
+import { PriceValidationService } from './services/priceValidationService.js';
+import { TickRepository } from './repositories/tickRepository.js';
+import { PriceDistributionService } from './services/priceDistributionService.js';
+import { OHLCService } from './services/OHLCService.js';
+import { CandleRepository } from './repositories/candleRepository.js';
+import { logger } from '../../shared/middleware/logger.js';
+import { config } from '../../config/app.js';
 
 export async function bootstrapPriceFeed() {
   logger.info('Initializing Price Feed Service...', { useMockPrices: config.useMockPrices });

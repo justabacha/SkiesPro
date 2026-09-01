@@ -5,97 +5,136 @@
 -- ============================================================================
 -- app_auth.users
 -- ============================================================================
--- Rename full_name to display_name
-ALTER TABLE app_auth.users RENAME COLUMN full_name TO display_name;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='app_auth' AND table_name='users' AND column_name='full_name') THEN
+        ALTER TABLE app_auth.users RENAME COLUMN full_name TO display_name;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- app_auth.permissions
 -- ============================================================================
--- Rename name to code
-ALTER TABLE app_auth.permissions RENAME COLUMN name TO code;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='app_auth' AND table_name='permissions' AND column_name='name') THEN
+        ALTER TABLE app_auth.permissions RENAME COLUMN name TO code;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- app_auth.user_roles
 -- ============================================================================
--- Rename assigned_at to granted_at
-ALTER TABLE app_auth.user_roles RENAME COLUMN assigned_at TO granted_at;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='app_auth' AND table_name='user_roles' AND column_name='assigned_at') THEN
+        ALTER TABLE app_auth.user_roles RENAME COLUMN assigned_at TO granted_at;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- app_auth.mfa_tokens
 -- ============================================================================
--- Rename secret to secret_encrypted
-ALTER TABLE app_auth.mfa_tokens RENAME COLUMN secret TO secret_encrypted;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='app_auth' AND table_name='mfa_tokens' AND column_name='secret') THEN
+        ALTER TABLE app_auth.mfa_tokens RENAME COLUMN secret TO secret_encrypted;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- trading.binary_contracts
 -- ============================================================================
--- Rename direction to contract_type
-ALTER TABLE trading.binary_contracts RENAME COLUMN direction TO contract_type;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='direction') THEN
+        ALTER TABLE trading.binary_contracts RENAME COLUMN direction TO contract_type;
+    END IF;
 
--- Rename stake_amount to stake
-ALTER TABLE trading.binary_contracts RENAME COLUMN stake_amount TO stake;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='stake_amount') THEN
+        ALTER TABLE trading.binary_contracts RENAME COLUMN stake_amount TO stake;
+    END IF;
 
--- Rename payout_ratio to payout_rate
-ALTER TABLE trading.binary_contracts RENAME COLUMN payout_ratio TO payout_rate;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='payout_ratio') THEN
+        ALTER TABLE trading.binary_contracts RENAME COLUMN payout_ratio TO payout_rate;
+    END IF;
 
--- Rename entry_time to purchase_time
-ALTER TABLE trading.binary_contracts RENAME COLUMN entry_time TO purchase_time;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='entry_time') THEN
+        ALTER TABLE trading.binary_contracts RENAME COLUMN entry_time TO purchase_time;
+    END IF;
+END $$;
 
 -- Update CHECK constraint to use new column name
-ALTER TABLE trading.binary_contracts DROP CONSTRAINT IF EXISTS trading_binary_contracts_direction_check;
-ALTER TABLE trading.binary_contracts ADD CONSTRAINT trading_binary_contracts_contract_type_check CHECK (contract_type IN ('higher','lower'));
+DO $$
+BEGIN
+    ALTER TABLE trading.binary_contracts DROP CONSTRAINT IF EXISTS trading_binary_contracts_direction_check;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='contract_type') THEN
+        ALTER TABLE trading.binary_contracts DROP CONSTRAINT IF EXISTS trading_binary_contracts_contract_type_check;
+        ALTER TABLE trading.binary_contracts ADD CONSTRAINT trading_binary_contracts_contract_type_check CHECK (contract_type IN ('higher','lower'));
+    END IF;
 
--- Update CHECK constraint to use new column name
-ALTER TABLE trading.binary_contracts DROP CONSTRAINT IF EXISTS trading_binary_contracts_payout_ratio_check;
-ALTER TABLE trading.binary_contracts ADD CONSTRAINT trading_binary_contracts_payout_rate_check CHECK (payout_rate BETWEEN 0.65 AND 0.88);
+    ALTER TABLE trading.binary_contracts DROP CONSTRAINT IF EXISTS trading_binary_contracts_payout_ratio_check;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='payout_rate') THEN
+        ALTER TABLE trading.binary_contracts DROP CONSTRAINT IF EXISTS trading_binary_contracts_payout_rate_check;
+        ALTER TABLE trading.binary_contracts ADD CONSTRAINT trading_binary_contracts_payout_rate_check CHECK (payout_rate BETWEEN 0.60 AND 0.88);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- trading.contract_events
 -- ============================================================================
--- Rename event_data to details
-ALTER TABLE trading.contract_events RENAME COLUMN event_data TO details;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='contract_events' AND column_name='event_data') THEN
+        ALTER TABLE trading.contract_events RENAME COLUMN event_data TO details;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- trading.asset_config
 -- ============================================================================
--- Rename payout_ratio to payout_rate
-ALTER TABLE trading.asset_config RENAME COLUMN payout_ratio TO payout_rate;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='asset_config' AND column_name='payout_ratio') THEN
+        ALTER TABLE trading.asset_config RENAME COLUMN payout_ratio TO payout_rate;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='asset_config' AND column_name='max_stake') THEN
+        ALTER TABLE trading.asset_config RENAME COLUMN max_stake TO max_stake_per_trade;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='asset_config' AND column_name='is_tradable') THEN
+        ALTER TABLE trading.asset_config RENAME COLUMN is_tradable TO is_active;
+    END IF;
+END $$;
 
 -- Update CHECK constraint to use new column name
-ALTER TABLE trading.asset_config DROP CONSTRAINT IF EXISTS trading_asset_config_payout_ratio_check;
-ALTER TABLE trading.asset_config ADD CONSTRAINT trading_asset_config_payout_rate_check CHECK (payout_rate BETWEEN 0.65 AND 0.88);
-
--- Rename max_stake to max_stake_per_trade
-ALTER TABLE trading.asset_config RENAME COLUMN max_stake TO max_stake_per_trade;
-
--- Rename is_tradable to is_active
-ALTER TABLE trading.asset_config RENAME COLUMN is_tradable TO is_active;
+DO $$
+BEGIN
+    ALTER TABLE trading.asset_config DROP CONSTRAINT IF EXISTS trading_asset_config_payout_ratio_check;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='asset_config' AND column_name='payout_rate') THEN
+        ALTER TABLE trading.asset_config DROP CONSTRAINT IF EXISTS trading_asset_config_payout_rate_check;
+        ALTER TABLE trading.asset_config ADD CONSTRAINT trading_asset_config_payout_rate_check CHECK (payout_rate BETWEEN 0.60 AND 0.88);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- pricing.price_ticks
 -- ============================================================================
--- Rename bid_price to bid
-ALTER TABLE pricing.price_ticks RENAME COLUMN bid_price TO bid;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='pricing' AND table_name='price_ticks' AND column_name='bid_price') THEN
+        ALTER TABLE pricing.price_ticks RENAME COLUMN bid_price TO bid;
+    END IF;
 
--- Rename ask_price to ask
-ALTER TABLE pricing.price_ticks RENAME COLUMN ask_price TO ask;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='pricing' AND table_name='price_ticks' AND column_name='ask_price') THEN
+        ALTER TABLE pricing.price_ticks RENAME COLUMN ask_price TO ask;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- wallet.wallet_version_log - SPECIAL CASE
 -- ============================================================================
--- RISKY SECTION: The original columns (old_balance, new_balance, old_locked_balance, new_locked_balance)
--- are semantically incorrect - they store balance data, not version data.
--- 
--- Correct columns (version_before, version_after, changed_by) were added in migration 019.
--- 
--- Since the old columns contain balance data (NUMERIC) and the new columns expect version data (INTEGER),
--- we cannot migrate the data. The old columns are fundamentally wrong and should be dropped.
--- 
--- If the table is empty (no data), it's safe to drop the old columns.
--- If the table has data, the owner should verify if the old columns actually contain version integers
--- before proceeding. For MVP with no production data, we proceed with dropping.
-
--- Drop the semantically incorrect columns
 ALTER TABLE wallet.wallet_version_log DROP COLUMN IF EXISTS old_balance;
 ALTER TABLE wallet.wallet_version_log DROP COLUMN IF EXISTS new_balance;
 ALTER TABLE wallet.wallet_version_log DROP COLUMN IF EXISTS old_locked_balance;
@@ -104,7 +143,12 @@ ALTER TABLE wallet.wallet_version_log DROP COLUMN IF EXISTS new_locked_balance;
 -- ============================================================================
 -- Update index names to reflect column renames
 -- ============================================================================
-
--- trading_contracts_entry_time_idx → trading_contracts_purchase_time_idx
-DROP INDEX IF EXISTS trading_contracts_entry_time_idx;
-CREATE INDEX IF NOT EXISTS trading_contracts_purchase_time_idx ON trading.binary_contracts(purchase_time);
+DROP INDEX IF EXISTS trading.trading_contracts_entry_time_idx;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='purchase_time') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'trading_contracts_purchase_time_idx' AND n.nspname = 'trading') THEN
+            CREATE INDEX trading_contracts_purchase_time_idx ON trading.binary_contracts(purchase_time);
+        END IF;
+    END IF;
+END $$;

@@ -1,4 +1,4 @@
-import { ICache } from './ICache';
+import { ICache } from './ICache.js';
 import { EventEmitter } from 'events';
 
 interface CacheEntry {
@@ -85,7 +85,7 @@ export class InMemoryAdapter implements ICache {
   async unsubscribe(channel: string): Promise<void> {
     const callbacks = this.subscriptions.get(channel);
     if (callbacks) {
-      callbacks.forEach(callback => {
+      callbacks.forEach((callback) => {
         this.eventEmitter.removeListener(channel, callback);
       });
       this.subscriptions.delete(channel);
@@ -97,15 +97,15 @@ export class InMemoryAdapter implements ICache {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    
+
     // Clean up subscriptions
     this.subscriptions.forEach((callbacks, channel) => {
-      callbacks.forEach(callback => {
+      callbacks.forEach((callback) => {
         this.eventEmitter.removeListener(channel, callback);
       });
     });
     this.subscriptions.clear();
-    
+
     this.cache.clear();
     this.eventEmitter.removeAllListeners();
   }

@@ -8,50 +8,50 @@
 
 ## ✅ ALREADY DECIDED (Pre-filled — Change if you disagree)
 
-| # | Item | Decision | Why |
-|---|------|----------|-----|
-| 1 | Business name | **SKIESPRO** | You provided |
-| 2 | Node.js version | **22.x LTS** | Supabase requires Node 22+, WebSocket support |
-| 3 | Backend framework | **Express.js** | Industry standard |
-| 4 | Package manager | **npm** | Default |
-| 5 | Language | **TypeScript** | Type safety |
-| 6 | Testing framework | **Jest** | Standard |
-| 7 | Git platform | **GitHub** | Default |
-| 8 | Use Docker? | **Yes** | For deployment |
-| 9 | Health check path | **/health** | Standard |
-| 10 | Database provider | **Supabase** | PostgreSQL + managed |
-| 11 | Backup strategy | **Daily full + continuous WAL** | Best practice |
-| 12 | PITR enabled? | **Yes** | Point-in-time recovery |
-| 13 | Read replicas? | **Yes** | Performance |
-| 14 | JWT generation | **Auto-generated** | Secure |
-| 15 | JWT expiration | **15 minutes** | Standard |
-| 16 | Refresh token expiry | **7 days** | Standard |
-| 17 | MFA method | **TOTP** (Google Authenticator) | Secure, free |
-| 18 | Min password length | **8 characters** | Standard |
-| 19 | Password complexity | **1 upper, 1 lower, 1 digit, 1 special** | Secure |
-| 20 | Encryption | **AES-256-GCM** | Industry standard |
-| 21 | Rate limiting | **Redis-based with fallback** | Performance |
-| 22 | Access control | **RBAC** | Role-based |
-| 23 | API subdomain | **api** | Standard |
-| 24 | Admin subdomain | **admin** | Standard |
-| 25 | Frontend framework | **React** | Standard |
-| 26 | Font family | **Inter** | Clean, modern |
-| 27 | Tone of voice | **Professional, calm, informative** | Trust-building |
-| 28 | Primary color | **#2563EB** (Blue) | Trust, finance |
-| 29 | Secondary color | **#1D4ED8** | Complementary |
-| 30 | Accent color | **#DBEAFE** | Light blue |
-| 31 | Dark mode bg | **#0F1117** | Standard dark |
-| 32 | Dark mode text | **#F3F4F6** | Readable |
-| 33 | Payout ratio | **80%** | Industry standard |
-| 34 | Referral commission | **5%** | Standard |
-| 35 | KYC provider | **SumSub** | International standard |
-| 36 | Cookie consent | **Yes** | Required |
-| 37 | Price validation | **Within 5% of previous tick** | Prevents manipulation |
-| 38 | Stale price threshold | **30 seconds** | Standard |
-| 39 | WebSocket port | **443** (WSS) | Secure |
-| 40 | Default instruments | **EUR/USD, GBP/USD, USD/JPY, Gold, Oil** | Liquid markets |
-| 41 | Market hours | **Forex: 00:00-23:59 UTC Mon-Fri, Crypto: 24/7** | Standard |
-| 42 | Escalation path | **Support → Tech Lead → Owner → CTO** | Standard |
+| #  | Item                  | Decision                                         | Why                                           |
+|----|-----------------------|--------------------------------------------------|-----------------------------------------------|
+| 1  | Business name         | **SKIESPRO**                                     | You provided                                  |
+| 2  | Node.js version       | **22.x LTS**                                     | Supabase requires Node 22+, WebSocket support |
+| 3  | Backend framework     | **Express.js**                                   | Industry standard                             |
+| 4  | Package manager       | **npm**                                          | Default                                       |
+| 5  | Language              | **TypeScript**                                   | Type safety                                   |
+| 6  | Testing framework     | **Jest**                                         | Standard                                      |
+| 7  | Git platform          | **GitHub**                                       | Default                                       |
+| 8  | Use Docker?           | **Yes**                                          | For deployment                                |
+| 9  | Health check path     | **/health**                                      | Standard                                      |
+| 10 | Database provider     | **Supabase**                                     | PostgreSQL + managed                          |
+| 11 | Backup strategy       | **Daily full + continuous WAL**                  | Best practice                                 |
+| 12 | PITR enabled?         | **Yes**                                          | Point-in-time recovery                        |
+| 13 | Read replicas?        | **Yes**                                          | Performance                                   |
+| 14 | JWT generation        | **Auto-generated**                               | Secure                                        |
+| 15 | JWT expiration        | **15 minutes**                                   | Standard                                      |
+| 16 | Refresh token expiry  | **7 days**                                       | Standard                                      |
+| 17 | MFA method            | **TOTP** (Google Authenticator)                  | Secure, free                                  |
+| 18 | Min password length   | **8 characters**                                 | Standard                                      |
+| 19 | Password complexity   | **1 upper, 1 lower, 1 digit, 1 special**         | Secure                                        |
+| 20 | Encryption            | **AES-256-GCM**                                  | Industry standard                             |
+| 21 | Rate limiting         | **Redis-based with fallback**                    | Performance                                   |
+| 22 | Access control        | **RBAC**                                         | Role-based                                    |
+| 23 | API subdomain         | **api**                                          | Standard                                      |
+| 24 | Admin subdomain       | **admin**                                        | Standard                                      |
+| 25 | Frontend framework    | **React**                                        | Standard                                      |
+| 26 | Font family           | **Inter**                                        | Clean, modern                                 |
+| 27 | Tone of voice         | **Professional, calm, informative**              | Trust-building                                |
+| 28 | Primary color         | **#2563EB** (Blue)                               | Trust, finance                                |
+| 29 | Secondary color       | **#1D4ED8**                                      | Complementary                                 |
+| 30 | Accent color          | **#DBEAFE**                                      | Light blue                                    |
+| 31 | Dark mode bg          | **#0F1117**                                      | Standard dark                                 |
+| 32 | Dark mode text        | **#F3F4F6**                                      | Readable                                      |
+| 33 | Payout ratio          | **60%**                                          | Industry standard                             |
+| 34 | Referral commission   | **5%**                                           | Standard                                      |
+| 35 | KYC provider          | **SumSub**                                       | International standard                        |
+| 36 | Cookie consent        | **Yes**                                          | Required                                      |
+| 37 | Price validation      | **Within 5% of previous tick**                   | Prevents manipulation                         |
+| 38 | Stale price threshold | **30 seconds**                                   | Standard                                      |
+| 39 | WebSocket port        | **443** (WSS)                                    | Secure                                        |
+| 40 | Default instruments   | **EUR/USD, GBP/USD, USD/JPY, Gold, Oil**         | Liquid markets                                |
+| 41 | Market hours          | **Forex: 00:00-23:59 UTC Mon-Fri, Crypto: 24/7** | Standard                                      |
+| 42 | Escalation path       | **Support → Tech Lead → Owner → CTO**            | Standard                                      |
 
 ---
 

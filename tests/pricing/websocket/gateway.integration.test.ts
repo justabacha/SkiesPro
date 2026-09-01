@@ -1,8 +1,8 @@
-import { PriceGateway } from '../../../src/modules/pricing/websocket/priceGateway';
-import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager';
-import { SubscriptionManager } from '../../../src/modules/pricing/websocket/subscriptionManager';
-import { RedisSubscriber } from '../../../src/modules/pricing/websocket/redisSubscriber';
-import { cacheClient } from '../../../src/infrastructure/cache';
+import { PriceGateway } from '../../../src/modules/pricing/websocket/priceGateway.js';
+import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager.js';
+import { SubscriptionManager } from '../../../src/modules/pricing/websocket/subscriptionManager.js';
+import { RedisSubscriber } from '../../../src/modules/pricing/websocket/redisSubscriber.js';
+import { cacheClient } from '../../../src/infrastructure/cache/index.js';
 
 describe('WebSocket Gateway Integration Tests', () => {
   let gateway: PriceGateway;

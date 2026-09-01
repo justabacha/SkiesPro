@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { logger } from '../../../shared/middleware/logger';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export interface BinanceTick {
   s: string; // Symbol

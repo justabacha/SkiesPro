@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { AuthService } from '../services/authService';
-import { logger } from '../../../shared/middleware/logger';
-import { AuthenticatedRequest } from '../../../shared/middleware/authMiddleware';
+import { AuthService } from '../services/authService.js';
+import { logger } from '../../../shared/middleware/logger.js';
+import { AuthenticatedRequest } from '../../../shared/middleware/authMiddleware.js';
 
 export class AuthController {
   private authService: AuthService;

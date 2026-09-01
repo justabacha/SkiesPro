@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import { CandleRepository } from '../repositories/candleRepository';
+import { CandleRepository } from '../repositories/candleRepository.js';
 
 export class OHLCService {
   private currentCandles: Map<

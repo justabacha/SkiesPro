@@ -1,4 +1,4 @@
-import { cacheClient } from '../../../infrastructure/cache';
+import { cacheClient } from '../../../infrastructure/cache/index.js';
 
 export class PriceDistributionService {
   private readonly cluster = 'pricing';

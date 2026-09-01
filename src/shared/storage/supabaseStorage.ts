@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../../config/database';
+import { supabaseAdmin } from '../../config/database.js';
 
 export class SupabaseStorageClient {
   private readonly bucketName = 'avatars';

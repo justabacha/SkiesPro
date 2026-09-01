@@ -1,6 +1,6 @@
-import { InMemoryAdapter } from '../src/infrastructure/cache/InMemoryAdapter';
-import { CacheClient } from '../src/infrastructure/cache/CacheClient';
-import { KEY_PATTERNS, DEFAULT_TTLS, getClusterForKey } from '../src/infrastructure/cache/keyPatterns';
+import { InMemoryAdapter } from '../src/infrastructure/cache/InMemoryAdapter.js';
+import { CacheClient } from '../src/infrastructure/cache/CacheClient.js';
+import { KEY_PATTERNS, DEFAULT_TTLS, getClusterForKey } from '../src/infrastructure/cache/keyPatterns.js';
 
 describe('InMemoryAdapter', () => {
   let adapter: InMemoryAdapter;

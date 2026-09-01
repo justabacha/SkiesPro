@@ -16,5 +16,6 @@ export const config = {
   corsOrigin: parseCorsOrigins(),
   logLevel: process.env.LOG_LEVEL || 'info',
   enablePriceFeed: process.env.ENABLE_PRICE_FEED === 'true',
+  enableSettlementWorker: process.env.ENABLE_SETTLEMENT_WORKER === 'true',
   useMockPrices: process.env.USE_MOCK_PRICES === 'true',
 };

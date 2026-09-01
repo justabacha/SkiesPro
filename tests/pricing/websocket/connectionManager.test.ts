@@ -1,4 +1,4 @@
-import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager';
+import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager.js';
 import WebSocket from 'ws';
 
 // Mock WebSocket

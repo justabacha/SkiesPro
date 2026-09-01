@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import { SessionRepository } from '../repositories/sessionRepository';
+import { SessionRepository } from '../repositories/sessionRepository.js';
 
 export class TokenService {
   private privateKey: string;

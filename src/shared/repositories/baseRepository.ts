@@ -1,5 +1,5 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
-import { pgPool } from '../../config/database';
+import { pgPool } from '../../config/database.js';
 
 export class BaseRepository {
   protected pool: Pool = pgPool;

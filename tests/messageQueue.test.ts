@@ -1,6 +1,6 @@
-import { InMemoryAdapter } from '../src/infrastructure/message-queue/InMemoryAdapter';
-import { MessageQueueClient } from '../src/infrastructure/message-queue/MessageQueueClient';
-import { PublishOptions } from '../src/infrastructure/message-queue/IMessageQueue';
+import { InMemoryAdapter } from '../src/infrastructure/message-queue/InMemoryAdapter.js';
+import { MessageQueueClient } from '../src/infrastructure/message-queue/MessageQueueClient.js';
+import { PublishOptions } from '../src/infrastructure/message-queue/IMessageQueue.js';
 
 describe('InMemoryAdapter', () => {
   let adapter: InMemoryAdapter;

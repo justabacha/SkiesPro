@@ -1,5 +1,5 @@
-import { MetricsCollector } from '../src/shared/monitoring/MetricsCollector';
-import { HealthChecker } from '../src/shared/monitoring/HealthChecker';
+import { MetricsCollector } from '../src/shared/monitoring/MetricsCollector.js';
+import { HealthChecker } from '../src/shared/monitoring/HealthChecker.js';
 
 const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;
 

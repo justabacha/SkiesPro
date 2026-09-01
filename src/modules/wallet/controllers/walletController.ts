@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { WalletService } from '../services/walletService';
-import { LedgerRepository } from '../repositories/ledgerRepository';
-import { logger } from '../../../shared/middleware/logger';
+import { WalletService } from '../services/walletService.js';
+import { LedgerRepository } from '../repositories/ledgerRepository.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class WalletController {
   private walletService: WalletService;

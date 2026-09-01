@@ -1,4 +1,4 @@
-import { normalizeSymbol } from '../../src/modules/pricing/utils/symbolNormalizer';
+import { normalizeSymbol } from '../../src/modules/pricing/utils/symbolNormalizer.js';
 
 describe('Symbol Normalizer', () => {
   describe('normalizeSymbol', () => {

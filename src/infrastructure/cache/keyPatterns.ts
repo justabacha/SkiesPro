@@ -1,4 +1,4 @@
-import { CacheCluster } from './ICache';
+import { CacheCluster } from './ICache.js';
 
 export const KEY_PATTERNS = {
   SESSION: {

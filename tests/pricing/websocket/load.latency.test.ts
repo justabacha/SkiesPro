@@ -1,6 +1,6 @@
-import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager';
-import { RedisSubscriber } from '../../../src/modules/pricing/websocket/redisSubscriber';
-import { cacheClient } from '../../../src/infrastructure/cache';
+import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager.js';
+import { RedisSubscriber } from '../../../src/modules/pricing/websocket/redisSubscriber.js';
+import { cacheClient } from '../../../src/infrastructure/cache/index.js';
 
 describe('WebSocket Performance and Latency Tests', () => {
   let connectionManager: ConnectionManager;

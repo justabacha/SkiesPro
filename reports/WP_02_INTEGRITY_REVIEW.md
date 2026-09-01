@@ -8,15 +8,15 @@
 
 ## Executive Summary
 
-| Metric | Value |
-|--------|-------|
-| Total tables in DDS | 41 |
-| Total tables in migrations | 41 |
-| Tables with column mismatches | 8 |
-| Missing columns (total) | 25 |
-| Wrong seed values | 5 |
-| CRITICAL issues | 8 |
-| WARNING issues | 12 |
+| Metric                        | Value |
+|-------------------------------|-------|
+| Total tables in DDS           | 41    |
+| Total tables in migrations    | 41    |
+| Tables with column mismatches | 8     |
+| Missing columns (total)       | 25    |
+| Wrong seed values             | 5     |
+| CRITICAL issues               | 8     |
+| WARNING issues                | 12    |
 
 **Overall Status:** ⚠️ **REQUIRES FIXES** - Multiple critical column mismatches and incorrect seed values will cause runtime errors in future WPs.
 
@@ -26,18 +26,18 @@
 
 ### Table: app_auth.users
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| display_name | full_name | ❌ | Name mismatch | Rename to display_name or add alias |
-| status | is_active | ❌ | Type mismatch (enum vs boolean) | Add status column with CHECK constraint |
-| kyc_status | kyc_status | ❌ | Enum values differ | Change values to unverified/pending/verified/rejected |
-| mfa_enabled | MISSING | ❌ | Column missing | Add column |
-| mfa_type | MISSING | ❌ | Column missing | Add column |
-| referral_code | MISSING | ❌ | Column missing | Add column with UNIQUE constraint |
-| referred_by_id | MISSING | ❌ | Column missing | Add column with FK to users |
-| failed_login_attempts | MISSING | ❌ | Column missing | Add column |
-| locked_until | MISSING | ❌ | Column missing | Add column |
-| updated_at | MISSING | ❌ | Column missing | Add column |
+| DDS Column            | Migration Column | Match? | Issue                           | Fix Required                                          |
+|-----------------------|------------------|--------|---------------------------------|-------------------------------------------------------|
+| display_name          | full_name        | ❌      | Name mismatch                   | Rename to display_name or add alias                   |
+| status                | is_active        | ❌      | Type mismatch (enum vs boolean) | Add status column with CHECK constraint               |
+| kyc_status            | kyc_status       | ❌      | Enum values differ              | Change values to unverified/pending/verified/rejected |
+| mfa_enabled           | MISSING          | ❌      | Column missing                  | Add column                                            |
+| mfa_type              | MISSING          | ❌      | Column missing                  | Add column                                            |
+| referral_code         | MISSING          | ❌      | Column missing                  | Add column with UNIQUE constraint                     |
+| referred_by_id        | MISSING          | ❌      | Column missing                  | Add column with FK to users                           |
+| failed_login_attempts | MISSING          | ❌      | Column missing                  | Add column                                            |
+| locked_until          | MISSING          | ❌      | Column missing                  | Add column                                            |
+| updated_at            | MISSING          | ❌      | Column missing                  | Add column                                            |
 
 **Impact:** HIGH - Auth module (WP-03) will fail without these columns.
 
@@ -45,14 +45,14 @@
 
 ### Table: app_auth.sessions
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| access_token_jti | token_hash | ❌ | Different column name | Rename or add access_token_jti |
-| refresh_token_hash | MISSING | ❌ | Column missing | Add column |
-| refresh_token_expires_at | expires_at | ⚠️ | Partial match | Add refresh_token_expires_at |
-| device_info | MISSING | ❌ | Column missing | Add column (JSONB) |
-| is_revoked | MISSING | ❌ | Column missing | Add column |
-| revoked_at | MISSING | ❌ | Column missing | Add column |
+| DDS Column               | Migration Column | Match? | Issue                 | Fix Required                   |
+|--------------------------|------------------|--------|-----------------------|--------------------------------|
+| access_token_jti         | token_hash       | ❌      | Different column name | Rename or add access_token_jti |
+| refresh_token_hash       | MISSING          | ❌      | Column missing        | Add column                     |
+| refresh_token_expires_at | expires_at       | ⚠️     | Partial match         | Add refresh_token_expires_at   |
+| device_info              | MISSING          | ❌      | Column missing        | Add column (JSONB)             |
+| is_revoked               | MISSING          | ❌      | Column missing        | Add column                     |
+| revoked_at               | MISSING          | ❌      | Column missing        | Add column                     |
 
 **Impact:** MEDIUM - Session management will be incomplete.
 
@@ -60,13 +60,13 @@
 
 ### Table: app_auth.mfa_tokens
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| secret_encrypted | secret | ❌ | Naming mismatch | Rename to secret_encrypted |
-| verified_at | MISSING | ❌ | Column missing | Add column |
-| enabled_at | MISSING | ❌ | Column missing | Add column |
-| disabled_at | MISSING | ❌ | Column missing | Add column |
-| backup_codes | backup_codes | ✅ | Match | - |
+| DDS Column       | Migration Column | Match? | Issue           | Fix Required               |
+|------------------|------------------|--------|-----------------|----------------------------|
+| secret_encrypted | secret           | ❌      | Naming mismatch | Rename to secret_encrypted |
+| verified_at      | MISSING          | ❌      | Column missing  | Add column                 |
+| enabled_at       | MISSING          | ❌      | Column missing  | Add column                 |
+| disabled_at      | MISSING          | ❌      | Column missing  | Add column                 |
+| backup_codes     | backup_codes     | ✅      | Match           | -                          |
 
 **Impact:** MEDIUM - MFA workflow incomplete.
 
@@ -74,12 +74,12 @@
 
 ### Table: app_auth.roles
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| id (SMALLSERIAL) | id (UUID) | ❌ | Type mismatch | Change to SMALLSERIAL |
-| name | name | ✅ | Match | - |
-| description | description | ✅ | Match | - |
-| created_at | created_at | ✅ | Match | - |
+| DDS Column       | Migration Column | Match? | Issue         | Fix Required          |
+|------------------|------------------|--------|---------------|-----------------------|
+| id (SMALLSERIAL) | id (UUID)        | ❌      | Type mismatch | Change to SMALLSERIAL |
+| name             | name             | ✅      | Match         | -                     |
+| description      | description      | ✅      | Match         | -                     |
+| created_at       | created_at       | ✅      | Match         | -                     |
 
 **Impact:** LOW - UUID works but deviates from DDS.
 
@@ -237,19 +237,19 @@
 
 ### Table: trading.asset_config
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| id | id | ✅ | Match | - |
-| asset_symbol | asset_symbol | ✅ | Match | - |
-| payout_rate | payout_ratio | ❌ | Name mismatch | Rename to payout_rate |
-| max_exposure | MISSING | ❌ | Column missing | Add column |
-| max_stake_per_trade | max_stake | ❌ | Name mismatch | Rename to max_stake_per_trade |
-| volatility_multiplier | MISSING | ❌ | Column missing | Add column |
-| is_active | is_tradable | ❌ | Name mismatch | Rename to is_active |
-| updated_by | MISSING | ❌ | Column missing | Add column with FK to users |
-| valid_from | MISSING | ❌ | Column missing | Add column |
-| valid_until | MISSING | ❌ | Column missing | Add column |
-| created_at | created_at | ✅ | Match | - |
+| DDS Column            | Migration Column | Match? | Issue          | Fix Required                  |
+|-----------------------|------------------|--------|----------------|-------------------------------|
+| id                    | id               | ✅      | Match          | -                             |
+| asset_symbol          | asset_symbol     | ✅      | Match          | -                             |
+| payout_rate           | payout_ratio     | ❌      | Name mismatch  | Rename to payout_rate         |
+| max_exposure          | MISSING          | ❌      | Column missing | Add column                    |
+| max_stake_per_trade   | max_stake        | ❌      | Name mismatch  | Rename to max_stake_per_trade |
+| volatility_multiplier | MISSING          | ❌      | Column missing | Add column                    |
+| is_active             | is_tradable      | ❌      | Name mismatch  | Rename to is_active           |
+| updated_by            | MISSING          | ❌      | Column missing | Add column with FK to users   |
+| valid_from            | MISSING          | ❌      | Column missing | Add column                    |
+| valid_until           | MISSING          | ❌      | Column missing | Add column                    |
+| created_at            | created_at       | ✅      | Match          | -                             |
 
 **Impact:** HIGH - Risk management incomplete.
 
@@ -274,20 +274,20 @@
 
 ### Table: pricing.candles
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| id | id | ✅ | Match | - |
-| symbol | symbol | ✅ | Match | - |
-| granularity_seconds | granularity_seconds | ⚠️ | Enum values differ | Update to match DDS |
-| open_time | open_time | ✅ | Match | - |
-| close_time | close_time | ✅ | Match | - |
-| open_price | open_price | ✅ | Match | - |
-| high_price | high_price | ✅ | Match | - |
-| low_price | low_price | ✅ | Match | - |
-| close_price | close_price | ✅ | Match | - |
-| volume | volume | ✅ | Match | - |
-| tick_count | MISSING | ❌ | Column missing | Add column |
-| created_at | created_at | ✅ | Match | - |
+| DDS Column          | Migration Column    | Match? | Issue              | Fix Required        |
+|---------------------|---------------------|--------|--------------------|---------------------|
+| id                  | id                  | ✅      | Match              | -                   |
+| symbol              | symbol              | ✅      | Match              | -                   |
+| granularity_seconds | granularity_seconds | ⚠️     | Enum values differ | Update to match DDS |
+| open_time           | open_time           | ✅      | Match              | -                   |
+| close_time          | close_time          | ✅      | Match              | -                   |
+| open_price          | open_price          | ✅      | Match              | -                   |
+| high_price          | high_price          | ✅      | Match              | -                   |
+| low_price           | low_price           | ✅      | Match              | -                   |
+| close_price         | close_price         | ✅      | Match              | -                   |
+| volume              | volume              | ✅      | Match              | -                   |
+| tick_count          | MISSING             | ❌      | Column missing     | Add column          |
+| created_at          | created_at          | ✅      | Match              | -                   |
 
 **Impact:** LOW - Charting will work without tick_count.
 
@@ -295,21 +295,21 @@
 
 ### Table: payments.deposits
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| id | id | ✅ | Match | - |
-| user_id | user_id | ✅ | Match | - |
-| gateway_id | gateway_id | ✅ | Match | - |
-| gateway_reference | gateway_reference | ✅ | Match | - |
-| amount | amount | ✅ | Match | - |
-| fee | fee | ✅ | Match | - |
-| net_amount | net_amount | ✅ | Match | - |
-| currency | currency | ✅ | Match | - |
-| status | status | ✅ | Match | - |
-| webhook_payload | webhook_payload | ✅ | Match | - |
-| idempotency_key | idempotency_key | ✅ | Match | - |
-| completed_at | completed_at | ✅ | Match | - |
-| created_at | created_at | ✅ | Match | - |
+| DDS Column        | Migration Column  | Match? | Issue | Fix Required |
+|-------------------|-------------------|--------|-------|--------------|
+| id                | id                | ✅      | Match | -            |
+| user_id           | user_id           | ✅      | Match | -            |
+| gateway_id        | gateway_id        | ✅      | Match | -            |
+| gateway_reference | gateway_reference | ✅      | Match | -            |
+| amount            | amount            | ✅      | Match | -            |
+| fee               | fee               | ✅      | Match | -            |
+| net_amount        | net_amount        | ✅      | Match | -            |
+| currency          | currency          | ✅      | Match | -            |
+| status            | status            | ✅      | Match | -            |
+| webhook_payload   | webhook_payload   | ✅      | Match | -            |
+| idempotency_key   | idempotency_key   | ✅      | Match | -            |
+| completed_at      | completed_at      | ✅      | Match | -            |
+| created_at        | created_at        | ✅      | Match | -            |
 
 **Impact:** NONE - Table matches DDS.
 
@@ -317,22 +317,22 @@
 
 ### Table: payments.withdrawals
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| id | id | ✅ | Match | - |
-| user_id | user_id | ✅ | Match | - |
-| gateway_id | gateway_id | ✅ | Match | - |
-| amount | amount | ✅ | Match | - |
-| fee | fee | ✅ | Match | - |
-| net_amount | net_amount | ✅ | Match | - |
-| currency | currency | ✅ | Match | - |
-| status | status | ✅ | Match | - |
-| reviewed_by | reviewed_by | ✅ | Match | - |
-| review_note | review_note | ✅ | Match | - |
-| gateway_reference | gateway_reference | ✅ | Match | - |
-| idempotency_key | idempotency_key | ✅ | Match | - |
-| completed_at | completed_at | ✅ | Match | - |
-| created_at | created_at | ✅ | Match | - |
+| DDS Column        | Migration Column  | Match? | Issue | Fix Required |
+|-------------------|-------------------|--------|-------|--------------|
+| id                | id                | ✅      | Match | -            |
+| user_id           | user_id           | ✅      | Match | -            |
+| gateway_id        | gateway_id        | ✅      | Match | -            |
+| amount            | amount            | ✅      | Match | -            |
+| fee               | fee               | ✅      | Match | -            |
+| net_amount        | net_amount        | ✅      | Match | -            |
+| currency          | currency          | ✅      | Match | -            |
+| status            | status            | ✅      | Match | -            |
+| reviewed_by       | reviewed_by       | ✅      | Match | -            |
+| review_note       | review_note       | ✅      | Match | -            |
+| gateway_reference | gateway_reference | ✅      | Match | -            |
+| idempotency_key   | idempotency_key   | ✅      | Match | -            |
+| completed_at      | completed_at      | ✅      | Match | -            |
+| created_at        | created_at        | ✅      | Match | -            |
 
 **Impact:** NONE - Table matches DDS.
 
@@ -574,16 +574,16 @@
 
 ### Table: notifications.notification_queue
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| id | id | ✅ | Match | - |
-| notification_id | notification_id | ✅ | Match | - |
-| retry_count | retry_count | ✅ | Match | - |
-| max_retries | max_retries | ✅ | Match | - |
-| next_attempt_at | next_attempt_at | ✅ | Match | - |
-| last_error | last_error | ✅ | Match | - |
-| locked_until | locked_until | ✅ | Match | - |
-| created_at | created_at | ✅ | Match | - |
+| DDS Column      | Migration Column | Match? | Issue | Fix Required |
+|-----------------|------------------|--------|-------|--------------|
+| id              | id               | ✅      | Match | -            |
+| notification_id | notification_id  | ✅      | Match | -            |
+| retry_count     | retry_count      | ✅      | Match | -            |
+| max_retries     | max_retries      | ✅      | Match | -            |
+| next_attempt_at | next_attempt_at  | ✅      | Match | -            |
+| last_error      | last_error       | ✅      | Match | -            |
+| locked_until    | locked_until     | ✅      | Match | -            |
+| created_at      | created_at       | ✅      | Match | -            |
 
 **Impact:** NONE - Table matches DDS.
 
@@ -591,18 +591,18 @@
 
 ### Table: events.event_outbox
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| id | id | ✅ | Match | - |
-| event_type | event_type | ✅ | Match | - |
-| aggregate_type | aggregate_type | ✅ | Match | - |
-| aggregate_id | aggregate_id | ✅ | Match | - |
-| payload | payload | ✅ | Match | - |
-| published | published | ✅ | Match | - |
-| published_at | published_at | ✅ | Match | - |
-| retry_count | retry_count | ✅ | Match | - |
-| last_error | last_error | ✅ | Match | - |
-| created_at | created_at | ✅ | Match | - |
+| DDS Column     | Migration Column | Match? | Issue | Fix Required |
+|----------------|------------------|--------|-------|--------------|
+| id             | id               | ✅      | Match | -            |
+| event_type     | event_type       | ✅      | Match | -            |
+| aggregate_type | aggregate_type   | ✅      | Match | -            |
+| aggregate_id   | aggregate_id     | ✅      | Match | -            |
+| payload        | payload          | ✅      | Match | -            |
+| published      | published        | ✅      | Match | -            |
+| published_at   | published_at     | ✅      | Match | -            |
+| retry_count    | retry_count      | ✅      | Match | -            |
+| last_error     | last_error       | ✅      | Match | -            |
+| created_at     | created_at       | ✅      | Match | -            |
 
 **Impact:** NONE - Table matches DDS.
 
@@ -610,16 +610,16 @@
 
 ### Table: reporting.daily_revenue_summary
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| report_date | report_date | ✅ | Match | - |
-| total_deposits | total_deposits | ✅ | Match | - |
-| total_withdrawals | total_withdrawals | ✅ | Match | - |
-| total_trade_volume | total_trade_volume | ✅ | Match | - |
-| platform_revenue | platform_revenue | ✅ | Match | - |
-| trade_count | MISSING | ❌ | Column missing | Add column |
-| active_users | active_users | ✅ | Match | - |
-| new_users | new_users | ✅ | Match | - |
+| DDS Column         | Migration Column   | Match? | Issue          | Fix Required |
+|--------------------|--------------------|--------|----------------|--------------|
+| report_date        | report_date        | ✅      | Match          | -            |
+| total_deposits     | total_deposits     | ✅      | Match          | -            |
+| total_withdrawals  | total_withdrawals  | ✅      | Match          | -            |
+| total_trade_volume | total_trade_volume | ✅      | Match          | -            |
+| platform_revenue   | platform_revenue   | ✅      | Match          | -            |
+| trade_count        | MISSING            | ❌      | Column missing | Add column   |
+| active_users       | active_users       | ✅      | Match          | -            |
+| new_users          | new_users          | ✅      | Match          | -            |
 
 **Impact:** LOW - Reporting will work without trade_count.
 
@@ -627,17 +627,17 @@
 
 ### Table: reporting.daily_trade_summary
 
-| DDS Column | Migration Column | Match? | Issue | Fix Required |
-|------------|-----------------|--------|-------|-------------|
-| report_date | report_date | ✅ | Match | - |
-| asset_symbol | asset_symbol | ✅ | Match | - |
-| total_trades | total_trades | ✅ | Match | - |
-| win_count | win_count | ✅ | Match | - |
-| loss_count | loss_count | ✅ | Match | - |
-| draw_count | draw_count | ✅ | Match | - |
-| total_stake | total_stake | ✅ | Match | - |
-| total_payout | total_payout | ✅ | Match | - |
-| net_revenue | net_revenue | ✅ | Match | - |
+| DDS Column   | Migration Column | Match? | Issue | Fix Required |
+|--------------|------------------|--------|-------|--------------|
+| report_date  | report_date      | ✅      | Match | -            |
+| asset_symbol | asset_symbol     | ✅      | Match | -            |
+| total_trades | total_trades     | ✅      | Match | -            |
+| win_count    | win_count        | ✅      | Match | -            |
+| loss_count   | loss_count       | ✅      | Match | -            |
+| draw_count   | draw_count       | ✅      | Match | -            |
+| total_stake  | total_stake      | ✅      | Match | -            |
+| total_payout | total_payout     | ✅      | Match | -            |
+| net_revenue  | net_revenue      | ✅      | Match | -            |
 
 **Impact:** NONE - Table matches DDS.
 
@@ -653,7 +653,7 @@
 | deposit.max_amount | 100,000 KES | 500,000 | ❌ WRONG |
 | withdrawal.min_amount | 1,500 KES | 1,500 | ✅ |
 | withdrawal.max_amount | 60,000 KES | 100,000 | ❌ WRONG |
-| trade.default_payout_ratio | 0.80 (80%) | 0.85 | ❌ WRONG |
+| trade.default_payout_ratio | 0.60 (60%) | 0.85 | ❌ WRONG |
 | referral.commission_percentage | 0.05 (5%) | 0.10 | ❌ WRONG |
 | trade.min_duration_seconds | 60 (1MIN) | 30 | ❌ WRONG |
 | trade.max_duration_seconds | 3600 (1HR) | 3600 | ✅ |
@@ -683,7 +683,7 @@ VALUES
 -- Trade settings
 ('trade.min_duration_seconds', '60', 'Minimum trade duration in seconds', '00000000-0000-0000-0000-000000000000'),
 ('trade.max_duration_seconds', '3600', 'Maximum trade duration in seconds', '00000000-0000-0000-0000-000000000000'),
-('trade.default_payout_ratio', '0.80', 'Default payout ratio (80%)', '00000000-0000-0000-0000-000000000000'),
+('trade.default_payout_ratio', '0.60', 'Default payout ratio (60%)', '00000000-0000-0000-0000-000000000000'),
 
 -- Referral settings
 ('referral.commission_percentage', '0.05', 'Referral commission percentage (5%)', '00000000-0000-0000-0000-000000000000'),
@@ -997,7 +997,7 @@ SET value = '60000'::jsonb
 WHERE key = 'withdrawal.max_amount';
 
 UPDATE config.platform_settings 
-SET value = '0.80'::jsonb
+SET value = '0.60'::jsonb
 WHERE key = 'trade.default_payout_ratio';
 
 UPDATE config.platform_settings 

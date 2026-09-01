@@ -1,5 +1,5 @@
-import { priceGateway } from '../../modules/pricing/websocket/priceGateway';
-import { logger } from '../../shared/middleware/logger';
+import { priceGateway } from '../../modules/pricing/websocket/priceGateway.js';
+import { logger } from '../../shared/middleware/logger.js';
 
 export function attachWebSocketServer(server: any, options: { path?: string } = {}): void {
   try {

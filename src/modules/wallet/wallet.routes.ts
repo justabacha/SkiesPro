@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { WalletController } from './controllers/walletController';
-import { authenticate } from '../../shared/middleware/authMiddleware';
-import { rateLimit } from '../../shared/middleware/rateLimit';
+import { WalletController } from './controllers/walletController.js';
+import { authenticate } from '../../shared/middleware/authMiddleware.js';
+import { rateLimit } from '../../shared/middleware/rateLimit.js';
 
 const router = Router();
 const controller = new WalletController();

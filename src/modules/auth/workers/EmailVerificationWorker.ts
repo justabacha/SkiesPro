@@ -1,4 +1,4 @@
-import { logger } from '../../../shared/middleware/logger';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class EmailVerificationWorker {
   async process(userId: string, email: string, token: string): Promise<void> {

@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { PricingService } from '../services/pricingService';
-import { MarketStatusService } from '../services/MarketStatusService';
-import { PriceValidationService } from '../services/priceValidationService';
-import { logger } from '../../../shared/middleware/logger';
+import { PricingService } from '../services/pricingService.js';
+import { MarketStatusService } from '../services/MarketStatusService.js';
+import { PriceValidationService } from '../services/priceValidationService.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class PricingController {
   private pricingService: PricingService;

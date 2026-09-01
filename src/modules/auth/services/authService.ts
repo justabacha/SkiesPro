@@ -1,13 +1,13 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { pgPool } from '../../../config/database';
-import { UserRepository } from '../repositories/userRepository';
-import { TokenService } from './tokenService';
-import { MfaService } from './mfaService';
-import { MfaRepository } from '../repositories/mfaRepository';
-import { OutboxRepository } from '../repositories/outboxRepository';
-import { RegisterDto } from '../dto/register.dto';
-import { logger } from '../../../shared/middleware/logger';
+import { pgPool } from '../../../config/database.js';
+import { UserRepository } from '../repositories/userRepository.js';
+import { TokenService } from './tokenService.js';
+import { MfaService } from './mfaService.js';
+import { MfaRepository } from '../repositories/mfaRepository.js';
+import { OutboxRepository } from '../repositories/outboxRepository.js';
+import { RegisterDto } from '../dto/register.dto.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class AuthService {
   private userRepo: UserRepository;

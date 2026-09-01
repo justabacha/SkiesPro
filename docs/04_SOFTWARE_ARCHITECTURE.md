@@ -295,7 +295,7 @@ graph LR
                                     (on partial failure)
 ```
 
-### Price Feed Service (Standalone Process)
+### Price Feed Service (Standalone Process / Auto-Boot)
 
 | Attribute | Detail |
 | :--- | :--- |
@@ -305,7 +305,8 @@ graph LR
 | **Owned Domain** | `Market`, `Price`. |
 | **Produced Events** | Publishes ticks to Redis Pub/Sub channels; writes ticks to PostgreSQL. |
 | **Consumed Events** | None. |
-| **Process Separation** | Runs as a **standalone daemon process**, independent of the API monolith. API server restarts DO NOT disconnect the price feed. Reconnects autonomously to data providers on disconnection. |
+| **Process Separation** | Supports two modes: (1) **Standalone daemon process** for dedicated scaling. (2) **Auto-Boot Monolithic mode** where the daemon starts alongside the API server (via `src/modules/pricing/bootstrap.ts`) when `ENABLE_PRICE_FEED=true`. |
+| **Resilience & Failover** | **Resilient Price Ingestion**: Automatically detects Binance connection failures or cloud IP blocks. Falls back to an internal `MockPriceAdapter` generating sub-second EUR/USD tick data to ensure system continuity. |
 
 ### Risk Engine Module
 
@@ -414,7 +415,7 @@ graph LR
 ```mermaid
 sequenceDiagram
     autonumber
-    Client->>API Gateway: POST /api/v1/trades/buy (JWT Token, Symbol, Stake, Direction, Expiry)
+    Client->>API Gateway: POST /api/v1/trading/contracts (JWT Token, Symbol, Stake, Contract Type, Expiry)
     API Gateway->>Auth Module: Validate JWT
     Auth Module-->>API Gateway: User Identity + Role Confirmed
     API Gateway->>Risk Module: Check exposure limits for Symbol & Stake
@@ -765,7 +766,7 @@ graph TD
     WorkerPool --> Worker2[Notification Worker]
     WorkerPool --> Worker3[Outbox Relay Worker]
 
-    subgraph Standalone Processes
+    subgraph Standalone Processes / Auto-Boot
         PriceFeedService[Price Feed Service] --> PrimaryDB
         PriceFeedService --> RedisPrice
     end

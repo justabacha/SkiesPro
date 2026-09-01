@@ -31,6 +31,10 @@ The following deviations from `docs/06_DATABASE_DESIGN_SPECIFICATION.md` have be
 | Table | DDS Name | Migration Name | Impact | Future Action |
 |-------|----------|-----------------|--------|---------------|
 | `app_auth.users` | `display_name` | `display_name` | NONE - Fixed in migration 022 | - |
+| `trading.binary_contracts` | `contract_type` | `contract_type` | NONE - Fixed in migration 022 | - |
+| `trading.binary_contracts` | `stake` | `stake` | NONE - Fixed in migration 022 | - |
+| `trading.binary_contracts` | `payout_rate` | `payout_rate` | NONE - Fixed in migration 022 | - |
+| `trading.binary_contracts` | `purchase_time` | `purchase_time` | NONE - Fixed in migration 022 | - |
 | `app_auth.users` | `status` | `status` | NONE - Added in migration 019 | - |
 | `app_auth.users` | `kyc_status` enum | `kyc_status` enum | MEDIUM - Different enum values | Update enum values in WP-03 |
 | `app_auth.sessions` | `access_token_jti` | `access_token_jti` | NONE - Added in migration 019 | - |

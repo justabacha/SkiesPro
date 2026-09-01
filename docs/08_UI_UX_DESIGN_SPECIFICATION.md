@@ -451,9 +451,9 @@ Supported deep links:
 │          │ ┌──────────────────────────────────────────────┐  │
 │          │ │  Open Trades (2)                             │  │
 │          │ │  ┌──────────┬──────┬──────┬──────┬───────┐   │  │
-│          │ │  │ Asset    │Stake │Dir   │Expiry│Status │   │  │
-│          │ │  │ EUR/USD  │$50   │Higher│1:35  │⏳Active│   │  │
-│          │ │  │ XAU/USD  │$30   │Lower │1:38  │⏳Active│   │  │
+│          │ │  │ Asset    │Stake │Type  │Expiry│Status │   │  │
+│          │ │  │ EUR/USD  │500 KES│Higher│1:35  │⏳Active│   │  │
+│          │ │  │ XAU/USD  │300 KES│Lower │1:38  │⏳Active│   │  │
 │          │ │  └──────────┴──────┴──────┴──────┴───────┘   │  │
 │          │ └──────────────────────────────────────────────┘  │
 │          │                                                  │
@@ -515,7 +515,7 @@ First-time user sees:
 │  │  ┌───Chart Controls─┐│  │                               │  │
 │  │  │ 1m │ 5m │ 15m    ││  │  Stake: [$ 50.00      ]     │  │
 │  │  │ 1H │ 4H │ 1D     ││  │                               │  │
-│  │  └──────────────────┘│  │  Payout: $90.00 (80%)        │  │
+│  │  └──────────────────┘│  │  Payout: 800 KES (60%)        │  │
 │  │                      │  │                               │  │
 │  │                      │  │  ┌──────────┐┌──────────┐    │  │
 │  │                      │  │  │  Higher   ││  Lower   │    │  │
@@ -527,9 +527,9 @@ First-time user sees:
 │  ┌───────────────────────┐│  ┌──────────────────────────────┐  │
 │  │  Open Positions (2)   ││  │  Expired / History          │  │
 │  │  ┌───────┬───┬───┬──┐││  │  ┌───────┬───┬────┬──────┐  │  │
-│  │  │Asset  │Dir│Stk│  │││  │  │Asset  │Rslt│Amt │Time  │  │  │
-│  │  │EUR/USD│↑  │$50│⏳│││  │  │XAU/USD│ ✅ │+$54│1:30  │  │  │
-│  │  │XAU/USD│↓  │$30│⏳│││  │  │GBP/USD│ ❌ │-$25│1:25  │  │  │
+│  │  │Asset  │Typ│Stk│  │││  │  │Asset  │Rslt│Amt │Time  │  │  │
+│  │  │EUR/USD│↑  │500│⏳│││  │  │XAU/USD│ ✅ │+800│1:30  │  │  │
+│  │  │XAU/USD│↓  │300│⏳│││  │  │GBP/USD│ ❌ │-250│1:25  │  │  │
 │  │  └───────┴───┴───┴──┘││  │  └───────┴───┴────┴──────┘  │  │
 │  └───────────────────────┘│  └──────────────────────────────┘  │
 ├─────────────────────────┴────────────────────────────────────┤
@@ -547,7 +547,7 @@ First-time user sees:
 | **Stake Input** | Numeric input with +/- quick adjust buttons (10, 25, 50, 100). Shows "Max" button for full available balance. |
 | **Expected Payout** | Live calculation: `stake × (1 + payout_rate)`. Updates as stake or expiry changes. |
 | **Buy Up / Buy Down** | Two large buttons (green for Higher, red for Lower). Full width on mobile. Disabled while price is loading or market is closed. |
-| **Contract Confirmation** | Slide-in panel confirming: Asset, Direction, Stake, Expiry, Payout, Strike Price. "Confirm" button. "Cancel" link. |
+| **Contract Confirmation** | Slide-in panel confirming: Asset, Contract Type, Stake, Expiry, Payout, Strike Price. "Confirm" button. "Cancel" link. |
 | **Countdown Timer** | After purchase, a circular countdown timer shows seconds remaining. Large digits, mono font. |
 | **Settlement Animation** | On expiry, the contract card animates: brief pulsing "Settling..." → flash green (Won) or red (Lost) or yellow (Draw). Payout amount animates counting up. |
 
@@ -600,7 +600,7 @@ A small indicator in the bottom status bar:
 ├────────────────────────────────────────────────────────────┤
 │  ┌─────────────┬─────────────┬──────────┬──────────────┐   │
 │  │ Balance     │ Locked      │Available │ Currency     │   │
-│  │ $1,250.00   │ $200.00     │$1,050.00 │ USD          │   │
+│  │ 1,250.00    │ 200.00      │1,050.00  │ KES          │   │
 │  └─────────────┴─────────────┴──────────┴──────────────┘   │
 │                                                             │
 │  ┌──────────────┐  ┌──────────────────┐                     │
@@ -611,9 +611,9 @@ A small indicator in the bottom status bar:
 │  │  Search...          Filter: All ▼    Date range        │ │
 │  │  ┌──────┬────────┬───────┬──────────┬──────────┬────┐  │ │
 │  │  │Type  │Amount  │Status │ Gateway  │ Date     │View│  │ │
-│  │  │Deposit│+$100  │✅ Done │ M-Pesa   │ 2:30 PM  │ 👁 │  │ │
-│  │  │Withdrw│-$50   │⏳ Pend │ M-Pesa   │ 2:15 PM  │ 👁 │  │ │
-│  │  │Trade  │-$30   │❌ Lost │ —        │ 1:30 PM  │ 👁 │  │ │
+│  │  │Deposit│+100   │✅ Done │ M-Pesa   │ 2:30 PM  │ 👁 │  │ │
+│  │  │Withdrw│-50    │⏳ Pend │ M-Pesa   │ 2:15 PM  │ 👁 │  │ │
+│  │  │Trade  │-30    │❌ Lost │ —        │ 1:30 PM  │ 👁 │  │ │
 │  │  └──────┴────────┴───────┴──────────┴──────────┴────┘  │ │
 │  │  < Prev    Page 1 of 12    Next >                        │ │
 │  └──────────────────────────────────────────────────────────┘ │

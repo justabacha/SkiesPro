@@ -104,29 +104,41 @@ ALTER TABLE pricing.candles ADD COLUMN IF NOT EXISTS tick_count INTEGER;
 -- Must drop and recreate the view with the new column
 DROP MATERIALIZED VIEW IF EXISTS reporting.daily_revenue_summary;
 
-CREATE MATERIALIZED VIEW reporting.daily_revenue_summary AS
-SELECT 
-  DATE(tr.created_at) AS report_date,
-  COALESCE(SUM(CASE WHEN d.status = 'completed' THEN d.net_amount ELSE 0 END), 0) AS total_deposits,
-  COALESCE(SUM(CASE WHEN w.status = 'completed' THEN w.net_amount ELSE 0 END), 0) AS total_withdrawals,
-  COALESCE(SUM(tr.stake_amount), 0) AS total_trade_volume,
-  COALESCE(
-    SUM(CASE 
-      WHEN tr.status = 'won' THEN tr.stake_amount
-      WHEN tr.status = 'lost' THEN -tr.potential_payout
-      WHEN tr.status = 'draw' THEN 0
-      ELSE 0
-    END),
-    0
-  ) AS platform_revenue,
-  COUNT(*) AS trade_count,
-  COUNT(DISTINCT tr.user_id) AS active_users,
-  COUNT(DISTINCT CASE WHEN DATE(u.created_at) = DATE(tr.created_at) THEN u.id END) AS new_users
-FROM trading.binary_contracts tr
-LEFT JOIN payments.deposits d ON DATE(d.created_at) = DATE(tr.created_at)
-LEFT JOIN payments.withdrawals w ON DATE(w.created_at) = DATE(tr.created_at)
-LEFT JOIN app_auth.users u ON DATE(u.created_at) = DATE(tr.created_at)
-GROUP BY DATE(tr.created_at);
+DO $$
+DECLARE
+    stake_col TEXT;
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='stake') THEN
+        stake_col := 'stake';
+    ELSE
+        stake_col := 'stake_amount';
+    END IF;
+
+    EXECUTE format('
+    CREATE MATERIALIZED VIEW reporting.daily_revenue_summary AS
+    SELECT
+      DATE(tr.created_at) AS report_date,
+      COALESCE(SUM(CASE WHEN d.status = ''completed'' THEN d.net_amount ELSE 0 END), 0) AS total_deposits,
+      COALESCE(SUM(CASE WHEN w.status = ''completed'' THEN w.net_amount ELSE 0 END), 0) AS total_withdrawals,
+      COALESCE(SUM(tr.%I), 0) AS total_trade_volume,
+      COALESCE(
+        SUM(CASE
+          WHEN tr.status = ''won'' THEN tr.%I
+          WHEN tr.status = ''lost'' THEN -tr.potential_payout
+          WHEN tr.status = ''draw'' THEN 0
+          ELSE 0
+        END),
+        0
+      ) AS platform_revenue,
+      COUNT(*) AS trade_count,
+      COUNT(DISTINCT tr.user_id) AS active_users,
+      COUNT(DISTINCT CASE WHEN DATE(u.created_at) = DATE(tr.created_at) THEN u.id END) AS new_users
+    FROM trading.binary_contracts tr
+    LEFT JOIN payments.deposits d ON DATE(d.created_at) = DATE(tr.created_at)
+    LEFT JOIN payments.withdrawals w ON DATE(w.created_at) = DATE(tr.created_at)
+    LEFT JOIN app_auth.users u ON DATE(u.created_at) = DATE(tr.created_at)
+    GROUP BY DATE(tr.created_at)', stake_col, stake_col);
+END $$;
 
 -- Recreate the unique index on the refreshed view
 CREATE UNIQUE INDEX IF NOT EXISTS daily_revenue_summary_date_idx ON reporting.daily_revenue_summary(report_date);

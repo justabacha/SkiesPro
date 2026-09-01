@@ -280,7 +280,7 @@ graph TD
 | **TRD-UNIT-013** | `calculatePayout_win_correctAmount` | Payout = stake × (1 + payout_rate). | BRD §8 |
 | **TRD-UNIT-014** | `calculatePayout_loss_zero` | Payout = 0. Stake transferred to platform reserve. | BRD §8 |
 | **TRD-UNIT-015** | `calculatePayout_draw_stakeRefunded` | Stake returned. No profit. No loss. | BRD §7 |
-| **TRD-UNIT-016** | `calculatePayout_rate80pct_win` | Stake $50, rate 0.80 → payout = $90. | BRD §8 |
+| **TRD-UNIT-016** | `calculatePayout_rate60pct_win` | Stake $50, rate 0.60 → payout = $80. | BRD §8 |
 | **TRD-UNIT-017** | `calculatePayout_rate65pct_win` | Stake $50, rate 0.65 → payout = $82.50. | BRD §8 |
 | **TRD-UNIT-018** | `strikePrice_capturedAtExecution` | Strike price matches current market price at purchase_time. | ADS §11.3 |
 | **TRD-UNIT-019** | `expiryTime_strictlyGreaterThanPurchase` | expiry_time > purchase_time. | DM §8 |
@@ -424,7 +424,7 @@ graph TD
 
 | Test ID | Test | Precondition | Steps | Expected | Source |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **INT-001** | Full trade lifecycle | User has $100 balance, active KYC | Place trade ($50, EUR/USD, Higher, 5min) → verify wallet locked ($50) → wait for expiry → verify settlement → verify outcome | Wallet balance: $50 (loss) or $90 (win). Contract status terminal. | ADS §11, ADR-010 |
+| **INT-001** | Full trade lifecycle | User has 100 KES balance, active KYC | Place trade (50 KES, EUR/USD, Higher, 5min) → verify wallet locked (50 KES) → wait for expiry → verify settlement → verify outcome | Wallet balance: 50 KES (loss) or 80 KES (win). Contract status terminal. | ADS §11, ADR-010 |
 | **INT-002** | Deposit then trade then withdraw | User has $0 balance | Initiate deposit ($100) → callback → verify balance ($100) → place trade ($30) → expire → verify → request withdrawal ($50) → approve → verify balance | End balance correct after each step. | ADS §10, ADS §9 |
 | **INT-003** | Concurrent trades on same wallet | User has $200 balance | Place trade A ($150) simultaneously with trade B ($150) | One succeeds (balance locked). One fails (insufficient funds). | ADR-009 |
 | **INT-004** | Idempotent deposit callback | Deposit pending | Send callback → verify credited → send duplicate callback → verify no double credit | Balance = initial + deposit (once). | SATM §6.4 |
@@ -644,7 +644,7 @@ Every endpoint in ADS must have at minimum:
 | **DB-004** | `auth.users` | UNIQUE (phone) | Insert duplicate phone | Unique violation. | DDS §5.1 |
 | **DB-005** | `trading.binary_contracts` | `CHECK (expiry_time > purchase_time)` | Set expiry before purchase | Constraint violation. | DDS §5.12 |
 | **DB-006** | `trading.binary_contracts` | `CHECK (stake > 0)` | Insert stake = 0 | Constraint violation. | DDS §5.12 |
-| **DB-007** | `trading.binary_contracts` | `CHECK (payout_rate BETWEEN 0.65 AND 0.88)` | Set rate to 0.50 | Constraint violation. | DDS §5.12 |
+| **DB-007** | `trading.binary_contracts` | `CHECK (payout_rate = 0.60)` | Set rate to 0.50 | Constraint violation. | DDS §5.12 |
 | **DB-008** | `payments.deposits` | UNIQUE (gateway_reference) | Insert duplicate gateway ref | Unique violation. | DDS §5.19 |
 | **DB-009** | `referral.referral_codes` | UNIQUE (code) | Insert duplicate code | Unique violation. | DDS §5.27 |
 | **DB-010** | `payments.idempotency_keys` | PRIMARY KEY (key) | Insert duplicate key | Unique violation. | DDS §5.23 |
@@ -768,8 +768,8 @@ Every endpoint in ADS must have at minimum:
 
 | Test ID | Scenario | Steps | Expected | Source |
 | :--- | :--- | :--- | :--- | :--- |
-| **TRD-001** | Valid trade | Buy EUR/USD Higher, $50, 5min | 201 Created. Stake locked. Strike price captured. Expiry scheduled. | ADS §11.3 |
-| **TRD-002** | Valid trade — Lower direction | Buy XAU/USD Lower, $30, 15min | 201 Created. Contract type = 'lower'. | ADS §11.3 |
+| **TRD-001** | Valid trade | Buy EUR/USD Higher, 50 KES, 5min | 201 Created. Stake locked. Strike price captured. Expiry scheduled. | ADS §11.3 |
+| **TRD-002** | Valid trade — Lower | Buy XAU/USD Lower, 30 KES, 15min | 201 Created. Contract type = 'lower'. | ADS §11.3 |
 | **TRD-003** | Invalid contract type | Buy EUR/USD 'equal', $50, 5min | 400 VALIDATION_ERROR. | ADS §11.3 |
 | **TRD-004** | Asset not found | Buy FAKE/USD Higher, $50, 5min | 404. | ADS §11.2 |
 | **TRD-005** | 10-step validation order | Trigger each validation step individually | Steps execute in order per ADS §11.3. First failure blocks. | ADS §11.3 |
@@ -781,11 +781,11 @@ Every endpoint in ADS must have at minimum:
 
 | Test ID | Scenario | Steps | Expected | Source |
 | :--- | :--- | :--- | :--- | :--- |
-| **SET-001** | Win — price increased | Strike: 1.10000, Expiry: 1.10500, Higher | Won. Payout = stake × 1.80. | BRD §8 |
+| **SET-001** | Win — price increased | Strike: 1.10000, Expiry: 1.10500, Higher | Won. Payout = stake × 1.60. | BRD §8 |
 | **SET-002** | Loss — price decreased | Strike: 1.10000, Expiry: 1.09500, Higher | Lost. Stake lost. | BRD §8 |
 | **SET-003** | Draw — price unchanged | Strike: 1.10000, Expiry: 1.10000, Higher | Draw. Stake refunded. | BRD §7 |
-| **SET-004** | Win — Lower direction | Strike: 1.10000, Expiry: 1.09500, Lower | Won. | BRD §8 |
-| **SET-005** | Loss — Lower direction | Strike: 1.10000, Expiry: 1.10500, Lower | Lost. | BRD §8 |
+| **SET-004** | Win — Lower | Strike: 1.10000, Expiry: 1.09500, Lower | Won. | BRD §8 |
+| **SET-005** | Loss — Lower | Strike: 1.10000, Expiry: 1.10500, Lower | Lost. | BRD §8 |
 | **SET-006** | Settlement with missing price tick | Expiry time has no price_ticks entry | Settlement falls back to nearest preceding tick. Contract status kept in dead-letter if gap > threshold. | ADR-012 |
 | **SET-007** | 100 simultaneous settlements | 100 contracts expire at same time | All 100 settled within 2 seconds (SRS NFR-PER-003). No double-settlements. | SRS NFR-PER-003 |
 | **SET-008** | Settlement with Redis unavailable | Redis cluster down | Settlement price from PostgreSQL. No delay. | ADR-012 |
@@ -1250,7 +1250,7 @@ Each module should have a test data factory that generates valid domain objects:
 | :--- | :--- | :--- |
 | `createUser(overrides)` | User object | email, password, displayName, phone, role |
 | `createWallet(overrides)` | Wallet object | userId, balance, lockedBalance |
-| `createContract(overrides)` | Contract object | userId, assetSymbol, stake, direction, expiry |
+| `createContract(overrides)` | Contract object | userId, assetSymbol, stake, contract_type, expiry |
 | `createDeposit(overrides)` | Deposit object | userId, amount, gatewayId, status |
 | `createWithdrawal(overrides)` | Withdrawal object | userId, amount, status |
 | `createReferralCode(overrides)` | ReferralCode object | ownerId, code |
@@ -1389,12 +1389,11 @@ Assert:
 Test: INT-001 Full trade lifecycle
 
 Setup:
-  - Create user with $100 balance (via UserFactory + WalletFactory)
+  - Create user with 100 KES balance (via UserFactory + WalletFactory)
   - Ensure EUR/USD market is open
   - Ensure user is not self-excluded
 
 Execute:
-  // Step 1: Place trade
   response = POST /api/v1/trading/contracts {
     assetSymbol: 'EUR/USD',
     contractType: 'higher',
@@ -1412,7 +1411,7 @@ Execute:
   
   // Step 2: Verify wallet locked
   walletResponse = GET /api/v1/wallets/balance
-  walletResponse.data.availableBalance == '50.00'  // $100 - $50
+  walletResponse.data.availableBalance == '50.00'  // 100 KES - 50 KES
   walletResponse.data.lockedBalance == '50.00'
   
   // Step 3: Wait for expiry (or trigger settlement manually)
@@ -1426,9 +1425,9 @@ Execute:
   
   // Step 5: Verify final balance
   finalWallet = GET /api/v1/wallets/balance
-  // If won: balance == $50 + $90 = $140
-  // If lost: balance == $50
-  // If draw: balance == $100
+  // If won: balance == 50 KES + 80 KES = 130 KES
+  // If lost: balance == 50 KES
+  // If draw: balance == 100 KES
 ```
 
 ### 20.3 Example: Atomic CAS Settlement Test (Pseudocode)

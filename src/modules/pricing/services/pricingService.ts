@@ -1,15 +1,15 @@
-import { pgPool } from '../../../config/database';
-import { TickRepository } from '../repositories/tickRepository';
-import { CandleRepository } from '../repositories/candleRepository';
-import { PriceDistributionService } from './priceDistributionService';
-import { MarketStatusService } from './MarketStatusService';
+import { pgPool } from '../../../config/database.js';
+import { TickRepository } from '../repositories/tickRepository.js';
+import { CandleRepository } from '../repositories/candleRepository.js';
+import { PriceDistributionService } from './priceDistributionService.js';
+import { MarketStatusService } from './MarketStatusService.js';
 import {
   PriceResponseDto,
   CandleRequestDto,
   AssetResponseDto,
   MarketStatusResponseDto,
-} from '../dto/pricing.dto';
-import { normalizeSymbol } from '../utils/symbolNormalizer';
+} from '../dto/pricing.dto.js';
+import { normalizeSymbol } from '../utils/symbolNormalizer.js';
 
 export class PricingService {
   private tickRepo: TickRepository;

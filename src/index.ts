@@ -3,12 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import http from 'http';
-import { config } from './config/app';
-import { correlationIdMiddleware } from './shared/middleware/correlationId';
-import { requestLogger } from './shared/middleware/logger';
-import routes from './infrastructure/routes';
-import { logger } from './shared/middleware/logger';
-import { attachWebSocketServer } from './infrastructure/websocket/wsServer';
+import { config } from './config/app.js';
+import { correlationIdMiddleware } from './shared/middleware/correlationId.js';
+import { requestLogger } from './shared/middleware/logger.js';
+import routes from './infrastructure/routes.js';
+import { logger } from './shared/middleware/logger.js';
+import { attachWebSocketServer } from './infrastructure/websocket/wsServer.js';
 
 const app: Application = express();
 
@@ -78,12 +78,24 @@ const server = http.createServer(app);
 // Attach WebSocket server
 attachWebSocketServer(server);
 
-// Automatically start price feed if enabled (for single-service deployments like Render Free Tier)
+// Automatically start price feed if enabled
 if (config.enablePriceFeed) {
   import('./modules/pricing/bootstrap.js')
     .then((m) => m.bootstrapPriceFeed())
     .catch((err) => {
       logger.error('Failed to auto-start price feed', { error: err.message });
+    });
+}
+
+// Automatically start settlement worker if enabled
+if (config.enableSettlementWorker) {
+  import('./modules/trading/workers/settlementWorker.js')
+    .then((m) => {
+      const worker = new m.SettlementWorker();
+      return worker.start();
+    })
+    .catch((err) => {
+      logger.error('Failed to start settlement worker', { error: err.message });
     });
 }
 

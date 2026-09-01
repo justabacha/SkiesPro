@@ -1,5 +1,5 @@
-import { TokenService } from '../../auth/services/tokenService';
-import { logger } from '../../../shared/middleware/logger';
+import { TokenService } from '../../auth/services/tokenService.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export interface AuthenticatedWebSocket {
   userId: string;
@@ -19,7 +19,7 @@ export class WebSocketAuthMiddleware {
     try {
       // Validate JWT access token
       const payload = this.tokenService.validateAccessToken(token);
-      
+
       if (!payload) {
         logger.warn('WebSocket authentication failed: Invalid token');
         return null;
@@ -39,7 +39,9 @@ export class WebSocketAuthMiddleware {
         jti: payload.jti,
       };
     } catch (error) {
-      logger.error('WebSocket authentication error', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('WebSocket authentication error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return null;
     }
   }
@@ -50,7 +52,10 @@ export class WebSocketAuthMiddleware {
       const tokenParam = urlObj.searchParams.get('token');
       return tokenParam;
     } catch (error) {
-      logger.error('Failed to extract token from URL', { url, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Failed to extract token from URL', {
+        url,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       return null;
     }
   }

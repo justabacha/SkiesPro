@@ -26,11 +26,13 @@ CREATE TABLE IF NOT EXISTS admin.audit_logs (
 );
 
 -- Prevent UPDATE and DELETE on audit_logs (immutable)
+DROP TRIGGER IF EXISTS audit_logs_prevent_update ON admin.audit_logs;
 CREATE TRIGGER audit_logs_prevent_update
 BEFORE UPDATE ON admin.audit_logs
 FOR EACH STATEMENT
 EXECUTE FUNCTION admin.prevent_mutation();
 
+DROP TRIGGER IF EXISTS audit_logs_prevent_delete ON admin.audit_logs;
 CREATE TRIGGER audit_logs_prevent_delete
 BEFORE DELETE ON admin.audit_logs
 FOR EACH STATEMENT

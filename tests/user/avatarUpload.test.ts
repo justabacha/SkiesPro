@@ -1,8 +1,8 @@
 import request from 'supertest';
-import app from '../../src/index';
-import { TokenService } from '../../src/modules/auth/services/tokenService';
-import { storageClient } from '../../src/shared/storage/supabaseStorage';
-import { UserRepository } from '../../src/modules/auth/repositories/userRepository';
+import app from '../../src/index.js';
+import { TokenService } from '../../src/modules/auth/services/tokenService.js';
+import { storageClient } from '../../src/shared/storage/supabaseStorage.js';
+import { UserRepository } from '../../src/modules/auth/repositories/userRepository.js';
 
 jest.mock('../../src/shared/storage/supabaseStorage');
 jest.mock('../../src/modules/auth/repositories/userRepository');

@@ -1,5 +1,5 @@
 import { PoolClient } from 'pg';
-import { LedgerRepository, LedgerRow } from '../repositories/ledgerRepository';
+import { LedgerRepository, LedgerRow } from '../repositories/ledgerRepository.js';
 import { Decimal } from 'decimal.js';
 
 export class LedgerService {

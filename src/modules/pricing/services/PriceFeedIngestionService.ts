@@ -1,11 +1,11 @@
-import { BinanceAdapter } from '../adapters/binanceAdapter';
-import { MockPriceAdapter } from '../adapters/mockPriceAdapter';
-import { PriceValidationService } from './priceValidationService';
-import { TickRepository, TickRow } from '../repositories/tickRepository';
-import { PriceDistributionService } from './priceDistributionService';
-import { OHLCService } from './OHLCService';
+import { BinanceAdapter } from '../adapters/binanceAdapter.js';
+import { MockPriceAdapter } from '../adapters/mockPriceAdapter.js';
+import { PriceValidationService } from './priceValidationService.js';
+import { TickRepository, TickRow } from '../repositories/tickRepository.js';
+import { PriceDistributionService } from './priceDistributionService.js';
+import { OHLCService } from './OHLCService.js';
 import { Decimal } from 'decimal.js';
-import { logger } from '../../../shared/middleware/logger';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class PriceFeedIngestionService {
   private adapter: BinanceAdapter | MockPriceAdapter;

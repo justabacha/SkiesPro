@@ -1,7 +1,7 @@
 import { PoolClient } from 'pg';
-import { pgPool } from '../../../config/database';
-import { WalletRepository, WalletRow } from '../repositories/walletRepository';
-import { LedgerService } from './ledgerService';
+import { pgPool } from '../../../config/database.js';
+import { WalletRepository, WalletRow } from '../repositories/walletRepository.js';
+import { LedgerService } from './ledgerService.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
 

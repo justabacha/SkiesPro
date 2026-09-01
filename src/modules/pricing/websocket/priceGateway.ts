@@ -1,9 +1,9 @@
 import WebSocket from 'ws';
-import { ConnectionManager } from './connectionManager';
-import { SubscriptionManager } from './subscriptionManager';
-import { RedisSubscriber } from './redisSubscriber';
-import { webSocketAuthMiddleware } from './authMiddleware';
-import { logger } from '../../../shared/middleware/logger';
+import { ConnectionManager } from './connectionManager.js';
+import { SubscriptionManager } from './subscriptionManager.js';
+import { RedisSubscriber } from './redisSubscriber.js';
+import { webSocketAuthMiddleware } from './authMiddleware.js';
+import { logger } from '../../../shared/middleware/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class PriceGateway {

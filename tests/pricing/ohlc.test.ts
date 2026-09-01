@@ -1,4 +1,4 @@
-import { OHLCService } from '../../src/modules/pricing/services/OHLCService';
+import { OHLCService } from '../../src/modules/pricing/services/OHLCService.js';
 
 describe('OHLCService', () => {
   let service: OHLCService;

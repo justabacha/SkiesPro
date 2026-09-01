@@ -1,5 +1,5 @@
-import { ConnectionManager } from './connectionManager';
-import { logger } from '../../../shared/middleware/logger';
+import { ConnectionManager } from './connectionManager.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export interface SubscribeMessage {
   type: 'subscribe';
@@ -58,9 +58,17 @@ export class SubscriptionManager {
 
       switch (parsed.type) {
         case 'subscribe':
-          return this.handleSubscribe(connectionId, parsed as unknown as SubscribeMessage, requestId);
+          return this.handleSubscribe(
+            connectionId,
+            parsed as unknown as SubscribeMessage,
+            requestId
+          );
         case 'unsubscribe':
-          return this.handleUnsubscribe(connectionId, parsed as unknown as UnsubscribeMessage, requestId);
+          return this.handleUnsubscribe(
+            connectionId,
+            parsed as unknown as UnsubscribeMessage,
+            requestId
+          );
         case 'ping':
           return this.handlePing(connectionId, requestId);
         default:

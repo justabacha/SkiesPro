@@ -1,4 +1,4 @@
-import { PriceValidationService } from '../../src/modules/pricing/services/priceValidationService';
+import { PriceValidationService } from '../../src/modules/pricing/services/priceValidationService.js';
 
 describe('PriceValidationService', () => {
   let service: PriceValidationService;

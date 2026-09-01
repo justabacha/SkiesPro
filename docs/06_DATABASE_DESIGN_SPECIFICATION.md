@@ -154,20 +154,20 @@ graph TD
 
 ### 3.1 Schema Map
 
-| Schema | Owner Module | Purpose | Tables |
-| :--- | :--- | :--- | :--- |
-| `auth` | Auth & Session Module | User identities, credentials, roles, sessions | users, roles, permissions, role_permissions, user_roles, sessions, mfa_tokens, password_reset_tokens |
-| `wallet` | Wallet & Ledger Module | User balances, ledger transactions | wallets, ledger_entries, wallet_version_log |
-| `trading` | Trading Engine Module | Binary contracts, assets, settlement | binary_contracts, contract_events, assets, asset_config |
-| `pricing` | Price Feed Service | Market data, price history | price_ticks, candles, market_hours |
-| `payments` | Payment Module | Deposits, withdrawals, gateway integration | deposits, withdrawals, payment_gateways, payment_webhook_logs, idempotency_keys |
-| `compliance` | Compliance Module | KYC, AML, regulatory screening | kyc_documents, aml_flags, compliance_rules, pep_screening_results |
-| `referral` | Referral Module | Referral codes, commissions | referrals, referral_codes, referral_commissions |
-| `admin` | Admin Operations Module | Administration, audit, support | admin_actions, audit_logs, support_tickets, system_jobs, job_history |
-| `config` | Admin Operations Module | Platform configuration | platform_settings, feature_flags |
-| `notifications` | Notification Worker | Outbound notifications | notifications, notification_queue, notification_templates |
-| `reporting` | Reporting Module | Report data (read-only) | daily_revenue_summary, daily_trade_summary, daily_settlement_summary |
-| `events` | Shared | Transactional outbox for financial events | event_outbox |
+| Schema          | Owner Module            | Purpose                                       | Tables                                                                                               |
+|:----------------|:------------------------|:----------------------------------------------|:-----------------------------------------------------------------------------------------------------|
+| `app_auth`      | Auth & Session Module   | User identities, credentials, roles, sessions | users, roles, permissions, role_permissions, user_roles, sessions, mfa_tokens, password_reset_tokens |
+| `wallet`        | Wallet & Ledger Module  | User balances, ledger transactions            | wallets, ledger_entries, wallet_version_log                                                          |
+| `trading`       | Trading Engine Module   | Binary contracts, assets, settlement          | binary_contracts, contract_events, assets, asset_config                                              |
+| `pricing`       | Price Feed Service      | Market data, price history                    | price_ticks, candles, market_hours                                                                   |
+| `payments`      | Payment Module          | Deposits, withdrawals, gateway integration    | deposits, withdrawals, payment_gateways, payment_webhook_logs, idempotency_keys                      |
+| `compliance`    | Compliance Module       | KYC, AML, regulatory screening                | kyc_documents, aml_flags, compliance_rules, pep_screening_results                                    |
+| `referral`      | Referral Module         | Referral codes, commissions                   | referrals, referral_codes, referral_commissions                                                      |
+| `admin`         | Admin Operations Module | Administration, audit, support                | admin_actions, audit_logs, support_tickets, system_jobs, job_history                                 |
+| `config`        | Admin Operations Module | Platform configuration                        | platform_settings, feature_flags                                                                     |
+| `notifications` | Notification Worker     | Outbound notifications                        | notifications, notification_queue, notification_templates                                            |
+| `reporting`     | Reporting Module        | Report data (read-only)                       | daily_revenue_summary, daily_trade_summary, daily_settlement_summary                                 |
+| `events`        | Shared                  | Transactional outbox for financial events     | event_outbox                                                                                         |
 
 ### 3.2 Schema Access Rules
 
@@ -199,49 +199,49 @@ graph TD
 
 ## 4. Entity Catalogue
 
-| Entity | Schema | Owner | Primary Key | Expected Rows/Year | Retention |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| users | auth | Auth Module | UUID | 100,000 | Indefinite (7yr after closure) |
-| roles | auth | Auth Module | SMALLSERIAL | < 10 | Indefinite |
-| permissions | auth | Auth Module | SMALLSERIAL | < 50 | Indefinite |
-| sessions | auth | Auth Module | UUID | 10M | 30 days |
-| mfa_tokens | auth | Auth Module | UUID | 500,000 | 30 days |
-| wallets | wallet | Wallet Module | UUID | 100,000 | Indefinite |
-| ledger_entries | wallet | Wallet Module | BIGSERIAL | 10M | 7 years |
-| wallet_version_log | wallet | Wallet Module | BIGSERIAL | 100,000 | 1 year |
-| binary_contracts | trading | Trading Module | UUID | 10M | 7 years |
-| contract_events | trading | Trading Module | BIGSERIAL | 30M | 7 years |
-| assets | trading | Trading Module | VARCHAR | < 100 | Indefinite |
-| price_ticks | pricing | Price Feed Service | BIGSERIAL | 50M | 7 years (partitioned) |
-| candles | pricing | Price Feed Service | BIGSERIAL | 5M | 7 years |
-| deposits | payments | Payment Module | UUID | 500,000 | 7 years |
-| withdrawals | payments | Payment Module | UUID | 300,000 | 7 years |
-| payment_gateways | payments | Payment Module | SMALLSERIAL | < 10 | Indefinite |
-| idempotency_keys | payments | Payment Module | VARCHAR | 2M | 7 days |
-| kyc_documents | compliance | Compliance Module | UUID | 200,000 | 7 years after closure |
-| aml_flags | compliance | Compliance Module | UUID | 10,000 | 7 years |
-| referrals | referral | Referral Module | UUID | 200,000 | 7 years |
-| referral_codes | referral | Referral Module | VARCHAR | 100,000 | Indefinite |
-| referral_commissions | referral | Referral Module | UUID | 500,000 | 7 years |
-| audit_logs | admin | Admin Module | BIGSERIAL | 20M | 7 years |
-| admin_actions | admin | Admin Module | UUID | 100,000 | 7 years |
-| support_tickets | admin | Admin Module | UUID | 50,000 | 3 years |
-| system_jobs | admin | Admin Module | UUID | 1M | 90 days |
-| platform_settings | config | Admin Module | VARCHAR | < 500 | Indefinite |
-| feature_flags | config | Admin Module | VARCHAR | < 50 | Indefinite |
-| notifications | notifications | Notification Worker | UUID | 10M | 90 days |
-| notification_queue | notifications | Notification Worker | UUID | 5M | 30 days |
-| event_outbox | events | Shared (Outbox Relay) | BIGSERIAL | 30M | 7 days after processed |
-| market_hours | pricing | Price Feed Service | VARCHAR | < 1,000 | Indefinite |
+| Entity               | Schema        | Owner                 | Primary Key | Expected Rows/Year | Retention                      |
+|:---------------------|:--------------|:----------------------|:------------|:-------------------|:-------------------------------|
+| users                | app_auth      | Auth Module           | UUID        | 100,000            | Indefinite (7yr after closure) |
+| roles                | app_auth      | Auth Module           | SMALLSERIAL | < 10               | Indefinite                     |
+| permissions          | app_auth      | Auth Module           | SMALLSERIAL | < 50               | Indefinite                     |
+| sessions             | app_auth      | Auth Module           | UUID        | 10M                | 30 days                        |
+| mfa_tokens           | app_auth      | Auth Module           | UUID        | 500,000            | 30 days                        |
+| wallets              | wallet        | Wallet Module         | UUID        | 100,000            | Indefinite                     |
+| ledger_entries       | wallet        | Wallet Module         | BIGSERIAL   | 10M                | 7 years                        |
+| wallet_version_log   | wallet        | Wallet Module         | BIGSERIAL   | 100,000            | 1 year                         |
+| binary_contracts     | trading       | Trading Module        | UUID        | 10M                | 7 years                        |
+| contract_events      | trading       | Trading Module        | BIGSERIAL   | 30M                | 7 years                        |
+| assets               | trading       | Trading Module        | VARCHAR     | < 100              | Indefinite                     |
+| price_ticks          | pricing       | Price Feed Service    | BIGSERIAL   | 50M                | 7 years (partitioned)          |
+| candles              | pricing       | Price Feed Service    | BIGSERIAL   | 5M                 | 7 years                        |
+| deposits             | payments      | Payment Module        | UUID        | 500,000            | 7 years                        |
+| withdrawals          | payments      | Payment Module        | UUID        | 300,000            | 7 years                        |
+| payment_gateways     | payments      | Payment Module        | SMALLSERIAL | < 10               | Indefinite                     |
+| idempotency_keys     | payments      | Payment Module        | VARCHAR     | 2M                 | 7 days                         |
+| kyc_documents        | compliance    | Compliance Module     | UUID        | 200,000            | 7 years after closure          |
+| aml_flags            | compliance    | Compliance Module     | UUID        | 10,000             | 7 years                        |
+| referrals            | referral      | Referral Module       | UUID        | 200,000            | 7 years                        |
+| referral_codes       | referral      | Referral Module       | VARCHAR     | 100,000            | Indefinite                     |
+| referral_commissions | referral      | Referral Module       | UUID        | 500,000            | 7 years                        |
+| audit_logs           | admin         | Admin Module          | BIGSERIAL   | 20M                | 7 years                        |
+| admin_actions        | admin         | Admin Module          | UUID        | 100,000            | 7 years                        |
+| support_tickets      | admin         | Admin Module          | UUID        | 50,000             | 3 years                        |
+| system_jobs          | admin         | Admin Module          | UUID        | 1M                 | 90 days                        |
+| platform_settings    | config        | Admin Module          | VARCHAR     | < 500              | Indefinite                     |
+| feature_flags        | config        | Admin Module          | VARCHAR     | < 50               | Indefinite                     |
+| notifications        | notifications | Notification Worker   | UUID        | 10M                | 90 days                        |
+| notification_queue   | notifications | Notification Worker   | UUID        | 5M                 | 30 days                        |
+| event_outbox         | events        | Shared (Outbox Relay) | BIGSERIAL   | 30M                | 7 days after processed         |
+| market_hours         | pricing       | Price Feed Service    | VARCHAR     | < 1,000            | Indefinite                     |
 
 ---
 
 ## 5. Complete Table Specifications
 
-### 5.1 `auth.users`
+### 5.1 `app_auth.users`
 
 ```yaml
-Schema: auth
+Schema: app_auth
 Table: users
 Purpose: Platform user accounts (traders and administrative staff)
 Owner: Auth & Session Module
@@ -250,32 +250,32 @@ Soft Delete: Yes (deleted_at timestamp)
 Retention: Indefinite; 7 years after account closure before archival
 ```
 
-| Column | Type | Nullable | Default | Constraints |
-| :--- | :--- | :--- | :--- | :--- |
-| id | UUID | NOT NULL | gen_random_uuid() | PRIMARY KEY |
-| email | VARCHAR(255) | NOT NULL | — | UNIQUE, CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') |
-| password_hash | VARCHAR(255) | NOT NULL | — | — |
-| phone | VARCHAR(20) | NULL | — | UNIQUE |
-| display_name | VARCHAR(100) | NOT NULL | — | — |
-| referral_code | VARCHAR(20) | NULL | — | UNIQUE (generated on registration) |
-| referred_by_id | UUID | NULL | — | FK → auth.users(id) ON DELETE SET NULL |
-| kyc_status | VARCHAR(20) | NOT NULL | 'unverified' | CHECK (kyc_status IN ('unverified','pending','verified','rejected')) |
-| self_excluded_until | TIMESTAMPTZ | NULL | — | — |
-| mfa_enabled | BOOLEAN | NOT NULL | FALSE | — |
-| mfa_type | VARCHAR(20) | NULL | — | CHECK (mfa_type IN ('totp', 'sms') OR NULL) |
-| last_login_at | TIMESTAMPTZ | NULL | — | — |
-| failed_login_attempts | SMALLINT | NOT NULL | 0 | CHECK (failed_login_attempts >= 0) |
-| locked_until | TIMESTAMPTZ | NULL | — | — |
-| status | VARCHAR(20) | NOT NULL | 'active' | CHECK (status IN ('active','suspended','closed')) |
-| created_at | TIMESTAMPTZ | NOT NULL | NOW() | — |
-| updated_at | TIMESTAMPTZ | NOT NULL | NOW() | — |
-| deleted_at | TIMESTAMPTZ | NULL | — | Soft delete marker |
+| Column                | Type         | Nullable | Default           | Constraints                                                                 |
+|:----------------------|:-------------|:---------|:------------------|:----------------------------------------------------------------------------|
+| id                    | UUID         | NOT NULL | gen_random_uuid() | PRIMARY KEY                                                                 |
+| email                 | VARCHAR(255) | NOT NULL | —                 | UNIQUE, CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') |
+| password_hash         | VARCHAR(255) | NOT NULL | —                 | —                                                                           |
+| phone                 | VARCHAR(20)  | NULL     | —                 | UNIQUE                                                                      |
+| display_name          | VARCHAR(100) | NOT NULL | —                 | —                                                                           |
+| referral_code         | VARCHAR(20)  | NULL     | —                 | UNIQUE (generated on registration)                                          |
+| referred_by_id        | UUID         | NULL     | —                 | FK → app_auth.users(id) ON DELETE SET NULL                                  |
+| kyc_status            | VARCHAR(20)  | NOT NULL | 'unverified'      | CHECK (kyc_status IN ('unverified','pending','verified','rejected'))        |
+| self_excluded_until   | TIMESTAMPTZ  | NULL     | —                 | —                                                                           |
+| mfa_enabled           | BOOLEAN      | NOT NULL | FALSE             | —                                                                           |
+| mfa_type              | VARCHAR(20)  | NULL     | —                 | CHECK (mfa_type IN ('totp', 'sms') OR NULL)                                 |
+| last_login_at         | TIMESTAMPTZ  | NULL     | —                 | —                                                                           |
+| failed_login_attempts | SMALLINT     | NOT NULL | 0                 | CHECK (failed_login_attempts >= 0)                                          |
+| locked_until          | TIMESTAMPTZ  | NULL     | —                 | —                                                                           |
+| status                | VARCHAR(20)  | NOT NULL | 'active'          | CHECK (status IN ('active','suspended','closed'))                           |
+| created_at            | TIMESTAMPTZ  | NOT NULL | NOW()             | —                                                                           |
+| updated_at            | TIMESTAMPTZ  | NOT NULL | NOW()             | —                                                                           |
+| deleted_at            | TIMESTAMPTZ  | NULL     | —                 | Soft delete marker                                                          |
 
 **Indexes**:
-- `auth_users_email_idx` UNIQUE on `email` WHERE `deleted_at IS NULL`
-- `auth_users_phone_idx` UNIQUE on `phone` WHERE `phone IS NOT NULL AND deleted_at IS NULL`
-- `auth_users_referral_code_idx` UNIQUE on `referral_code`
-- `auth_users_status_idx` on `status` (for admin queries filtering by user state)
+- `app_auth_users_email_idx` UNIQUE on `email` WHERE `deleted_at IS NULL`
+- `app_auth_users_phone_idx` UNIQUE on `phone` WHERE `phone IS NOT NULL AND deleted_at IS NULL`
+- `app_auth_users_referral_code_idx` UNIQUE on `referral_code`
+- `app_auth_users_status_idx` on `status` (for admin queries filtering by user state)
 
 **Business Rules**:
 - `mfa_enabled` is `TRUE` for roles: Finance, Risk, Compliance, Admin, Super Admin (enforced at application layer, not DDL)
@@ -294,12 +294,12 @@ Lifecycle: Static configuration
 Retention: Indefinite
 ```
 
-| Column | Type | Nullable | Default | Constraints |
-| :--- | :--- | :--- | :--- | :--- |
-| id | SMALLSERIAL | NOT NULL | — | PRIMARY KEY |
-| name | VARCHAR(50) | NOT NULL | — | UNIQUE, CHECK (name IN ('trader','support','finance','risk_manager','compliance','admin','super_admin')) |
-| description | VARCHAR(255) | NULL | — | — |
-| created_at | TIMESTAMPTZ | NOT NULL | NOW() | — |
+| Column      | Type         | Nullable | Default | Constraints                                                                                              |
+|:------------|:-------------|:---------|:--------|:---------------------------------------------------------------------------------------------------------|
+| id          | SMALLSERIAL  | NOT NULL | —       | PRIMARY KEY                                                                                              |
+| name        | VARCHAR(50)  | NOT NULL | —       | UNIQUE, CHECK (name IN ('trader','support','finance','risk_manager','compliance','admin','super_admin')) |
+| description | VARCHAR(255) | NULL     | —       | —                                                                                                        |
+| created_at  | TIMESTAMPTZ  | NOT NULL | NOW()   | —                                                                                                        |
 
 ---
 
@@ -314,11 +314,11 @@ Lifecycle: Static configuration
 Retention: Indefinite
 ```
 
-| Column | Type | Nullable | Default | Constraints |
-| :--- | :--- | :--- | :--- | :--- |
-| id | SMALLSERIAL | NOT NULL | — | PRIMARY KEY |
-| code | VARCHAR(100) | NOT NULL | — | UNIQUE |
-| description | VARCHAR(255) | NULL | — | — |
+| Column      | Type         | Nullable | Default | Constraints |
+|:------------|:-------------|:---------|:--------|:------------|
+| id          | SMALLSERIAL  | NOT NULL | —       | PRIMARY KEY |
+| code        | VARCHAR(100) | NOT NULL | —       | UNIQUE      |
+| description | VARCHAR(255) | NULL     | —       | —           |
 
 ---
 
@@ -331,11 +331,11 @@ Purpose: Many-to-many mapping between roles and permissions
 Owner: Auth & Session Module
 ```
 
-| Column | Type | Nullable | Default | Constraints |
-| :--- | :--- | :--- | :--- | :--- |
-| role_id | SMALLINT | NOT NULL | — | FK → auth.roles(id) ON DELETE CASCADE |
-| permission_id | SMALLINT | NOT NULL | — | FK → auth.permissions(id) ON DELETE CASCADE |
-| PRIMARY KEY | (role_id, permission_id) | | | |
+| Column        | Type                     | Nullable | Default | Constraints                                 |
+|:--------------|:-------------------------|:---------|:--------|:--------------------------------------------|
+| role_id       | SMALLINT                 | NOT NULL | —       | FK → auth.roles(id) ON DELETE CASCADE       |
+| permission_id | SMALLINT                 | NOT NULL | —       | FK → auth.permissions(id) ON DELETE CASCADE |
+| PRIMARY KEY   | (role_id, permission_id) |          |         |                                             |
 
 ---
 
@@ -349,14 +349,14 @@ Owner: Auth & Session Module
 Lifecycle: Users can have multiple roles (e.g., trader + affiliate)
 ```
 
-| Column | Type | Nullable | Default | Constraints |
-| :--- | :--- | :--- | :--- | :--- |
-| user_id | UUID | NOT NULL | — | FK → auth.users(id) ON DELETE CASCADE |
-| role_id | SMALLINT | NOT NULL | — | FK → auth.roles(id) ON DELETE CASCADE |
-| granted_by | UUID | NOT NULL | — | FK → auth.users(id) |
-| granted_at | TIMESTAMPTZ | NOT NULL | NOW() | — |
-| revoked_at | TIMESTAMPTZ | NULL | — | — |
-| PRIMARY KEY | (user_id, role_id) | | | |
+| Column      | Type               | Nullable | Default | Constraints                           |
+|:------------|:-------------------|:---------|:--------|:--------------------------------------|
+| user_id     | UUID               | NOT NULL | —       | FK → auth.users(id) ON DELETE CASCADE |
+| role_id     | SMALLINT           | NOT NULL | —       | FK → auth.roles(id) ON DELETE CASCADE |
+| granted_by  | UUID               | NOT NULL | —       | FK → auth.users(id)                   |
+| granted_at  | TIMESTAMPTZ        | NOT NULL | NOW()   | —                                     |
+| revoked_at  | TIMESTAMPTZ        | NULL     | —       | —                                     |
+| PRIMARY KEY | (user_id, role_id) |          |         |                                       |
 
 ---
 
@@ -371,18 +371,18 @@ Lifecycle: Created on login; deleted on logout/expiry
 Retention: 30 days
 ```
 
-| Column | Type | Nullable | Default | Constraints |
-| :--- | :--- | :--- | :--- | :--- |
-| id | UUID | NOT NULL | gen_random_uuid() | PRIMARY KEY |
-| user_id | UUID | NOT NULL | — | FK → auth.users(id) ON DELETE CASCADE |
-| access_token_jti | VARCHAR(64) | NOT NULL | — | UNIQUE (JWT ID for blacklisting) |
-| refresh_token_hash | VARCHAR(255) | NOT NULL | — | Hashed refresh token (not stored in plaintext) |
-| refresh_token_expires_at | TIMESTAMPTZ | NOT NULL | — | 7 days from creation |
-| device_info | JSONB | NULL | — | Browser, OS, IP |
-| ip_address | INET | NOT NULL | — | — |
-| is_revoked | BOOLEAN | NOT NULL | FALSE | — |
-| revoked_at | TIMESTAMPTZ | NULL | — | — |
-| created_at | TIMESTAMPTZ | NOT NULL | NOW() | — |
+| Column                   | Type         | Nullable | Default           | Constraints                                    |
+|:-------------------------|:-------------|:---------|:------------------|:-----------------------------------------------|
+| id                       | UUID         | NOT NULL | gen_random_uuid() | PRIMARY KEY                                    |
+| user_id                  | UUID         | NOT NULL | —                 | FK → auth.users(id) ON DELETE CASCADE          |
+| access_token_jti         | VARCHAR(64)  | NOT NULL | —                 | UNIQUE (JWT ID for blacklisting)               |
+| refresh_token_hash       | VARCHAR(255) | NOT NULL | —                 | Hashed refresh token (not stored in plaintext) |
+| refresh_token_expires_at | TIMESTAMPTZ  | NOT NULL | —                 | 7 days from creation                           |
+| device_info              | JSONB        | NULL     | —                 | Browser, OS, IP                                |
+| ip_address               | INET         | NOT NULL | —                 | —                                              |
+| is_revoked               | BOOLEAN      | NOT NULL | FALSE             | —                                              |
+| revoked_at               | TIMESTAMPTZ  | NULL     | —                 | —                                              |
+| created_at               | TIMESTAMPTZ  | NOT NULL | NOW()             | —                                              |
 
 **Indexes**:
 - `auth_sessions_user_id_idx` on `user_id` (find all sessions for a user)
@@ -451,7 +451,7 @@ Retention: Indefinite (matches user lifecycle)
 | balance | NUMERIC(16,4) | NOT NULL | 0.0000 | CHECK (balance >= 0) |
 | locked_balance | NUMERIC(16,4) | NOT NULL | 0.0000 | CHECK (locked_balance >= 0) |
 | available_balance | NUMERIC(16,4) | NOT NULL | 0.0000 | CHECK (available_balance >= 0) |
-| currency | VARCHAR(3) | NOT NULL | 'USD' | CHECK (currency IN ('USD','KES','EUR','GBP')) |
+| currency | VARCHAR(3) | NOT NULL | 'KES' | CHECK (currency IN ('USD','KES','EUR','GBP')) |
 | version | INTEGER | NOT NULL | 1 | Optimistic locking fallback |
 | status | VARCHAR(20) | NOT NULL | 'active' | CHECK (status IN ('active','locked','closed')) |
 | created_at | TIMESTAMPTZ | NOT NULL | NOW() | — |
@@ -548,7 +548,7 @@ Retention: 7 years
 | asset_symbol | VARCHAR(20) | NOT NULL | — | FK → trading.assets(symbol) |
 | contract_type | VARCHAR(10) | NOT NULL | — | CHECK (contract_type IN ('higher','lower')) |
 | stake | NUMERIC(16,4) | NOT NULL | — | CHECK (stake > 0) |
-| payout_rate | NUMERIC(4,2) | NOT NULL | — | CHECK (payout_rate BETWEEN 0.65 AND 0.88) |
+| payout_rate | NUMERIC(4,2) | NOT NULL | — | CHECK (payout_rate = 0.60) |
 | status | VARCHAR(20) | NOT NULL | 'active' | CHECK (status IN ('draft','active','settling','won','lost','draw','cancelled','archived')) |
 | strike_price | NUMERIC(18,6) | NOT NULL | — | — |
 | expiry_price | NUMERIC(18,6) | NULL | — | Set during settlement |
@@ -633,7 +633,7 @@ Retention: Indefinite
 | :--- | :--- | :--- | :--- | :--- |
 | id | UUID | NOT NULL | gen_random_uuid() | PRIMARY KEY |
 | asset_symbol | VARCHAR(20) | NOT NULL | — | FK → trading.assets(symbol) ON DELETE CASCADE |
-| payout_rate | NUMERIC(4,2) | NOT NULL | 0.80 | CHECK (payout_rate BETWEEN 0.65 AND 0.88) |
+| payout_rate | NUMERIC(4,2) | NOT NULL | 0.60 | CHECK (payout_rate = 0.60) |
 | max_exposure | NUMERIC(18,2) | NOT NULL | 10000.00 | — |
 | max_stake_per_trade | NUMERIC(16,4) | NOT NULL | 500.00 | — |
 | volatility_multiplier | NUMERIC(4,2) | NOT NULL | 1.00 | CHECK (volatility_multiplier BETWEEN 0.50 AND 2.00) |
@@ -752,7 +752,7 @@ Retention: 7 years
 | amount | NUMERIC(16,4) | NOT NULL | — | CHECK (amount > 0) |
 | fee | NUMERIC(16,4) | NOT NULL | 0.0000 | CHECK (fee >= 0) |
 | net_amount | NUMERIC(16,4) | NOT NULL | — | CHECK (net_amount = amount - fee) |
-| currency | VARCHAR(3) | NOT NULL | 'USD' | — |
+| currency | VARCHAR(3) | NOT NULL | 'KES' | — |
 | status | VARCHAR(20) | NOT NULL | 'pending' | CHECK (status IN ('pending','completed','failed','refunded')) |
 | webhook_payload | JSONB | NULL | — | Raw webhook payload for audit |
 | idempotency_key | VARCHAR(255) | NOT NULL | — | FK → payments.idempotency_keys(key) |
@@ -785,7 +785,7 @@ Retention: 7 years
 | amount | NUMERIC(16,4) | NOT NULL | — | CHECK (amount > 0) |
 | fee | NUMERIC(16,4) | NOT NULL | 0.0000 | CHECK (fee >= 0) |
 | net_amount | NUMERIC(16,4) | NOT NULL | — | CHECK (net_amount = amount - fee) |
-| currency | VARCHAR(3) | NOT NULL | 'USD' | — |
+| currency | VARCHAR(3) | NOT NULL | 'KES' | — |
 | status | VARCHAR(20) | NOT NULL | 'pending' | CHECK (status IN ('pending','approved','dispatched','completed','failed','rejected')) |
 | reviewed_by | UUID | NULL | — | FK → auth.users(id) (admin who reviewed) |
 | review_note | TEXT | NULL | — | — |
@@ -1553,7 +1553,7 @@ All foreign keys are enforced at the database level. Key rules:
 | ledger_entries | `CHECK (amount > 0)` | Amount must be positive (debit/credit direction separate). |
 | binary_contracts | `CHECK (expiry_time > purchase_time)` | Trade expiry must be in the future at placement. |
 | binary_contracts | `CHECK (stake > 0)` | Stake must be positive. |
-| binary_contracts | `CHECK (payout_rate BETWEEN 0.65 AND 0.88)` | Payout rates bounded per BRD. |
+| binary_contracts | `CHECK (payout_rate = 0.60)` | Payout rate fixed at 60% per BRD. |
 | deposits | `CHECK (amount > 0)` | Deposit amount must be positive. |
 | referrals | `CHECK (referrer_id != referred_user_id)` | Users cannot refer themselves. |
 
@@ -1978,7 +1978,7 @@ sequenceDiagram
 | **Prices** | NUMERIC | 18 | 6 | `1234.567890` |
 | **Balances** | NUMERIC | 16 | 4 | `12345.6789` |
 | **Stakes/Payouts** | NUMERIC | 16 | 4 | `500.0000` |
-| **Payout Rates** | NUMERIC | 4 | 2 | `0.80` |
+| **Payout Rates** | NUMERIC | 4 | 2 | `0.60` |
 | **Fees** | NUMERIC | 16 | 4 | `2.5000` |
 
 **Draw Detection Rule** (per MP-002): A Draw is declared if `ABS(expiry_price - strike_price) < 0.00001` at 5 decimal places.

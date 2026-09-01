@@ -374,7 +374,7 @@ Brief description of what this module does and its domain responsibility.
 | **Exceptions** | PascalCase, suffix `Exception` | `InsufficientBalanceException`, `ValidationException` | IMP §2 |
 | **Interfaces** | PascalCase, prefix `I` | `IWalletService`, `IRepository` | IMP §2 |
 | **Database tables** | snake_case, plural | `ledger_entries`, `users`, `contracts` | DDS §3 |
-| **Database columns** | snake_case | `created_at`, `user_id`, `balance` | DDS §3 |
+| **Database columns** | snake_case | `created_at`, `user_id`, `balance`, `stake`, `contract_type`, `payout_rate`, `purchase_time` | DDS §3 |
 | **Database indexes** | `idx_table_column` | `idx_ledger_entries_user_id` | DDS §6 |
 | **Environment variables** | SCREAMING_SNAKE_CASE | `MAX_STAKE_AMOUNT`, `DATABASE_URL` | IDS §4 |
 | **Constants** | SCREAMING_SNAKE_CASE | `MAX_TRADE_STAKE`, `DEFAULT_EXPIRY` | IMP §2 |
@@ -909,6 +909,29 @@ class TradeService {
 
 **Reference:** ADR-011 (Transactional Outbox), ADR-010 (Settlement Atomicity)
 
+### 5.9 Build & Module Resolution
+
+The project uses ECMAScript modules (ESM) with `Node16`/`NodeNext` module resolution.
+
+**Rules:**
+- **Explicit File Extensions**: Relative import paths MUST include explicit `.js` file extensions in ECMAScript imports (even when importing `.ts` files, the import must use `.js` because that is what the compiled file will be).
+- **Dynamic Imports**: Use `import()` for optional modules or circular dependency resolution. These also require explicit extensions.
+- **NodeNext Compatibility**: Ensure `tsconfig.json` specifies `"moduleResolution": "node16"` or `"nodenext"`.
+
+**Example:**
+
+```typescript
+// ✅ CORRECT
+import { bootstrapPriceFeed } from './modules/pricing/bootstrap.js';
+import('./modules/pricing/bootstrap.js').then(...);
+
+// ❌ INCORRECT
+import { bootstrapPriceFeed } from './modules/pricing/bootstrap';
+import('./modules/pricing/bootstrap').then(...);
+```
+
+**Reference:** tsconfig.json, Render Deployment Logs (TS2835)
+
 ---
 
 ## 6. Frontend Coding Standards
@@ -932,19 +955,19 @@ One component per file. Container/Presentational pattern. Hooks for shared logic
 interface TradePanelProps {
   assetSymbol: string;
   currentPrice: Decimal;
-  onPlaceTrade: (direction: 'higher' | 'lower', stake: Decimal) => void;
+  onPlaceTrade: (contractType: 'higher' | 'lower', stake: Decimal) => void;
 }
 
 function TradePanel({ assetSymbol, currentPrice, onPlaceTrade }: TradePanelProps) {
   const [stake, setStake] = useState<Decimal>(new Decimal(50));
-  const [direction, setDirection] = useState<'higher' | 'lower'>('higher');
+  const [contractType, setContractType] = useState<'higher' | 'lower'>('higher');
   
   return (
     <div className="trade-panel">
       <PriceDisplay symbol={assetSymbol} price={currentPrice} />
       <StakeInput value={stake} onChange={setStake} />
-      <DirectionButtons value={direction} onChange={setDirection} />
-      <PlaceButton onClick={() => onPlaceTrade(direction, stake)} />
+      <DirectionButtons value={contractType} onChange={setContractType} />
+      <PlaceButton onClick={() => onPlaceTrade(contractType, stake)} />
     </div>
   );
 }
@@ -955,8 +978,8 @@ function TradeContainer() {
   const { placeTrade, isLoading } = useTrading();
   
   const handlePlaceTrade = useCallback(
-    (direction: 'higher' | 'lower', stake: Decimal) => {
-      placeTrade({ assetSymbol, direction, stake });
+    (contractType: 'higher' | 'lower', stake: Decimal) => {
+      placeTrade({ assetSymbol, contractType, stake });
     },
     [assetSymbol, placeTrade]
   );
@@ -1664,7 +1687,7 @@ async getTradesWithUsers(tradeIds: string[]): Promise<Trade[]> {
  *   'user-123',
  *   'EUR/USD',
  *   'higher',
- *   new Decimal(50),
+ *   new Decimal(500),
  *   300
  * );
  * ```

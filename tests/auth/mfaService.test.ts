@@ -1,4 +1,4 @@
-import { MfaService } from '../../src/modules/auth/services/mfaService';
+import { MfaService } from '../../src/modules/auth/services/mfaService.js';
 import QRCode from 'qrcode';
 
 describe('MfaService', () => {

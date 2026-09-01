@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { cacheClient } from '../../infrastructure/cache';
+import { cacheClient } from '../../infrastructure/cache/index.js';
 
 interface RateLimitConfig {
   windowMs: number;

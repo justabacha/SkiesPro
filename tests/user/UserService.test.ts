@@ -1,5 +1,5 @@
-import { UserService } from '../../src/modules/user/services/UserService';
-import { UserRepository } from '../../src/modules/auth/repositories/userRepository';
+import { UserService } from '../../src/modules/user/services/UserService.js';
+import { UserRepository } from '../../src/modules/auth/repositories/userRepository.js';
 import '../../src/shared/storage/supabaseStorage';
 
 jest.mock('../../src/modules/auth/repositories/userRepository');

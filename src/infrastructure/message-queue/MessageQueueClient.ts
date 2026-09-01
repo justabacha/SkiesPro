@@ -1,5 +1,5 @@
-import { IMessageQueue, PublishOptions, MessageHandler } from './IMessageQueue';
-import { InMemoryAdapter } from './InMemoryAdapter';
+import { IMessageQueue, PublishOptions, MessageHandler } from './IMessageQueue.js';
+import { InMemoryAdapter } from './InMemoryAdapter.js';
 
 export class MessageQueueClient {
   private adapter: IMessageQueue;

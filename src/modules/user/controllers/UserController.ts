@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { UserService } from '../services/UserService';
-import { AuthenticatedRequest } from '../../../shared/middleware/authMiddleware';
-import { logger } from '../../../shared/middleware/logger';
+import { UserService } from '../services/UserService.js';
+import { AuthenticatedRequest } from '../../../shared/middleware/authMiddleware.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class UserController {
   private userService: UserService;

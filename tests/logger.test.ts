@@ -1,4 +1,4 @@
-import { logger } from '../src/shared/middleware/logger';
+import { logger } from '../src/shared/middleware/logger.js';
 
 describe('Logger', () => {
   describe('secret scrubbing', () => {

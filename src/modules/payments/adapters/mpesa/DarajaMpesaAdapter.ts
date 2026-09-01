@@ -4,8 +4,8 @@ import {
   StkPushRequest,
   StkPushResponse,
   TransactionStatusResponse,
-} from './IPaymentGateway';
-import { logger } from '../../../../shared/middleware/logger';
+} from './IPaymentGateway.js';
+import { logger } from '../../../../shared/middleware/logger.js';
 
 export class DarajaMpesaAdapter implements IPaymentGateway {
   private readonly baseUrl: string;

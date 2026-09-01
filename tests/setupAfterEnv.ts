@@ -1,5 +1,5 @@
-import { pgPool } from '../src/config/database';
-import { cacheClient } from '../src/infrastructure/cache';
+import { pgPool } from '../src/config/database.js';
+import { cacheClient } from '../src/infrastructure/cache/index.js';
 
 jest.mock('otplib', () => ({
   TOTP: jest.fn().mockImplementation(() => ({

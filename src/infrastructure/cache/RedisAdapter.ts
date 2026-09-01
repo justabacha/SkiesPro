@@ -1,4 +1,4 @@
-import { ICache } from './ICache';
+import { ICache } from './ICache.js';
 import { createClient, type RedisClientType } from 'redis';
 
 export class RedisAdapter implements ICache {

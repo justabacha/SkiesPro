@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { param, query } from 'express-validator';
-import { PricingController } from './controllers/pricingController';
-import { authenticate } from '../../shared/middleware/authMiddleware';
-import { rateLimit } from '../../shared/middleware/rateLimit';
-import { validate } from '../../shared/middleware/validate'; // Assuming a validate middleware exists
+import { PricingController } from './controllers/pricingController.js';
+import { authenticate } from '../../shared/middleware/authMiddleware.js';
+import { rateLimit } from '../../shared/middleware/rateLimit.js';
+import { validate } from '../../shared/middleware/validate.js';
 
 const router = Router();
 const controller = new PricingController();

@@ -3,7 +3,7 @@ import {
   StkPushRequest,
   StkPushResponse,
   TransactionStatusResponse,
-} from './IPaymentGateway';
+} from './IPaymentGateway.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class MpesaMockAdapter implements IPaymentGateway {

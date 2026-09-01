@@ -721,16 +721,16 @@ Middleware chain (applied in order):
 | **Folder** | `backend/src/modules/pricing/` (Price Feed Service is a separate process per SAD §5.4) |
 | **Schema** | `pricing.*` (DDS §3) |
 | **Controllers** | `AssetController` — list, detail. `PriceController` — current price, candles, market status. Maps to ADS §12.1–12.4. |
-| **Services** | `PriceFeedIngestionService` — connect to provider WebSocket, normalize ticks, write to `price_ticks` (DDS §5.16), publish to Redis Pub/Sub. `OHLCService` — aggregate ticks into 1m/5m/15m/1H/4H/1D candles (DDS §5.17). `MarketStatusService` — check market hours (DDS §5.18). |
+| **Services** | `PriceFeedIngestionService` — connect to provider WebSocket, normalize ticks, write to `price_ticks` (DDS §5.16), publish to Redis Pub/Sub. Includes auto-failover to `MockPriceAdapter` on connection failure. `OHLCService` — aggregate ticks into 1m/5m/15m/1H/4H/1D candles (DDS §5.17). `MarketStatusService` — check market hours (DDS §5.18). |
 | **Repositories** | `TickRepository` — `pricing.price_ticks` INSERT + SELECT (DDS §5.16). `CandleRepository` — `pricing.candles` (DDS §5.17). `MarketHoursRepository` — `pricing.market_hours`. |
 | **DTOs** | `PriceResponse` (symbol, bid_price, ask_price, mid_price, tickTime). `CandleResponse` (openTime, closeTime, openPrice, highPrice, lowPrice, closePrice, volume). `MarketStatusResponse` (overallStatus, assets). |
 | **Validators** | Symbol must exist in `trading.assets`. Granularity must be one of: 60, 300, 900, 3600, 86400. Date range limits. |
 | **Middleware** | Auth required (ADS §12). Rate limit: 60 req/min (ADS §3.7). |
 | **Events** | None (Price Feed writes directly — not event-driven per SAD §5.4). |
-| **Workers** | None. Price Feed is a standalone daemon process, not a worker. |
+| **Workers** | None. Price Feed is a standalone daemon or auto-boot module (via `bootstrap.ts`). |
 | **Scheduled Jobs** | `MarketOpenCheck` — every minute, check if any market opened/closed for trading. |
 | **Dependencies** | None (independent module). Reads `trading.assets` for symbol validation (via API, not direct DB). |
-| **Security** | Price Feed runs as separate process (SATM §8, MP-001). Redis is cache only — settlement reads from `price_ticks` table (ADR-012, SATM §11.1). Write access to `pricing.*` restricted to Price Feed Service DB user (SATM §7.2). |
+| **Security** | Price Feed runs as separate process or auto-boot daemon. Redis is cache only — settlement reads from `price_ticks` table (ADR-012, SATM §11.1). Write access restricted. **Resilient Ingestion**: Fallback to `MockPriceAdapter` if Binance is blocked. |
 
 ### 7.6 Trading Module Blueprint
 
@@ -748,7 +748,7 @@ Middleware chain (applied in order):
 | **Workers** | None directly. Enqueues expiry job to `trade.expiry` queue (consumed by Settlement Worker per IMP §7.7). |
 | **Scheduled Jobs** | None. Expiry scheduling is queue-based, not cron-based. |
 | **Dependencies** | Wallet Module (balance check + stake lock via API). Pricing Module (current price for strike). Risk checks within module (self-exclusion, exposure, latency). |
-| **Security** | 10-step validation prevents all known attacks (SATM §11). Latency check > 800ms rejects (SATM §11.4). Self-exclusion enforced (SATM §11.4). Max stake per trade $500 (BRD §7). Max exposure $10,000 per asset (BRD §7). |
+| **Security** | 10-step validation prevents all known attacks (SATM §11). Latency check > 800ms rejects (SATM §11.4). Self-exclusion enforced (SATM §11.4). Max stake per trade 50,000 KES. Max exposure $10,000 per asset (BRD §7). |
 
 ### 7.7 Settlement Worker Blueprint
 

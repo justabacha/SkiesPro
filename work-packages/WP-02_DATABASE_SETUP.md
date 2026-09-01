@@ -99,13 +99,13 @@ Seed data values come from `docs/ProjectAnswers.md`:
 - **Payment Gateway**: M-Pesa (mobile_money)
 - **Platform Settings**:
   - Min deposit: KES 500
-  - Max deposit: KES 500,000
-  - Min withdrawal: KES 500
-  - Max withdrawal: KES 500,000
-  - Min trade duration: 30 seconds
+  - Max deposit: KES 100,000
+  - Min withdrawal: KES 1,500
+  - Max withdrawal: KES 60,000
+  - Min trade duration: 60 seconds
   - Max trade duration: 1 hour
-  - Payout ratio: 85%
-  - Referral commission: 10%
+  - Payout ratio: 60%
+  - Referral commission: 5%
 
 ---
 

@@ -61,5 +61,18 @@ CREATE INDEX IF NOT EXISTS trading_contracts_user_id_idx ON trading.binary_contr
 CREATE INDEX IF NOT EXISTS trading_contracts_asset_symbol_idx ON trading.binary_contracts(asset_symbol);
 CREATE INDEX IF NOT EXISTS trading_contracts_expiry_idx ON trading.binary_contracts(expiry_time) WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS trading_contracts_status_idx ON trading.binary_contracts(status);
-CREATE INDEX IF NOT EXISTS trading_contracts_entry_time_idx ON trading.binary_contracts(entry_time);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='entry_time') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'trading_contracts_entry_time_idx' AND n.nspname = 'trading') THEN
+            CREATE INDEX trading_contracts_entry_time_idx ON trading.binary_contracts(entry_time);
+        END IF;
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='trading' AND table_name='binary_contracts' AND column_name='purchase_time') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'trading_contracts_purchase_time_idx' AND n.nspname = 'trading') THEN
+            CREATE INDEX trading_contracts_purchase_time_idx ON trading.binary_contracts(purchase_time);
+        END IF;
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS trading_contract_events_contract_id_idx ON trading.contract_events(contract_id);

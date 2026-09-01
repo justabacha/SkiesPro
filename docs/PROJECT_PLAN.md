@@ -108,11 +108,11 @@ To convert this application into a standalone binary trading business, a complet
 | **Double-Entry Ledger** | Logs every credit and debit transaction (deposits, stakes, wins, losses, withdrawals, fees) as dual balancing entries. Essential for accounting audits and preventing balance tampering. |
 | **Deposit System** | Automated integrations with mobile money (e.g., M-Pesa API) and payment gateways (Stripe, Flutterwave, or Crypto checkouts) to dynamically credit wallets upon verification. |
 | **Withdrawal System** | Form processing, bank routing validations, and an admin dashboard to review, approve, queue, or reject payout transactions. |
-| **Internal Trading Engine** | The heart of the platform. Validates user balances, locks stakes, registers trade entries (Asset, Stake, Direction, Strike Price, Purchase Time, Expiry Time), and logs them to the database. |
+| **Internal Trading Engine** | The heart of the platform. Validates user balances, locks stakes, registers trade entries (Asset, Stake, Contract Type, Strike Price, Purchase Time, Expiry Time), and logs them to the database. |
 | **Internal Settlement Engine** | Runs asynchronous tasks (e.g., cron jobs or workers) to check expiring trades. It compares the asset's expiry price against the entry strike price, resolves the trade (Win/Loss), unlocks the stake, and credits payouts. |
 | **Realtime Market Price Ingest** | A backend system that connects to high-fidelity liquidity feeds (e.g., Binance, FXCM, OANDA) via WebSockets. It acts as the "source of truth" and distributes prices to active clients. |
 | **Risk & Exposure Engine** | Monitors active open contracts in real-time. Automatically adjusts payout rates, restricts maximum trade sizes, and flags suspicious patterns to protect the platform from heavy losses. |
-| **Revenue & Spread Manager** | Controls the platform's pricing markup. Configures commission percentages, withdrawal fees, and asset payout rates (e.g., offering an 80% payout on winning trades, leaving a 20% margin for the house). |
+| **Revenue & Spread Manager** | Controls the platform's pricing markup. Configures commission percentages, withdrawal fees, and asset payout rates (e.g., offering a 60% payout on winning trades, leaving a 40% margin for the house). |
 | **Admin Dashboard (Back-Office)** | Web-based interface for operations managers to adjust settings, ban users, manually audit ledgers, approve payments, and view revenue analytics. |
 | **Affiliate & Referral Engine** | Tracks user invitation codes. Calculates commissions (e.g., percentage of referee stakes or losses) and distributes payouts to referrers automatically. |
 | **Notification Service** | Sends transactional alerts (receipts, withdrawal alerts, margin warnings) via Email (SendGrid), SMS (Twilio), and Web Push. |
@@ -314,7 +314,7 @@ erDiagram
 *   **Purpose**: Records individual binary options trades.
 *   **Primary Key**: `id` (UUID)
 *   **Foreign Key**: `user_id` (UUID, references `users.id`)
-*   **Attributes**: `asset_symbol` (VARCHAR), `contract_type` (ENUM: 'higher', 'lower'), `stake` (NUMERIC(16, 4)), `payout_rate` (NUMERIC(4, 2), e.g., 0.85), `status` (ENUM: 'open', 'won', 'lost', 'cancelled'), `strike_price` (NUMERIC(18, 6)), `expiry_price` (NUMERIC(18, 6), nullable), `purchase_time` (TIMESTAMP), `expiry_time` (TIMESTAMP), `settled_at` (TIMESTAMP, nullable).
+*   **Attributes**: `asset_symbol` (VARCHAR), `contract_type` (ENUM: 'higher', 'lower'), `stake` (NUMERIC(16, 4)), `payout_rate` (NUMERIC(4, 2), e.g., 0.60), `status` (ENUM: 'open', 'won', 'lost', 'cancelled'), `strike_price` (NUMERIC(18, 6)), `expiry_price` (NUMERIC(18, 6), nullable), `purchase_time` (TIMESTAMP), `expiry_time` (TIMESTAMP), `settled_at` (TIMESTAMP, nullable).
 
 #### Table: `audit_logs`
 *   **Purpose**: Immutable security trail.
@@ -376,7 +376,7 @@ Operating an independent binary trading platform introduces complex technical, f
 #### 1. Financial Exposure Risk
 *   **The Risk**: Volatile markets can result in high user win rates, potentially draining the platform's liquidity.
 *   **Mitigation Strategy**:
-    *   Implement dynamic payout scaling. During periods of high directional volume, automatically reduce payout rates (e.g., from 85% to 70%).
+    *   Implement dynamic payout scaling. During periods of high directional volume, automatically reduce payout rates (e.g., from 60% to 50%).
     *   Set strict trading limits per user and cap maximum concurrent open stakes globally.
 
 #### 2. Price Manipulation & Arbitrage

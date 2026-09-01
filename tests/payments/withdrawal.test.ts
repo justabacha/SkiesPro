@@ -1,6 +1,6 @@
-import { PaymentService } from '../../src/modules/payments/services/paymentService';
-import { WalletService } from '../../src/modules/wallet/services/walletService';
-import { pgPool } from '../../src/config/database';
+import { PaymentService } from '../../src/modules/payments/services/paymentService.js';
+import { WalletService } from '../../src/modules/wallet/services/walletService.js';
+import { pgPool } from '../../src/config/database.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
 

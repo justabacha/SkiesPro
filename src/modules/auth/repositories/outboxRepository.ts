@@ -1,5 +1,5 @@
 import { PoolClient } from 'pg';
-import { BaseRepository } from '../../../shared/repositories/baseRepository';
+import { BaseRepository } from '../../../shared/repositories/baseRepository.js';
 
 export interface OutboxRow {
   id: string;

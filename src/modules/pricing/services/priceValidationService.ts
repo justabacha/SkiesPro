@@ -1,5 +1,5 @@
 import { Decimal } from 'decimal.js';
-import { logger } from '../../../shared/middleware/logger';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class PriceValidationService {
   private lastPrices: Map<string, { price: Decimal; time: Date }> = new Map();

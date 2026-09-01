@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { body, query } from 'express-validator';
-import { AuthController } from './controllers/authController';
-import { authenticate } from '../../shared/middleware/authMiddleware';
-import { rateLimit } from '../../shared/middleware/rateLimit';
+import { AuthController } from './controllers/authController.js';
+import { authenticate } from '../../shared/middleware/authMiddleware.js';
+import { rateLimit } from '../../shared/middleware/rateLimit.js';
 
 const router = Router();
 const controller = new AuthController();

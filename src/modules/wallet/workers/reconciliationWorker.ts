@@ -1,6 +1,6 @@
-import { LedgerRepository } from '../repositories/ledgerRepository';
-import { pgPool } from '../../../config/database';
-import { logger } from '../../../shared/middleware/logger';
+import { LedgerRepository } from '../repositories/ledgerRepository.js';
+import { pgPool } from '../../../config/database.js';
+import { logger } from '../../../shared/middleware/logger.js';
 import { Decimal } from 'decimal.js';
 
 export class ReconciliationWorker {

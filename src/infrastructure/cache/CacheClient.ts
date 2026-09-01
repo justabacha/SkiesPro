@@ -1,6 +1,6 @@
-import { ICache, CacheCluster } from './ICache';
-import { InMemoryAdapter } from './InMemoryAdapter';
-import { RedisAdapter } from './RedisAdapter';
+import { ICache, CacheCluster } from './ICache.js';
+import { InMemoryAdapter } from './InMemoryAdapter.js';
+import { RedisAdapter } from './RedisAdapter.js';
 
 function createDefaultCacheAdapter(cluster: 'sessions' | 'pricing'): ICache {
   const redisUrl =

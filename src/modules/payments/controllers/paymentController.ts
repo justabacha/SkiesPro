@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { PaymentService } from '../services/paymentService';
-import { PaymentRepository } from '../repositories/paymentRepository';
-import { logger } from '../../../shared/middleware/logger';
+import { PaymentService } from '../services/paymentService.js';
+import { PaymentRepository } from '../repositories/paymentRepository.js';
+import { logger } from '../../../shared/middleware/logger.js';
 
 export class PaymentController {
   private paymentService: PaymentService;

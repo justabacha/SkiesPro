@@ -1,4 +1,4 @@
-import { IMessageQueue, PublishOptions, MessageHandler } from './IMessageQueue';
+import { IMessageQueue, PublishOptions, MessageHandler } from './IMessageQueue.js';
 
 interface QueuedMessage {
   id: string;
@@ -36,7 +36,16 @@ export class InMemoryAdapter implements IMessageQueue {
 
     const handler = this.handlers.get(queueName);
     if (handler) {
-      await this.processMessage(queuedMessage, handler);
+      const delay = options?.expiration || 0;
+      if (delay > 0) {
+        const timer = setTimeout(async () => {
+          this.timers.delete(timer);
+          await this.processMessage(queuedMessage, handler);
+        }, delay);
+        this.timers.add(timer);
+      } else {
+        await this.processMessage(queuedMessage, handler);
+      }
     }
   }
 

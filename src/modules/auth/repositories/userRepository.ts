@@ -1,6 +1,6 @@
 import { PoolClient } from 'pg';
-import { BaseRepository } from '../../../shared/repositories/baseRepository';
-import { RegisterDto } from '../dto/register.dto';
+import { BaseRepository } from '../../../shared/repositories/baseRepository.js';
+import { RegisterDto } from '../dto/register.dto.js';
 
 export interface UserRow {
   id: string;
