@@ -138,10 +138,10 @@ This specification maps the platform into isolated, contextual **Domains** follo
 ### Entity: `Trade`
 *   **Purpose**: Represents a binary options contract.
 *   **Owner**: Trading Domain.
-*   **State**: `Draft` -> `Active` -> `Settling` -> `Resolved`.
+*   **State**: `Draft` -> `Active` -> `Settling` -> `Resolved` or `Cancelled`.
 *   **Business Rules**: Expiry time must be strictly greater than purchase time. Strike price matches the asset price at the purchase millisecond.
 *   **Relationships**: Many-to-1 with `User`, Many-to-1 with `Asset`.
-*   **Events**: `TradeOpened`, `TradeSettled`.
+*   **Events**: `TradeOpened`, `TradeSettled`, `TradeCancelled`.
 *   **Validation Rules**: Stakes must be within platform configurations.
 
 ---
@@ -153,12 +153,15 @@ This specification maps the platform into isolated, contextual **Domains** follo
 [Draft] ──(Validations Check)──► [Active] ──(Duration Expiry)──► [Settling]
                                                                      │
 [Archived] ◄──(Compliance Lock)── [Resolved] ◄──(Ledger Settlement)──┘
+                                      ▲
+                                      └─────────(Oracle Gap)─────► [Cancelled]
 ```
 1.  **Draft**: The user configures trade parameters in the UI. No balance is locked yet.
-2.  **Active**: Stake is checked and locked in the wallet. The trade locks the entry strike price.
+2.  **Active**: Stake is checked and debited from the wallet. The trade locks the entry strike price.
 3.  **Settling**: The contract reaches its expiry timestamp and retrieves the final settlement price tick.
 4.  **Resolved**: The outcome (Win/Loss/Draw) is calculated, and payouts are credited via the ledger.
-5.  **Archived**: Closed contracts are archived in read-only tables for database performance optimization.
+5.  **Cancelled**: The trade is voided due to market data gaps or technical failures; the original stake is refunded via the ledger.
+6.  **Archived**: Closed contracts are archived in read-only tables for database performance optimization.
 
 ### Wallet Lifecycle
 ```

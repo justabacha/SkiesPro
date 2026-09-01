@@ -179,7 +179,7 @@ graph TD
 | ID | Description | Inputs | Outputs | Dependencies |
 | :--- | :--- | :--- | :--- | :--- |
 | **FR-SET-001** | **Expiry Scheduler**: Track and trigger contract expiries. | Active contract. | Settlement check call. | FR-TRD-001 |
-| **FR-SET-002** | **Contract Resolution**: Compare strike and expiry prices. | Expiry tick. | Outcome (Win/Loss/Draw). | FR-SET-001 |
+| **FR-SET-002** | **Contract Resolution**: Compare strike and expiry prices. | Expiry tick. | Outcome (Win/Loss/Draw/Cancelled). | FR-SET-001 |
 | **FR-SET-003** | **Payout Settlement**: Credit winnings or update account reserves. | Outcome details. | Ledger credit/debit. | FR-SET-002 |
 
 ---
@@ -303,7 +303,7 @@ sequenceDiagram
     Note over Expiry Queue: Expiry Duration Completes
     Expiry Queue->>Settlement Worker: Trigger Settlement Job (Contract ID)
     Settlement Worker->>Redis Cache: Fetch Price Tick matching Expiry Time
-    Settlement Worker->>Settlement Worker: Calculate Win/Loss/Draw
+    Settlement Worker->>Settlement Worker: Calculate Win/Loss/Draw/Cancelled
     Alt Win
         Settlement Worker->>Database: Run Ledger double-entry (Credit User Stake + Net Winnings)
         Settlement Worker->>Database: Set Contract Status to 'Won'
@@ -312,6 +312,9 @@ sequenceDiagram
     Else Draw
         Settlement Worker->>Database: Run Ledger double-entry (Refund Stake to User)
         Settlement Worker->>Database: Set Contract Status to 'Draw'
+    Else Cancelled
+        Settlement Worker->>Database: Run Ledger double-entry (Refund Stake to User)
+        Settlement Worker->>Database: Set Contract Status to 'Cancelled'
     End
     Settlement Worker->>WebSocket Gateway: Publish contract result
     WebSocket Gateway-->>Trader: Render trade outcome popup
