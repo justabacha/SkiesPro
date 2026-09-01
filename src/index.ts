@@ -16,7 +16,9 @@ const app: Application = express();
 app.set('trust proxy', 1);
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cookieParser());
 
 // CORS

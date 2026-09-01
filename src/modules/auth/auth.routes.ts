@@ -50,7 +50,8 @@ router.post(
 router.post(
   '/refresh',
   rateLimit('unauthenticated'),
-  [body('refresh_token').notEmpty()],
+  // Body is optional if using HTTP-only cookies
+  [body('refresh_token').optional()],
   (req: Request, res: Response) => controller.refresh(req, res)
 );
 

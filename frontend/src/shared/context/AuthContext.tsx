@@ -69,6 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (data.access_token) {
       apiClient.setAccessToken(data.access_token);
     }
+
+    // Fallback: Store refresh token in localStorage for cross-domain support
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token);
+    }
+
     if (data.user) {
       setState((prev) => ({
         ...prev,
@@ -157,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       apiClient.setAccessToken(null);
       sessionStorage.removeItem('mfa_session');
+      localStorage.removeItem('refresh_token');
       setState({
         user: null,
         isAuthenticated: false,
@@ -171,11 +178,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refresh = useCallback(async () => {
     try {
-      const response = await apiClient.post<AuthResponse>('/api/v1/auth/refresh');
+      // Send refresh_token from localStorage as body fallback
+      const storedToken = localStorage.getItem('refresh_token');
+      const response = await apiClient.post<AuthResponse>('/api/v1/auth/refresh', {
+        refresh_token: storedToken
+      });
       setAuthData(response.data);
     } catch (err) {
       // If refresh fails, it just means no valid session exists
       apiClient.setAccessToken(null);
+      localStorage.removeItem('refresh_token');
       setState((prev) => ({ ...prev, isLoading: false, isAuthenticated: false }));
     }
   }, [setAuthData]);

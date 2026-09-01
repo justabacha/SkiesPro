@@ -46,11 +46,12 @@ export class AuthController {
       if (authResult.refresh_token) {
         res.cookie('refresh_token', authResult.refresh_token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          secure: true,
+          sameSite: 'none',
+          path: '/',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
         });
-        delete authResult.refresh_token;
+        // Do not delete
       }
 
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
@@ -76,11 +77,12 @@ export class AuthController {
       if (authResult.refresh_token) {
         res.cookie('refresh_token', authResult.refresh_token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          secure: true,
+          sameSite: 'none',
+          path: '/',
           maxAge: 7 * 24 * 60 * 60 * 1000,
         });
-        delete authResult.refresh_token;
+        // Do not delete, allow frontend to store as fallback
       }
 
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
@@ -107,11 +109,12 @@ export class AuthController {
       if (authResult.refresh_token) {
         res.cookie('refresh_token', authResult.refresh_token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          secure: true,
+          sameSite: 'none',
+          path: '/',
           maxAge: 7 * 24 * 60 * 60 * 1000,
         });
-        delete authResult.refresh_token;
+        // Do not delete, allow frontend to store as fallback
       }
 
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
@@ -122,7 +125,12 @@ export class AuthController {
 
   async logout(_req: Request, res: Response): Promise<void> {
     // Implementation should revoke current session via tokenService
-    res.clearCookie('refresh_token');
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    });
     res.status(200).json({ message: 'Logged out successfully' });
   }
 
