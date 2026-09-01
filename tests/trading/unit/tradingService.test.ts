@@ -31,7 +31,7 @@ describe('TradingService', () => {
       contractType: 'higher',
       stake: '100',
       expirySeconds: 60
-    }, Date.now())).rejects.toThrow('suspended');
+    })).rejects.toThrow('suspended');
   });
 
   test('should fail if market is closed', async () => {
@@ -45,6 +45,6 @@ describe('TradingService', () => {
       contractType: 'higher',
       stake: '100',
       expirySeconds: 60
-    }, Date.now())).rejects.toThrow('closed');
+    })).rejects.toThrow('closed');
   });
 });

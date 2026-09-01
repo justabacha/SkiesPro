@@ -77,7 +77,7 @@ describe('Trade Settlement Integration', () => {
       expirySeconds: 60
     };
 
-    const contract = await tradingService.placeTrade(testUserId, tradeRequest, Date.now());
+    const contract = await tradingService.placeTrade(testUserId, tradeRequest);
     expect(contract.status).toBe('active');
 
     // 4. Save settlement tick (using exact expiry time from contract)
@@ -130,7 +130,7 @@ describe('Trade Settlement Integration', () => {
       expirySeconds: 60
     };
 
-    const contract = await tradingService.placeTrade(testUserId, tradeRequest, Date.now());
+    const contract = await tradingService.placeTrade(testUserId, tradeRequest);
 
     await tickRepo.save({
       symbol,

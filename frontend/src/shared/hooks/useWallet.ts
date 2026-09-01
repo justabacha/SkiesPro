@@ -74,33 +74,41 @@ export const useWallet = () => {
 
   const initiateDeposit = async (data: { amount: string; phone: string }) => {
     try {
+      // Ensure amount is sent as string and other fields are correctly named
       return await apiClient.post('/api/v1/payments/deposit/initiate', {
-        ...data,
+        amount: data.amount.toString(),
+        phone: data.phone,
         gateway_id: 1, // M-Pesa
         currency: 'KES'
       }, {
         headers: {
-          'Idempotency-Key': crypto.randomUUID()
+          'Idempotency-Key': window.crypto.randomUUID()
         }
       });
     } catch (err) {
-      throw new Error((err as Error).message);
+      const message = (err as Error).message;
+      setError(message);
+      throw new Error(message);
     }
   };
 
   const requestWithdrawal = async (data: { amount: string; phone: string }) => {
     try {
+      // Ensure amount is sent as string and other fields are correctly named
       return await apiClient.post('/api/v1/payments/withdraw/request', {
-        ...data,
+        amount: data.amount.toString(),
+        phone: data.phone,
         gateway_id: 1, // M-Pesa
         currency: 'KES'
       }, {
         headers: {
-          'Idempotency-Key': crypto.randomUUID()
+          'Idempotency-Key': window.crypto.randomUUID()
         }
       });
     } catch (err) {
-      throw new Error((err as Error).message);
+      const message = (err as Error).message;
+      setError(message);
+      throw new Error(message);
     }
   };
 

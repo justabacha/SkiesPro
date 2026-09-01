@@ -86,14 +86,14 @@ describe('Trading Engine Integration', () => {
       expirySeconds: 300
     };
 
-    const contract = await tradingService.placeTrade(testUserId, request, Date.now());
+    const contract = await tradingService.placeTrade(testUserId, request);
 
     expect(contract).toBeDefined();
     expect(contract.status).toBe('active');
-    expect(contract.stake).toBe(500);
+    expect(new Decimal(contract.stake).toNumber()).toBe(500);
     expect(contract.contractType).toBe('higher');
-    expect(contract.strikePrice).toBe(1.1002); // ask for 'higher'
-    expect(contract.payoutRate).toBe(0.60);
+    expect(new Decimal(contract.strikePrice).toNumber()).toBe(1.1002); // ask for 'higher'
+    expect(new Decimal(contract.payoutRate).toNumber()).toBe(0.60);
 
     // Verify wallet balance
     const wallet = await walletService.getBalance(testUserId);
@@ -129,7 +129,7 @@ describe('Trading Engine Integration', () => {
       expirySeconds: 60
     };
 
-    await expect(tradingService.placeTrade(testUserId, request, Date.now())).rejects.toThrow('Insufficient available balance');
+    await expect(tradingService.placeTrade(testUserId, request)).rejects.toThrow('Insufficient available balance');
   });
 
   test('should fail if stake below minimum', async () => {
@@ -140,6 +140,6 @@ describe('Trading Engine Integration', () => {
       expirySeconds: 60
     };
 
-    await expect(tradingService.placeTrade(testUserId, request, Date.now())).rejects.toThrow('below minimum');
+    await expect(tradingService.placeTrade(testUserId, request)).rejects.toThrow('below minimum');
   });
 });

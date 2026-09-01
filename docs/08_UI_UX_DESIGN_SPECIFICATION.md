@@ -435,17 +435,17 @@ Supported deep links:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Top Nav: Logo | [Balance $1,250.00 👁] | 🔔(3) | 👤 John  │
+│ Top Nav: Logo | [Balance 1,250.00 👁] | 🔔(3) | 👤 John  │
 ├──────────┬──────────────────────────────────────────────────┤
 │          │ ┌──────┬──────┬──────┬──────┐                    │
 │ Sidebar  │ │Balance│Today │Open  │Win   │                    │
-│          │ │$1,250 │+$45  │3 Trades│Rate │                    │
+│          │ │1,250  │+45   │3 Trades│Rate │                    │
 │ Dashboard│ │       │      │      │72%   │                    │
 │ Trade    │ └──────┴──────┴──────┴──────┘                    │
 │ Wallet   │                                                  │
 │ History  │ ┌─────────────────────┐ ┌────────────────────┐   │
 │          │ │  Chart (mini)       │ │  Market Status     │   │
-│ Referrals│ │  EUR/USD ○ $1.12345 │ │  EUR/USD ● Open    │   │
+│ Referrals│ │  EUR/USD ○ 1.12345  │ │  EUR/USD ● Open    │   │
 │ Settings │ └─────────────────────┘ └────────────────────┘   │
 │          │                                                  │
 │          │ ┌──────────────────────────────────────────────┐  │
@@ -459,8 +459,8 @@ Supported deep links:
 │          │                                                  │
 │          │ ┌──────────────┐ ┌──────────────────────────┐    │
 │          │ │Notifications │ │ Recent Activity          │    │
-│          │ │ ● Trade Won  │ │ Deposit +$100 completed  │    │
-│          │ │ ● Deposit    │ │ Trade EUR/USD Lost -$50  │    │
+│          │ │ ● Trade Won  │ │ Deposit +100 completed   │    │
+│          │ │ ● Deposit    │ │ Trade EUR/USD Lost -50   │    │
 │          │ └──────────────┘ └──────────────────────────┘    │
 └──────────┴──────────────────────────────────────────────────┘
 ```
@@ -472,14 +472,14 @@ Four stat cards at the top of the dashboard. Each card is 220px wide, 100px tall
 | Card | Content | Colour |
 | :--- | :--- | :--- |
 | Balance | Total balance (large mono text), currency label | Neutral |
-| Today's P&L | +$45.00 with green up arrow or -$12.00 with red down arrow | Success / Danger |
+| Today's P&L | +45.00 with green up arrow or -12.00 with red down arrow | Success / Danger |
 | Open Trades | Count: "3" with label | Brand |
 | Win Rate | "72%" with label. Visual mini-progress bar below. | Success |
 
 ### 6.3 Empty States
 
 First-time user sees:
-- Balance card: $0.00 with "Deposit to start trading" CTA
+- Balance card: 0.00 with "Deposit to start trading" CTA
 - Open Trades: Empty state illustration with "Place your first trade"
 - Activity: Empty with "Your trading activity will appear here"
 
@@ -624,22 +624,22 @@ A small indicator in the bottom status bar:
 
 | Step | Screen | Key Elements |
 | :--- | :--- | :--- |
-| 1 | Amount Input | Numeric input with quick-amount buttons ($50, $100, $250, $500, $1000). Min: $10. |
+| 1 | Amount Input | Numeric input with quick-amount buttons (500, 1000, 2000, 5000). Min: 500. |
 | 2 | Gateway Selection | Card list of available gateways with logos, deposit limits, processing time estimates. |
-| 3 | Confirmation | Summary: Amount, Gateway, Fee ($0), Net Amount. Edit buttons. "Confirm Deposit" CTA. |
+| 3 | Confirmation | Summary: Amount, Gateway, Fee (0), Net Amount. Edit buttons. "Confirm Deposit" CTA. |
 | 4 | Processing | Full-screen overlay: "Processing your deposit..." with spinner. Gateway redirect or STK push prompt. |
-| 5 | Success | Green checkmark animation. "Deposit of $100.00 successful!" New balance shown. "Return to Wallet" CTA. |
+| 5 | Success | Green checkmark animation. "Deposit of 1,000.00 successful!" New balance shown. "Return to Wallet" CTA. |
 | 5a | Failure | Red X animation. "Deposit failed." Reason: "Gateway declined the transaction." "Try Again" CTA. |
 
 ### 8.3 Withdrawal Flow
 
 | Step | Screen | Key Elements |
 | :--- | :--- | :--- |
-| 1 | Amount Input | Shows available balance. Min: $15. Max: available balance. Fee displayed: "Fee: $1.50 (1.5%)" |
+| 1 | Amount Input | Shows available balance. Min: 1500. Max: available balance. Fee displayed: "Fee: 30.00 (2%)" |
 | 2 | Gateway Selection | Same as deposit. Withdrawal limits shown. |
-| 3 | Confirmation | Summary: Amount, Fee, Net Amount ($48.50), Gateway. KYC status badge. "Confirm Withdrawal" CTA. |
+| 3 | Confirmation | Summary: Amount, Fee, Net Amount (1,470.00), Gateway. KYC status badge. "Confirm Withdrawal" CTA. |
 | 4 | Pending | "Withdrawal request submitted. Reference: WTH-12345." Estimated processing time: "4 hours (manual review)". |
-| 5 | Approval (auto) | If < $100, status changes to "Approved" immediately. "Funds being sent to your account." |
+| 5 | Approval (auto) | If < 10,000, status changes to "Approved" immediately. "Funds being sent to your account." |
 | 5a | Approval (manual) | Status: "Under Review." "Your withdrawal has been queued for manual review. This typically takes 2–4 hours." |
 
 ### 8.4 Pending Withdrawals
@@ -665,7 +665,7 @@ A small indicator in the bottom status bar:
 │  ┌───────┬────────┬───────────┬───────────┐                 │
 │  │Total  │ Active  │ Commissions│ This Month│                │
 │  │Ref'd  │ Ref'd   │ Earned    │            │               │
-│  │ 5     │ 3       │ $150.00   │ $25.00    │               │
+│  │ 5     │ 3       │ 1,500.00  │ 250.00    │               │
 │  └───────┴────────┴───────────┴───────────┘                 │
 │                                                             │
 │  ┌─Commission History────────────────────────────────────┐  │
@@ -732,11 +732,11 @@ graph TD
 
 | Type | Icon | Title | Body | Action Tap |
 | :--- | :--- | :--- | :--- | :--- |
-| Trade Won | ✅ | "Trade Won!" | "EUR/USD Higher — won $90.00" | Opens contract detail |
-| Trade Lost | ❌ | "Trade Lost" | "XAU/USD Lower — lost $30.00" | Opens contract detail |
-| Trade Draw | ⚖️ | "Trade Draw" | "GBP/USD — stake refunded $50.00" | Opens contract detail |
-| Deposit | 💰 | "Deposit Received" | "$100.00 deposited via M-Pesa" | Opens wallet |
-| Withdrawal | 💸 | "Withdrawal Approved" | "$48.50 sent to M-Pesa" | Opens withdrawal detail |
+| Trade Won | ✅ | "Trade Won!" | "EUR/USD Higher — won 900.00" | Opens contract detail |
+| Trade Lost | ❌ | "Trade Lost" | "XAU/USD Lower — lost 300.00" | Opens contract detail |
+| Trade Draw | ⚖️ | "Trade Draw" | "GBP/USD — stake refunded 500.00" | Opens contract detail |
+| Deposit | 💰 | "Deposit Received" | "1,000.00 deposited via M-Pesa" | Opens wallet |
+| Withdrawal | 💸 | "Withdrawal Approved" | "1,470.00 sent to M-Pesa" | Opens withdrawal detail |
 | KYC Approved | ✅ | "KYC Approved" | "Your identity has been verified." | Opens KYC status |
 | KYC Rejected | ❌ | "KYC Rejected" | "Document unclear. Please resubmit." | Opens KYC resubmit |
 | System | 🔔 | "Market Closed" | "EUR/USD market closes in 5 minutes." | Dismiss |
@@ -786,10 +786,10 @@ graph TD
 │          │  └──────────────────────────────────────────────┘ │
 │          │                                                   │
 │          │  ┌─Risk Dashboard─────────────────────────────┐   │
-│          │  │  Total Exposure: $8,500 / $10,000          │   │
-│          │  │  EUR/USD: $4,200 (42%) ████████░░░░░░░░░  │   │
-│          │  │  XAU/USD: $3,100 (31%) ██████░░░░░░░░░░░░  │   │
-│          │  │  GBP/USD: $1,200 (12%) ██░░░░░░░░░░░░░░░░  │   │
+│          │  │  Total Exposure: 8,500 / 1,300,000         │   │
+│          │  │  EUR/USD: 4,200 (42%) ████████░░░░░░░░░  │   │
+│          │  │  XAU/USD: 3,100 (31%) ██████░░░░░░░░░░░░  │   │
+│          │  │  GBP/USD: 1,200 (12%) ██░░░░░░░░░░░░░░░░  │   │
 │          │  └──────────────────────────────────────────────┘ │
 └──────────┴───────────────────────────────────────────────────┘
 ```

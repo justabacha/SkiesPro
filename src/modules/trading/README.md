@@ -19,7 +19,13 @@ The Trading Module handles binary options trade placement, validation, and lifec
 - `MAX_STAKE_AMOUNT`
 - `MIN_STAKE_AMOUNT`
 - `MAX_ASSET_EXPOSURE`
-- `LATENCY_THRESHOLD_MS`
+- `LATENCY_THRESHOLD_MS`: Maximum allowed age for a strike price tick (default: 800ms).
+
+## Security & Hardening
+- **Latency Protection**: Rejects trades if the server's arrival time differs from the market price tick time by more than `LATENCY_THRESHOLD_MS`.
+- **Atomic Exposure**: Exposure checks are performed inside a database transaction with a row-level lock on `asset_config` to prevent over-exposure bursts.
+- **Oracle Gap Protection**: Trades are automatically cancelled and refunded if the settlement price tick is more than 10 seconds older than the expiry time.
+- **Precision Math**: All financial fields are handled as strings and calculated using `Decimal.js` to eliminate floating-point rounding exploits.
 
 ## Events
 - `TradeOpened`: Published when a trade is successfully placed and stake is locked.

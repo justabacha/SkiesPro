@@ -53,10 +53,27 @@ export class SettlementWorker {
         contract.assetSymbol,
         contract.expiryTime
       );
+
       if (!settlementTick) {
         throw new Error(
           `Price tick not found for ${contract.assetSymbol} at ${contract.expiryTime.toISOString()}`
         );
+      }
+
+      // ORACLE GAP FIX: If tick is > 10s older than expiryTime, mark as cancelled/void
+      const oracleGapMs =
+        contract.expiryTime.getTime() - new Date(settlementTick.tick_time).getTime();
+      const MAX_ORACLE_GAP_MS = 10000; // 10 seconds
+
+      if (oracleGapMs > MAX_ORACLE_GAP_MS) {
+        logger.warn('Oracle gap too large, cancelling contract', {
+          contractId,
+          expiryTime: contract.expiryTime,
+          tickTime: settlementTick.tick_time,
+          gapMs: oracleGapMs,
+        });
+        await this.cancelAndRefund(contractId);
+        return;
       }
 
       const settlementPrice = new Decimal(settlementTick.mid_price);
@@ -64,18 +81,16 @@ export class SettlementWorker {
 
       let outcome: 'won' | 'lost' | 'draw';
 
-      if (contract.contractType === 'higher') {
-        outcome = settlementPrice.gt(strikePrice)
-          ? 'won'
-          : settlementPrice.eq(strikePrice)
-            ? 'draw'
-            : 'lost';
+      // Pip-Tolerance Draw Rule (DDS §18.4)
+      const diff = settlementPrice.minus(strikePrice).abs();
+      const DRAW_TOLERANCE = new Decimal('0.00001');
+
+      if (diff.lt(DRAW_TOLERANCE)) {
+        outcome = 'draw';
+      } else if (contract.contractType === 'higher') {
+        outcome = settlementPrice.gt(strikePrice) ? 'won' : 'lost';
       } else {
-        outcome = settlementPrice.lt(strikePrice)
-          ? 'won'
-          : settlementPrice.eq(strikePrice)
-            ? 'draw'
-            : 'lost';
+        outcome = settlementPrice.lt(strikePrice) ? 'won' : 'lost';
       }
 
       // 4. Financial Transaction
@@ -94,7 +109,7 @@ export class SettlementWorker {
             contractId,
             `Trade won: ${contract.assetSymbol} ${contract.contractType} at ${settlementPrice}`
           );
-          await txContractRepo.updateStatus(contractId, 'won', settlementPrice.toNumber());
+          await txContractRepo.updateStatus(contractId, 'won', settlementPrice.toString());
         } else if (outcome === 'draw') {
           await txWalletService.credit(
             contract.userId,
@@ -103,9 +118,9 @@ export class SettlementWorker {
             contractId,
             `Trade draw: ${contract.assetSymbol} ${contract.contractType}`
           );
-          await txContractRepo.updateStatus(contractId, 'draw', settlementPrice.toNumber());
+          await txContractRepo.updateStatus(contractId, 'draw', settlementPrice.toString());
         } else {
-          await txContractRepo.updateStatus(contractId, 'lost', settlementPrice.toNumber());
+          await txContractRepo.updateStatus(contractId, 'lost', settlementPrice.toString());
         }
 
         // Record Settlement Event
@@ -140,6 +155,34 @@ export class SettlementWorker {
       // Reset status to 'active' for retry logic or move to manual reconciliation
       await this.contractRepo.updateStatus(contractId, 'active');
       throw error;
+    }
+  }
+
+  async cancelAndRefund(contractId: string): Promise<void> {
+    const client = await pgPool.connect();
+    try {
+      await client.query('BEGIN');
+      const txWalletService = new WalletService(client);
+      const txContractRepo = new ContractRepository(client);
+
+      const contract = await txContractRepo.findById(contractId);
+      if (contract) {
+        await txWalletService.credit(
+          contract.userId,
+          new Decimal(contract.stake),
+          'trade_draw',
+          contractId,
+          `Trade cancelled (Oracle Gap): Refunded stake`
+        );
+        await txContractRepo.updateStatus(contractId, 'cancelled');
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
   }
 }

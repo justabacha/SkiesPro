@@ -548,7 +548,7 @@ Retention: 7 years
 | asset_symbol | VARCHAR(20) | NOT NULL | — | FK → trading.assets(symbol) |
 | contract_type | VARCHAR(10) | NOT NULL | — | CHECK (contract_type IN ('higher','lower')) |
 | stake | NUMERIC(16,4) | NOT NULL | — | CHECK (stake > 0) |
-| payout_rate | NUMERIC(4,2) | NOT NULL | — | CHECK (payout_rate = 0.60) |
+| payout_rate | NUMERIC(4,2) | NOT NULL | — | CHECK (payout_rate >= 0.60 AND payout_rate <= 0.88) |
 | status | VARCHAR(20) | NOT NULL | 'active' | CHECK (status IN ('draft','active','settling','won','lost','draw','cancelled','archived')) |
 | strike_price | NUMERIC(18,6) | NOT NULL | — | — |
 | expiry_price | NUMERIC(18,6) | NULL | — | Set during settlement |

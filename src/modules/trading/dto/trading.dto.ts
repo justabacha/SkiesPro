@@ -14,14 +14,16 @@ export interface ListTradesRequest {
 
 export interface TradeResponse {
   id: string;
-  userId: string;
-  assetSymbol: string;
+  user_id: string;
+  asset_symbol: string;
   stake: string;
-  contractType: 'higher' | 'lower';
-  strikePrice: string;
-  payoutRate: string;
-  potentialPayout: string;
-  purchaseTime: string;
-  expiryTime: string;
+  contract_type: 'higher' | 'lower';
+  strike_price: string;
+  expiry_price?: string;
+  payout_rate: string;
+  potential_payout: string;
+  purchase_time: string;
+  expiry_time: string;
   status: string;
+  settled_at?: string;
 }

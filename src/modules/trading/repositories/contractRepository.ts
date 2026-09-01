@@ -5,12 +5,12 @@ export interface BinaryContract {
   id?: string;
   userId: string;
   assetSymbol: string;
-  stake: number;
+  stake: string;
   contractType: 'higher' | 'lower';
-  strikePrice: number;
-  expiryPrice?: number;
-  payoutRate: number;
-  potentialPayout: number;
+  strikePrice: string;
+  expiryPrice?: string;
+  payoutRate: string;
+  potentialPayout: string;
   purchaseTime: Date;
   expiryTime: Date;
   status: 'draft' | 'active' | 'settling' | 'won' | 'lost' | 'draw' | 'cancelled' | 'archived';
@@ -63,14 +63,14 @@ export class ContractRepository {
     return rows[0] ? this.mapToCamelCase(rows[0]) : null;
   }
 
-  async getActiveExposure(symbol: string): Promise<number> {
+  async getActiveExposure(symbol: string): Promise<string> {
     const query = `
       SELECT SUM(stake) as total_exposure
       FROM trading.binary_contracts
       WHERE asset_symbol = $1 AND status = 'active'
     `;
     const { rows } = await this.query(query, [symbol]);
-    return parseFloat(rows[0].total_exposure || '0');
+    return rows[0].total_exposure || '0';
   }
 
   async listByUser(
@@ -111,7 +111,7 @@ export class ContractRepository {
     return rows.map(this.mapToCamelCase);
   }
 
-  async updateStatus(id: string, status: string, expiryPrice?: number): Promise<boolean> {
+  async updateStatus(id: string, status: string, expiryPrice?: string): Promise<boolean> {
     const query = `
       UPDATE trading.binary_contracts
       SET status = $1, expiry_price = COALESCE($2, expiry_price)
@@ -136,12 +136,12 @@ export class ContractRepository {
       id: row.id,
       userId: row.user_id,
       assetSymbol: row.asset_symbol,
-      stake: parseFloat(row.stake),
+      stake: row.stake, // Keep as string for precision
       contractType: row.contract_type,
-      strikePrice: parseFloat(row.strike_price),
-      expiryPrice: row.expiry_price ? parseFloat(row.expiry_price) : undefined,
-      payoutRate: parseFloat(row.payout_rate),
-      potentialPayout: parseFloat(row.potential_payout),
+      strikePrice: row.strike_price, // Keep as string for precision
+      expiryPrice: row.expiry_price, // Keep as string for precision
+      payoutRate: row.payout_rate, // Keep as string for precision
+      potentialPayout: row.potential_payout, // Keep as string for precision
       purchaseTime: row.purchase_time,
       expiryTime: row.expiry_time,
       status: row.status,

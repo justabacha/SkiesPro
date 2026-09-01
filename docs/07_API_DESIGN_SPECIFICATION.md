@@ -1372,8 +1372,8 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
 4. Stake is within asset limits (TRADING_006).
 5. Expiry duration is within asset limits (TRADING_007).
 6. Available balance ≥ stake (TRADING_001).
-7. Asset exposure limit check (TRADING_002).
-8. Latency check: request-to-execution < 800ms (TRADING_003).
+7. **Asset Exposure Limit**: Validated **inside** the database transaction with a row-level lock to prevent race conditions (TRADING_002).
+8. **Tick Age Validation**: Market data must be < 800ms old relative to the server's arrival time to prevent latency arbitrage (TRADING_003).
 9. Wallet Module: `SELECT FOR UPDATE` lock on wallet, debit stake, write ledger entry.
 10. Trading Module: Write contract record with strike price, enqueue expiry job.
 
@@ -1421,7 +1421,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
 **Query Parameters**:
 - `cursor` (optional): Cursor for pagination.
 - `limit` (optional, default 20, max 100).
-- `filter[status]` (optional): `active`, `won`, `lost`, `draw`, `settling`.
+- `filter[status]` (optional): `active`, `won`, `lost`, `draw`, `settling`, `cancelled`.
 - `filter[asset_symbol]` (optional).
 - `filter[date_from]` (optional).
 - `filter[date_to]` (optional).

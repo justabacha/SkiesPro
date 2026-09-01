@@ -6,13 +6,13 @@ describe('StakeValidator', () => {
   const mockConfig: AssetConfig = {
     id: '1',
     assetSymbol: 'EUR/USD',
-    minStake: 100,
-    maxStake: 50000,
+    minStake: '100',
+    maxStake: '50000',
     minDurationSeconds: 60,
     maxDurationSeconds: 3600,
-    payoutRate: 0.60,
+    payoutRate: '0.60',
     isActive: true,
-    maxExposure: 1300000,
+    maxExposure: '1300000',
     createdAt: new Date()
   };
 

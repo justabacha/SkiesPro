@@ -136,7 +136,9 @@ export class WebSocketClient {
       switch (message.type) {
         case 'connected':
           this.clientId = message.client_id;
-          this.config.onConnected(this.clientId);
+          if (this.clientId) {
+            this.config.onConnected(this.clientId);
+          }
           break;
 
         case 'subscribed':

@@ -5,6 +5,13 @@ const getBaseUrl = () => {
 
 const API_BASE = getBaseUrl();
 
+export interface ApiError {
+  message: string;
+  code?: string;
+  status: number;
+  errors?: Array<{ msg: string; param: string; location: string }>;
+}
+
 class ApiClient {
   private accessToken: string | null = null;
 
@@ -17,7 +24,6 @@ class ApiClient {
 
     let url: string;
     if (API_BASE) {
-      // Avoid double /api/v1 if both base and path contain it
       if (API_BASE.endsWith('/api/v1') && normalizedPath.startsWith('/api/v1')) {
         url = `${API_BASE}${normalizedPath.substring(7)}`;
       } else {
@@ -42,22 +48,35 @@ class ApiClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
 
-      // Look for error message in common locations
-      let errorMessage = 'An unexpected error occurred';
+      const apiError: ApiError = {
+        message: 'An unexpected error occurred',
+        status: response.status,
+        code: errorData.code,
+        errors: errorData.errors,
+      };
 
       if (typeof errorData.error === 'string') {
-        errorMessage = errorData.error;
+        apiError.message = errorData.error;
       } else if (errorData.error?.message) {
-        errorMessage = errorData.error.message;
+        apiError.message = errorData.error.message;
       } else if (errorData.message) {
-        errorMessage = errorData.message;
+        apiError.message = errorData.message;
       } else if (Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-        // Handle express-validator errors array
         const firstError = errorData.errors[0];
-        errorMessage = firstError.msg || firstError.message || errorMessage;
+        apiError.message = firstError.msg || firstError.message || apiError.message;
       }
 
-      throw new Error(errorMessage);
+      // Special handling for 422 Unprocessable Entity
+      if (response.status === 422) {
+        // Business logic errors from the hardened backend
+        console.warn('Business validation error:', apiError.message);
+      }
+
+      const error = new Error(apiError.message);
+      (error as any).status = apiError.status;
+      (error as any).code = apiError.code;
+      (error as any).errors = apiError.errors;
+      throw error;
     }
 
     if (response.status === 204) {

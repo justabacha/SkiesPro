@@ -756,10 +756,10 @@ Middleware chain (applied in order):
 | :--- | :--- |
 | **Folder** | `backend/src/workers/settlement/` |
 | **Queue** | `trade.expiry` — durable, priority high, 3 retries, dead-letter on exhaustion (IDS §9.2) |
-| **Processor** | `SettlementProcessor` — (1) Dequeue message, (2) Atomic CAS: `UPDATE contracts SET status='Settling' WHERE id=? AND status='Active'`, (3) If 0 rows → discard (duplicate), (4) Fetch contract + price tick from `pricing.price_ticks` (ADR-012), (5) Calculate outcome (Win/Loss/Draw per BRD §7), (6) Call Wallet Module to process payout/loss/refund, (7) Update contract status to terminal, (8) Write `TradeSettled` to outbox (ADR-011), (9) Acknowledge message. |
+| **Processor** | `SettlementProcessor` — (1) Dequeue message, (2) Atomic CAS: `UPDATE contracts SET status='Settling' WHERE id=? AND status='Active'`, (3) If 0 rows → discard (duplicate), (4) Fetch contract + price tick from `pricing.price_ticks` (ADR-012), **(4.5) Oracle Gap Check**: If `expiryTime - tick_time > 10s`, mark contract as `cancelled` and refund stake, (5) Calculate outcome (Win/Loss/Draw per BRD §7), (6) Call Wallet Module to process payout/loss/refund, (7) Update contract status to terminal, (8) Write `TradeSettled` to outbox (ADR-011), (9) Acknowledge message. |
 | **Idempotency** | Atomic CAS guarantees exactly-once settlement (ADR-010). If CAS fails (0 rows), message is duplicate → discard. |
 | **Retry Strategy** | 3 retries with exponential backoff (1s, 5s, 15s). On exhaustion → dead-letter queue for manual reconciliation (SAD §8). |
-| **Security** | Settlement price from PostgreSQL `price_ticks` table, never from Redis (ADR-012, SATM §11.1). Wallet operations use `SELECT FOR UPDATE` via Wallet Module API (ADR-009). |
+| **Security** | Settlement price from PostgreSQL `price_ticks` table, never from Redis (ADR-012, SATM §11.1). Hard 10s Oracle Gap prevents settlement on "Ghost Ticks" during feed drops. Wallet operations use `SELECT FOR UPDATE` via Wallet Module API (ADR-009). |
 | **Dependencies** | Trading Module (contract data via API + DB). Pricing Module (price_ticks table via DB). Wallet Module (payout processing via API). |
 
 ### 7.8 Referral Module Blueprint

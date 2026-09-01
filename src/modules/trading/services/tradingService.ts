@@ -31,11 +31,9 @@ export class TradingService {
    * Main entry point for placing a trade.
    * Implements the 10-step validation chain from WP-10 §4.5.
    */
-  async placeTrade(
-    userId: string,
-    request: PlaceTradeRequest,
-    requestTimestamp: number
-  ): Promise<BinaryContract> {
+  async placeTrade(userId: string, request: PlaceTradeRequest): Promise<BinaryContract> {
+    const serverArrival = Date.now();
+
     // 1. User Status Check
     const user = await this.userRepo.findById(userId);
     if (!user || user.status !== 'active') {
@@ -87,21 +85,25 @@ export class TradingService {
       throw new Error(`Maximum platform exposure reached for ${request.assetSymbol}`);
     }
 
-    // 8. Latency Check
+    // 8. Latency and Tick Age Check (Hacker Spoofer Fix)
     const latencyThreshold = parseInt(process.env.LATENCY_THRESHOLD_MS || '800');
-    if (Date.now() - requestTimestamp > latencyThreshold) {
-      throw new Error('Request latency too high. Price may have changed.');
-    }
 
     // Get Latest Price for Strike
     const tick = await this.pricingService.getLatestPrice(request.assetSymbol);
+    const tickTime = new Date(tick.tick_time).getTime();
+
+    // Verify tick is fresh (not older than threshold relative to server arrival)
+    if (serverArrival - tickTime > latencyThreshold) {
+      throw new Error('Market price is stale. Please try again.');
+    }
+
     const strikePrice = request.contractType === 'higher' ? tick.ask : tick.bid;
 
     // Calculate potential payout
     const payoutRate = new Decimal(config.payoutRate);
     const potentialPayout = stakeAmount.times(payoutRate.plus(1));
 
-    // START TRANSACTION (Steps 9 & 10)
+    // START TRANSACTION (Steps 7, 9, 10, 11)
     const client = await pgPool.connect();
     try {
       await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
@@ -109,6 +111,17 @@ export class TradingService {
       const txWalletService = new WalletService(client);
       const txContractRepo = new ContractRepository(client);
       const txOutboxRepo = new OutboxRepository(client);
+
+      // Lock the asset config row to serialize exposure calculations for this asset
+      await client.query('SELECT 1 FROM trading.asset_config WHERE asset_symbol = $1 FOR SHARE', [
+        request.assetSymbol,
+      ]);
+
+      // 7. Atomic Exposure Limit Check (Inside Transaction)
+      const currentExposure = await txContractRepo.getActiveExposure(request.assetSymbol);
+      if (new Decimal(currentExposure).plus(stakeAmount).gt(maxExposure)) {
+        throw new Error(`Maximum platform exposure reached for ${request.assetSymbol}`);
+      }
 
       // 9. Wallet Lock (Explicit for visibility and compliance with Blueprint §4.1)
       await client.query('SELECT 1 FROM wallet.wallets WHERE user_id = $1 FOR UPDATE', [userId]);
@@ -129,11 +142,11 @@ export class TradingService {
       const contract: BinaryContract = {
         userId,
         assetSymbol: request.assetSymbol,
-        stake: stakeAmount.toNumber(),
+        stake: stakeAmount.toString(),
         contractType: request.contractType,
-        strikePrice: parseFloat(strikePrice),
-        payoutRate: payoutRate.toNumber(),
-        potentialPayout: potentialPayout.toNumber(),
+        strikePrice: strikePrice.toString(),
+        payoutRate: payoutRate.toString(),
+        potentialPayout: potentialPayout.toString(),
         purchaseTime,
         expiryTime,
         status: 'active',

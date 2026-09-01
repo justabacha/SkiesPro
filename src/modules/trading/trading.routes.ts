@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { ContractController } from './controllers/contractController.js';
 import { AssetController } from './controllers/assetController.js';
 import { authenticate as authenticateToken } from '../../shared/middleware/authMiddleware.js';
-import { requireIdempotencyKey, authorizeTrader, tradingRateLimit } from './middleware/tradingMiddleware.js';
+import {
+  requireIdempotencyKey,
+  authorizeTrader,
+  tradingRateLimit,
+} from './middleware/tradingMiddleware.js';
 
 const router = Router();
 const contractController = new ContractController();

@@ -12,7 +12,7 @@ export const handleTradeOpened = async (payload: any) => {
     contractId,
     userId,
     assetSymbol,
-    stake
+    stake,
   });
 
   // Future logic: Push to analytics, notify followers in copy-trading, etc.
