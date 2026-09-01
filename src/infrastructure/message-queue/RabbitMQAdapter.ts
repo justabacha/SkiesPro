@@ -1,10 +1,10 @@
-import amqp, { Connection, Channel, ConsumeMessage } from 'amqplib';
+import * as amqp from 'amqplib';
 import { IMessageQueue, PublishOptions, MessageHandler } from './IMessageQueue.js';
-import { logger } from '../../../shared/middleware/logger.js';
+import { logger } from '../../shared/middleware/logger.js';
 
 export class RabbitMQAdapter implements IMessageQueue {
-  private connection: Connection | null = null;
-  private channel: Channel | null = null;
+  private connection: any = null;
+  private channel: any = null;
   private url: string;
   private isConnecting: boolean = false;
   private reconnectionAttempts: number = 0;
@@ -20,9 +20,9 @@ export class RabbitMQAdapter implements IMessageQueue {
 
     this.isConnecting = true;
     try {
-      this.connection = await amqp.connect(this.url);
+      this.connection = await (amqp as any).connect(this.url);
 
-      this.connection.on('error', (err) => {
+      this.connection.on('error', (err: any) => {
         logger.error('RabbitMQ connection error', { error: err.message });
         this.handleDisconnect();
       });
@@ -60,7 +60,7 @@ export class RabbitMQAdapter implements IMessageQueue {
     }
   }
 
-  private async ensureChannel(): Promise<Channel> {
+  private async ensureChannel(): Promise<any> {
     if (!this.channel) {
       await this.connect();
       // Wait a bit for connection if it was just triggered
@@ -80,6 +80,10 @@ export class RabbitMQAdapter implements IMessageQueue {
     // Ensure the queue exists
     await channel.assertQueue(queueName, { durable: true });
 
+    const persistent = options?.persistent ?? true;
+    const priority = options?.priority;
+    const headers = options?.headers;
+
     // Handle Delay/Expiration using DLX pattern if expiration is provided
     if (options?.expiration) {
       const delayQueue = `${queueName}.delay.${options.expiration}`;
@@ -93,18 +97,18 @@ export class RabbitMQAdapter implements IMessageQueue {
       });
 
       channel.sendToQueue(delayQueue, Buffer.from(JSON.stringify(message)), {
-        persistent: options.persistent ?? true,
-        priority: options.priority,
-        headers: options.headers
+        persistent,
+        priority,
+        headers
       });
 
       logger.debug(`Message published to delay queue ${delayQueue} for ${queueName}`);
     } else {
       channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
-        persistent: options.persistent ?? true,
-        priority: options.priority,
-        expiration: options.expiration?.toString(),
-        headers: options.headers
+        persistent,
+        priority,
+        expiration: options?.expiration?.toString(),
+        headers
       });
     }
   }
@@ -116,7 +120,7 @@ export class RabbitMQAdapter implements IMessageQueue {
     // Set prefetch to 1 for fair dispatch (production standard)
     await channel.prefetch(1);
 
-    await channel.consume(queueName, async (msg: ConsumeMessage | null) => {
+    await channel.consume(queueName, async (msg: any) => {
       if (msg) {
         try {
           const content = JSON.parse(msg.content.toString());
@@ -136,7 +140,6 @@ export class RabbitMQAdapter implements IMessageQueue {
 
   async acknowledge(_messageId: string): Promise<void> {
     // In RabbitMQ, acknowledgement is handled via the callback in subscribe
-    // This method is kept for interface compatibility
   }
 
   async retry(_messageId: string): Promise<void> {

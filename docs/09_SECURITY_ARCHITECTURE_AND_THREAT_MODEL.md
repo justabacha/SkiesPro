@@ -397,6 +397,7 @@ Per SAD v1.1 §5, module boundaries are enforced at the database level:
 
 | Header | Value | Purpose |
 | :--- | :--- | :--- |
+| `Cross-Origin-Resource-Policy` | `cross-origin` | Allows resources to be shared across domains (Vercel/Render) |
 | `X-Content-Type-Options` | `nosniff` | Prevents MIME-type sniffing |
 | `X-Frame-Options` | `DENY` | Prevents clickjacking |
 | `X-XSS-Protection` | `0` | Disables legacy XSS filter (modern CSP replaces) |
@@ -442,12 +443,21 @@ Per SAD v1.1 §5, module boundaries are enforced at the database level:
 | Max request headers | 8 KB |
 | Max URL length | 2 KB |
 
-### 6.7 CORS
+### 6.7 CORS & Cookies
 
+#### CORS Policy
 ```
 Access-Control-Allow-Origin: https://app.example.com
 Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE
 Access-Control-Allow-Headers: Authorization, Content-Type, Idempotency-Key, X-Request-ID
+Access-Control-Allow-Credentials: true
+```
+
+#### Cross-Domain Session Strategy
+To support deployments where the frontend (e.g., Vercel) and backend (e.g., Render) reside on different apex domains, the following session persistence strategy is enforced:
+1. **HttpOnly Cookies**: Refresh tokens are sent with `SameSite=None` and `Secure=True`.
+2. **JSON Fallback**: Refresh tokens are also returned in the response body during login/refresh.
+3. **Frontend Persistence**: The frontend client stores the refresh token in `localStorage` as a secondary fallback to ensure session continuity if third-party cookies are blocked by the browser.
 Access-Control-Allow-Credentials: true
 Access-Control-Max-Age: 86400
 ```

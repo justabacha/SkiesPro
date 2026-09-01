@@ -162,6 +162,7 @@ The accepted deviations are non-critical and do not prevent the MVP from functio
 | `Logic` | Server-side Timestamping | Removed trust in client `requestTimestamp` to prevent Latency Arbitrage. |
 | `Logic` | Oracle Gap Refund | Automatic `cancelled` status and refund if price feed is stale (>10s). |
 | `Logic` | Locked Exposure Check | Moved exposure validation inside the database transaction with explicit row-locking to prevent burst-overexposure. |
+| `Monitoring` | Infrastructure Only | Prometheus/Grafana infrastructure is provisioned but application-level telemetry is deferred to Phase 11. |
 
 ---
 

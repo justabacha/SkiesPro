@@ -605,7 +605,8 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
 {
   "data": {
     "requires_mfa": true,
-    "mfa_session_token": "temp-session-token-uuid"
+    "mfa_session_token": "temp-session-token-uuid",
+    "userId": "a1b2c3d4-..."
   },
   "meta": { "request_id": "..." }
 }
@@ -619,6 +620,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
 - Account must not be locked (failed attempts < 5).
 - Account must not be suspended or closed.
 - If MFA is enabled, return `requires_mfa: true` instead of tokens.
+- **Session Persistence**: `refresh_token` is returned in both an HttpOnly cookie and the JSON response body to ensure compatibility with cross-domain deployments where third-party cookies may be blocked.
 
 **Possible Errors**: `AUTH_001`, `AUTH_004`, `SYSTEM_004`
 
@@ -713,6 +715,7 @@ X-Correlation-ID: 123e4567-e89b-12d3-a456-426614174000
 **Business Rules**:
 - Refresh token is rotated: old token is invalidated, new token is issued.
 - Old access token JTI is added to revocation blacklist.
+- **Hybrid Support**: The endpoint accepts the `refresh_token` from an HttpOnly cookie or the JSON body. If both are present, the cookie takes precedence. This allows frontend persistence via `localStorage` fallback during page refreshes in restricted cookie environments.
 
 **Possible Errors**: `AUTH_002`, `AUTH_007`, `SYSTEM_004`
 

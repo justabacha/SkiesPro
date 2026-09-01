@@ -1,11 +1,21 @@
 import { IMessageQueue, PublishOptions, MessageHandler } from './IMessageQueue.js';
 import { InMemoryAdapter } from './InMemoryAdapter.js';
+import { RabbitMQAdapter } from './RabbitMQAdapter.js';
+import { logger } from '../../shared/middleware/logger.js';
 
 export class MessageQueueClient {
   private adapter: IMessageQueue;
 
-  constructor(adapter?: IMessageQueue) {
-    this.adapter = adapter || new InMemoryAdapter();
+  constructor() {
+    const rabbitUrl = process.env.RABBITMQ_URL;
+
+    if (rabbitUrl) {
+      logger.info('Initializing MessageQueue with RabbitMQ');
+      this.adapter = new RabbitMQAdapter(rabbitUrl);
+    } else {
+      logger.warn('RABBITMQ_URL not found, falling back to InMemory message queue');
+      this.adapter = new InMemoryAdapter();
+    }
   }
 
   async publish(queueName: string, message: any, options?: PublishOptions): Promise<void> {

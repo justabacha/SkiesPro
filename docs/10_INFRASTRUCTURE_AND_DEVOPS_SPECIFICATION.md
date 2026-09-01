@@ -714,6 +714,15 @@ graph TD
 | **Payment processing** | In-flight payment callbacks are handled by the shared infrastructure. No interruption. |
 | **Settlement processing** | Settlement jobs in-flight during deployment continue on the shared broker. Workers in the new environment pick up unacknowledged jobs. |
 
+### 12.4 Frontend Static Hosting (SPA Routing)
+
+To prevent `404 NOT FOUND` errors when users refresh deep links (e.g., `/wallet`), the static hosting provider (Vercel/Render) must be configured with a **Rewrite Rule**:
+
+- **Source**: `/(.*)`
+- **Destination**: `/index.html`
+
+This ensures the browser always loads the single-page entry point, allowing React Router to manage internal navigation and reload the correct UI state.
+
 ---
 
 ## 13. Monitoring & Observability

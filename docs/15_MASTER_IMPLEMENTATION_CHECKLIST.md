@@ -317,7 +317,7 @@ These phases can run in parallel with critical path phases once their dependenci
 | 1.1 | Project scaffolding | Infrastructure | S | None | None | IMP §3.1, DHCS §2 | Repo structure matches DHCS §2, CI pipeline runs | Git repo, folder structure | CI passes | ✅ | | |
 | 1.2 | Database setup | Infrastructure | M | 1.1 | None | DDS §X, IDS §X, IMP §3.1 | Migrations run, connection pool configured, schema matches DDS | PostgreSQL instance, migration files | Migration test passes | ✅ | | |
 | 1.3 | CI/CD pipeline | Infrastructure | M | 1.1 | None | IDS §X, TSQS §X, DOM §5 | Automated build, test, lint on every PR | Pipeline config | CI green on test PR | ✅ | | |
-| 1.4 | Monitoring setup | Infrastructure | S | 1.1 | None | IDS §X, DOM §9 | Metrics collection active, dashboards accessible | Monitoring config, dashboards | Health checks visible | ✅ | | |
+| 1.4 | Monitoring setup | Infrastructure | S | 1.1 | None | IDS §X, DOM §9 | Metrics collection active, dashboards accessible | Monitoring config, dashboards | Health checks visible | 🔄 | | Application-level metrics deferred to Phase 11 |
 | 1.5 | Logging setup | Infrastructure | S | 1.1 | None | IDS §X, DOM §9, DHCS §5.7 | Structured logs output, correlation IDs present | Logging middleware | Log inspection | ✅ | | |
 | 1.6 | Message queue setup | Infrastructure | M | 1.1, 1.2 | None | SAD §X, IDS §X | Queue operational, workers can connect | Message broker instance | Worker connection test | ✅ | | |
 | 1.7 | Cache layer setup | Infrastructure | S | 1.1 | None | IDS §X, SAD §X | Cache operational, eviction policy configured | Cache instance | Cache hit/miss test | ✅ | | |
