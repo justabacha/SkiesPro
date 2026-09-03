@@ -6,14 +6,23 @@ import { logger } from '../../shared/middleware/logger.js';
 export class MessageQueueClient {
   private adapter: IMessageQueue;
 
-  constructor() {
+  constructor(adapter?: IMessageQueue) {
+    if (adapter) {
+      this.adapter = adapter;
+      return;
+    }
+
     const rabbitUrl = process.env.RABBITMQ_URL;
 
-    if (rabbitUrl) {
+    if (rabbitUrl && process.env.NODE_ENV !== 'test') {
       logger.info('Initializing MessageQueue with RabbitMQ');
       this.adapter = new RabbitMQAdapter(rabbitUrl);
     } else {
-      logger.warn('RABBITMQ_URL not found, falling back to InMemory message queue');
+      if (rabbitUrl && process.env.NODE_ENV === 'test') {
+        logger.info('NODE_ENV is test, falling back to InMemory message queue');
+      } else if (!rabbitUrl) {
+        logger.warn('RABBITMQ_URL not found, falling back to InMemory message queue');
+      }
       this.adapter = new InMemoryAdapter();
     }
   }

@@ -1,154 +1,805 @@
-import { TradingService } from '../../../src/modules/trading/services/tradingService.js';
 import { SettlementWorker } from '../../../src/modules/trading/workers/settlementWorker.js';
+import { TradingService } from '../../../src/modules/trading/services/tradingService.js';
 import { PricingService } from '../../../src/modules/pricing/services/pricingService.js';
-import { MarketStatusService } from '../../../src/modules/pricing/services/MarketStatusService.js';
-import { PriceValidationService } from '../../../src/modules/pricing/services/priceValidationService.js';
-import { WalletService } from '../../../src/modules/wallet/services/walletService.js';
-import { TickRepository } from '../../../src/modules/pricing/repositories/tickRepository.js';
 import { pgPool } from '../../../src/config/database.js';
+import { WalletService } from '../../../src/modules/wallet/services/walletService.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
 
+// Mock MessageQueueClient to avoid real RabbitMQ dependency during tests
+jest.mock('../../../src/infrastructure/message-queue/MessageQueueClient.js', () => ({
+  messageQueueClient: {
+    publish: jest.fn().mockResolvedValue(undefined),
+    subscribe: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 describe('Trade Settlement Integration', () => {
-  let tradingService: TradingService;
   let settlementWorker: SettlementWorker;
-  let pricingService: PricingService;
+  let tradingService: TradingService;
+  let mockPricingService: jest.Mocked<PricingService>;
   let walletService: WalletService;
-  let tickRepo: TickRepository;
-  let testUserId: string;
+
+  const testUserId = uuidv4();
+  const testSymbol = 'EUR/USD';
 
   beforeAll(async () => {
-    process.env.LATENCY_THRESHOLD_MS = '5000'; // Increase for tests
-    const validationService = new PriceValidationService();
-    const marketStatusService = new MarketStatusService(validationService);
-    pricingService = new PricingService(marketStatusService);
-    tradingService = new TradingService(pricingService);
+    mockPricingService = {
+      getMarketStatus: jest.fn(),
+      getLatestPrice: jest.fn(),
+    } as any;
+
     settlementWorker = new SettlementWorker();
+    tradingService = new TradingService(mockPricingService);
     walletService = new WalletService();
-    tickRepo = new TickRepository();
+
+    // Clean up
+    await pgPool.query('DELETE FROM trading.binary_contracts WHERE user_id = $1', [testUserId]);
+    await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
+    await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
 
     // Create a test user
-    const email = `settle-test-${Date.now()}@example.com`;
-    const res = await pgPool.query(
-      "INSERT INTO app_auth.users (email, password_hash, display_name, status, kyc_status) VALUES ($1, 'hash', 'Settle Test', 'active', 'unverified') RETURNING id",
-      [email]
+    const testReferralCode = uuidv4().split('-')[0].toUpperCase();
+    await pgPool.query(
+      `INSERT INTO app_auth.users (id, email, password_hash, display_name, referral_code, status, kyc_status)
+       VALUES ($1, $2, 'hash', 'Test Settler', $3, 'active', 'verified')`,
+      [testUserId, `test-settle-${testUserId}@example.com`, testReferralCode]
     );
-    testUserId = res.rows[0].id;
+
+    // Create wallet with balance
     await walletService.createWallet(testUserId, 'KES');
+    await walletService.credit(testUserId, new Decimal('10000'), 'deposit', undefined, 'Initial balance');
+
+    // Ensure asset config exists
+    await pgPool.query(
+      `INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, payout_rate, is_active, max_exposure)
+       VALUES ($1, '100', '50000', 60, 3600, '0.60', TRUE, '1000000')
+       ON CONFLICT (asset_symbol) DO UPDATE SET is_active = TRUE`,
+      [testSymbol]
+    );
   });
 
   afterAll(async () => {
+    await pgPool.query('DELETE FROM events.event_outbox WHERE aggregate_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
+    await pgPool.query('DELETE FROM trading.contract_events WHERE contract_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
     await pgPool.query('DELETE FROM trading.binary_contracts WHERE user_id = $1', [testUserId]);
     await pgPool.query('DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)', [testUserId]);
     await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
   });
 
-  it('should settle a winning contract and credit user', async () => {
-    // 1. Setup asset config and price
-    const symbol = 'BTC/USD';
-    await pgPool.query("DELETE FROM trading.asset_config WHERE asset_symbol = $1", [symbol]);
-    await pgPool.query(
-      "INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, payout_rate, is_active, max_exposure) VALUES ($1, 100, 50000, 10, 3600, 0.60, TRUE, 1000000)",
-      [symbol]
-    );
+  const placeTestTrade = async (strike: string) => {
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    mockPricingService.getLatestPrice.mockResolvedValue({
+      symbol: testSymbol,
+      bid: strike,
+      ask: strike,
+      mid: strike,
+      tick_time: new Date().toISOString()
+    } as any);
 
-    const strikePrice = '50000.00';
-    const settlementPrice = '51000.00';
-
-    // Save strike tick
-    await tickRepo.save({
-      symbol,
-      tick_time: new Date(),
-      bid_price: strikePrice,
-      ask_price: strikePrice,
-      mid_price: strikePrice,
-      volume: '1'
-    });
-
-    // 2. Fund user
-    await walletService.credit(testUserId, new Decimal('1000'), 'deposit', uuidv4(), 'Funding');
-
-    // 3. Place trade
     const tradeRequest = {
-      assetSymbol: symbol,
+      assetSymbol: testSymbol,
       contractType: 'higher' as const,
-      stake: '100',
+      stake: '1000',
       expirySeconds: 60
     };
 
-    const contract = await tradingService.placeTrade(testUserId, tradeRequest);
-    expect(contract.status).toBe('active');
+    return await tradingService.placeTrade(testUserId, tradeRequest);
+  };
 
-    // 4. Save settlement tick (using exact expiry time from contract)
-    await tickRepo.save({
-      symbol,
-      tick_time: contract.expiryTime,
-      bid_price: settlementPrice,
-      ask_price: settlementPrice,
-      mid_price: settlementPrice,
-      volume: '1'
-    });
+  test('SET-001: should settle a winning contract and credit user', async () => {
+    const contract = await placeTestTrade('1.10000');
 
-    // 5. Trigger settlement manually
+    // Seed the settlement price in price_ticks
+    const expiryTickTime = contract.expiryTime;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, expiryTickTime]
+    );
+
     await settlementWorker.settle(contract.id!);
 
-    // 6. Verify outcomes
-    const updatedContract = await pgPool.query("SELECT * FROM trading.binary_contracts WHERE id = $1", [contract.id]);
-    expect(updatedContract.rows[0].status).toBe('won');
-    expect(parseFloat(updatedContract.rows[0].expiry_price)).toBe(51000.00);
+    // Verify status
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('won');
 
+    // Verify balance: 10000 - 1000 (stake) + 1600 (payout) = 10600
     const wallet = await walletService.getBalance(testUserId);
-    // Initial 1000 - 100 (stake) + 160 (payout) = 1060
-    expect(new Decimal(wallet.balance).equals(new Decimal('1060'))).toBe(true);
+    expect(new Decimal(wallet.available_balance).toNumber()).toBe(10600);
+
+    // Verify outbox event
+    const { rows: outbox } = await pgPool.query("SELECT * FROM events.event_outbox WHERE aggregate_id = $1 AND event_type = 'TradeSettled'", [contract.id]);
+    expect(outbox.length).toBeGreaterThan(0);
+
+    const payload = typeof outbox[0].payload === 'string' ? JSON.parse(outbox[0].payload) : outbox[0].payload;
+    expect(payload.outcome).toBe('won');
   });
 
-  it('should settle a losing contract and NOT credit user', async () => {
-    const symbol = 'ETH/USD';
-    await pgPool.query("DELETE FROM trading.asset_config WHERE asset_symbol = $1", [symbol]);
+  test('SET-002: should settle a losing contract and NOT credit user', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Seed the settlement price (lower than strike)
+    const expiryTickTime = contract.expiryTime;
     await pgPool.query(
-      "INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, payout_rate, is_active, max_exposure) VALUES ($1, 100, 50000, 10, 3600, 0.60, TRUE, 1000000)",
-      [symbol]
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.09500', '1.09500', '1.09500', $2)`,
+      [testSymbol, expiryTickTime]
     );
 
-    const strikePrice = '3000.00';
-    const settlementPrice = '2900.00';
-
-    await tickRepo.save({
-      symbol,
-      tick_time: new Date(),
-      bid_price: strikePrice,
-      ask_price: strikePrice,
-      mid_price: strikePrice,
-      volume: '1'
-    });
-
-    const tradeRequest = {
-      assetSymbol: symbol,
-      contractType: 'higher' as const,
-      stake: '100',
-      expirySeconds: 60
-    };
-
-    const contract = await tradingService.placeTrade(testUserId, tradeRequest);
-
-    await tickRepo.save({
-      symbol,
-      tick_time: contract.expiryTime,
-      bid_price: settlementPrice,
-      ask_price: settlementPrice,
-      mid_price: settlementPrice,
-      volume: '1'
-    });
-
-    const balanceBefore = (await walletService.getBalance(testUserId)).balance;
+    // Get balance before settlement
+    const balanceBefore = new Decimal((await walletService.getBalance(testUserId)).available_balance);
 
     await settlementWorker.settle(contract.id!);
 
-    const updatedContract = await pgPool.query("SELECT * FROM trading.binary_contracts WHERE id = $1", [contract.id]);
-    expect(updatedContract.rows[0].status).toBe('lost');
+    // Verify status
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('lost');
 
-    const balanceAfter = (await walletService.getBalance(testUserId)).balance;
-    expect(balanceAfter).toBe(balanceBefore); // No change after loss because stake was already debited
+    // Verify balance: should not change from balanceBefore
+    const balanceAfter = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    expect(balanceAfter.toNumber()).toBe(balanceBefore.toNumber());
+  });
+
+  test('SET-003: should settle a draw contract and refund stake', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Seed the settlement price (exactly strike)
+    const expiryTickTime = contract.expiryTime;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10000', '1.10000', '1.10000', $2)`,
+      [testSymbol, expiryTickTime]
+    );
+
+    const balanceBefore = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+
+    await settlementWorker.settle(contract.id!);
+
+    // Verify status
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('draw');
+
+    // Verify balance: balanceBefore + 1000 (refund)
+    const balanceAfter = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    expect(balanceAfter.toNumber()).toBe(balanceBefore.plus(1000).toNumber());
+    test('SET-004: should settle a winning Lower contract', async () => {
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    mockPricingService.getLatestPrice.mockResolvedValue({
+      symbol: testSymbol,
+      bid: '1.10000',
+      ask: '1.10000',
+      mid: '1.10000',
+      tick_time: new Date().toISOString()
+    } as any);
+
+    const contract = await tradingService.placeTrade(testUserId, {
+      assetSymbol: testSymbol,
+      contractType: 'lower',
+      stake: '1000',
+      expirySeconds: 60
+    });
+
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.09500', '1.09500', '1.09500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('won');
+  });
+
+  test('SET-005: should settle a losing Lower contract', async () => {
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    mockPricingService.getLatestPrice.mockResolvedValue({
+      symbol: testSymbol,
+      bid: '1.10000',
+      ask: '1.10000',
+      mid: '1.10000',
+      tick_time: new Date().toISOString()
+    } as any);
+
+    const contract = await tradingService.placeTrade(testUserId, {
+      assetSymbol: testSymbol,
+      contractType: 'lower',
+      stake: '1000',
+      expirySeconds: 60
+    });
+
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('lost');
+  });
+
+  test('SET-007: 10 simultaneous settlements (Concurrency)', async () => {
+    // We'll create 10 contracts and try to settle them multiple times in parallel
+    const contractPromises = Array.from({ length: 10 }).map(() => placeTestTrade('1.10000'));
+    const contracts = await Promise.all(contractPromises);
+
+    for (const contract of contracts) {
+      await pgPool.query(
+        `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+         VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+        [testSymbol, contract.expiryTime]
+      );
+    }
+
+    // Try to settle each contract 3 times in parallel
+    const settlePromises = contracts.flatMap(c => [
+      settlementWorker.settle(c.id!),
+      settlementWorker.settle(c.id!),
+      settlementWorker.settle(c.id!)
+    ]);
+
+    await Promise.all(settlePromises);
+
+    // Verify each is settled exactly once (won status)
+    for (const contract of contracts) {
+      const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+      expect(rows[0].status).toBe('won');
+    }
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-008: should handle missing price tick with error (to trigger retry)', async () => {
+    const contract = await placeTestTrade('1.10000');
+    // No tick seeded
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active'); // Reverted from 'settling'
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-006: should refund if price tick is missing (Oracle Gap)', async () => {
+    process.env.MAX_ORACLE_GAP_MS = '1000'; // Tight gap for test
+    const contract = await placeTestTrade('1.10000');
+
+    // Seed a price tick that is too old (e.g., 5 seconds before expiry)
+    const staleTickTime = new Date(contract.expiryTime.getTime() - 5000);
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, staleTickTime]
+    );
+
+    const balanceBefore = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+
+    await settlementWorker.settle(contract.id!);
+
+    // Verify status
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('cancelled');
+
+    // Verify refund
+    const balanceAfter = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    expect(balanceAfter.toNumber()).toBe(balanceBefore.plus(1000).toNumber());
+    test('SET-004: should settle a winning Lower contract', async () => {
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    mockPricingService.getLatestPrice.mockResolvedValue({
+      symbol: testSymbol,
+      bid: '1.10000',
+      ask: '1.10000',
+      mid: '1.10000',
+      tick_time: new Date().toISOString()
+    } as any);
+
+    const contract = await tradingService.placeTrade(testUserId, {
+      assetSymbol: testSymbol,
+      contractType: 'lower',
+      stake: '1000',
+      expirySeconds: 60
+      test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.09500', '1.09500', '1.09500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('won');
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-005: should settle a losing Lower contract', async () => {
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    mockPricingService.getLatestPrice.mockResolvedValue({
+      symbol: testSymbol,
+      bid: '1.10000',
+      ask: '1.10000',
+      mid: '1.10000',
+      tick_time: new Date().toISOString()
+    } as any);
+
+    const contract = await tradingService.placeTrade(testUserId, {
+      assetSymbol: testSymbol,
+      contractType: 'lower',
+      stake: '1000',
+      expirySeconds: 60
+      test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('lost');
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-007: 10 simultaneous settlements (Concurrency)', async () => {
+    // We'll create 10 contracts and try to settle them multiple times in parallel
+    const contractPromises = Array.from({ length: 10 }).map(() => placeTestTrade('1.10000'));
+    const contracts = await Promise.all(contractPromises);
+
+    for (const contract of contracts) {
+      await pgPool.query(
+        `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+         VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+        [testSymbol, contract.expiryTime]
+      );
+    }
+
+    // Try to settle each contract 3 times in parallel
+    const settlePromises = contracts.flatMap(c => [
+      settlementWorker.settle(c.id!),
+      settlementWorker.settle(c.id!),
+      settlementWorker.settle(c.id!)
+    ]);
+
+    await Promise.all(settlePromises);
+
+    // Verify each is settled exactly once (won status)
+    for (const contract of contracts) {
+      const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+      expect(rows[0].status).toBe('won');
+    }
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-008: should handle missing price tick with error (to trigger retry)', async () => {
+    const contract = await placeTestTrade('1.10000');
+    // No tick seeded
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active'); // Reverted from 'settling'
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+  test('SET-004: should settle a winning Lower contract', async () => {
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    mockPricingService.getLatestPrice.mockResolvedValue({
+      symbol: testSymbol,
+      bid: '1.10000',
+      ask: '1.10000',
+      mid: '1.10000',
+      tick_time: new Date().toISOString()
+    } as any);
+
+    const contract = await tradingService.placeTrade(testUserId, {
+      assetSymbol: testSymbol,
+      contractType: 'lower',
+      stake: '1000',
+      expirySeconds: 60
+      test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.09500', '1.09500', '1.09500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('won');
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-005: should settle a losing Lower contract', async () => {
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    mockPricingService.getLatestPrice.mockResolvedValue({
+      symbol: testSymbol,
+      bid: '1.10000',
+      ask: '1.10000',
+      mid: '1.10000',
+      tick_time: new Date().toISOString()
+    } as any);
+
+    const contract = await tradingService.placeTrade(testUserId, {
+      assetSymbol: testSymbol,
+      contractType: 'lower',
+      stake: '1000',
+      expirySeconds: 60
+      test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(contracts[0].status).toBe('lost');
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-007: 10 simultaneous settlements (Concurrency)', async () => {
+    // We'll create 10 contracts and try to settle them multiple times in parallel
+    const contractPromises = Array.from({ length: 10 }).map(() => placeTestTrade('1.10000'));
+    const contracts = await Promise.all(contractPromises);
+
+    for (const contract of contracts) {
+      await pgPool.query(
+        `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+         VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+        [testSymbol, contract.expiryTime]
+      );
+    }
+
+    // Try to settle each contract 3 times in parallel
+    const settlePromises = contracts.flatMap(c => [
+      settlementWorker.settle(c.id!),
+      settlementWorker.settle(c.id!),
+      settlementWorker.settle(c.id!)
+    ]);
+
+    await Promise.all(settlePromises);
+
+    // Verify each is settled exactly once (won status)
+    for (const contract of contracts) {
+      const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+      expect(rows[0].status).toBe('won');
+    }
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
+  });
+});
+
+  test('SET-008: should handle missing price tick with error (to trigger retry)', async () => {
+    const contract = await placeTestTrade('1.10000');
+    // No tick seeded
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active'); // Reverted from 'settling'
+    test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
+    const contract = await placeTestTrade('1.10000');
+
+    // Force findById to throw once to simulate a crash/error
+    const originalFindById = (settlementWorker as any).contractRepo.findById;
+    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+
+    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
+
+    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rows[0].status).toBe('active');
+
+    // Restore and verify it can now settle
+    (settlementWorker as any).contractRepo.findById = originalFindById;
+    await pgPool.query(
+      `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
+       VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
+      [testSymbol, contract.expiryTime]
+    );
+
+    await settlementWorker.settle(contract.id!);
+    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    expect(rowsAfter[0].status).toBe('won');
   });
 });
