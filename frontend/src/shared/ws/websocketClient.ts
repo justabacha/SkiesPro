@@ -1,6 +1,6 @@
 export interface WebSocketMessage {
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface SubscribeChannel {
@@ -23,7 +23,7 @@ export class WebSocketClient {
   private ws: WebSocket | null = null;
   private config: Required<WebSocketClientConfig>;
   private reconnectAttempts: number = 0;
-  private reconnectTimeout: any = null;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private subscriptions: SubscribeChannel[] = [];
   private clientId: string | null = null;
   private isManualDisconnect: boolean = false;
@@ -112,7 +112,7 @@ export class WebSocketClient {
     });
   }
 
-  private send(message: any): void {
+  private send(message: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     }
@@ -135,7 +135,7 @@ export class WebSocketClient {
 
       switch (message.type) {
         case 'connected':
-          this.clientId = message.client_id;
+          this.clientId = typeof message.client_id === 'string' ? message.client_id : null;
           if (this.clientId) {
             this.config.onConnected(this.clientId);
           }
@@ -198,12 +198,12 @@ export class WebSocketClient {
     this.reconnectTimeout = setTimeout(() => {
       this.reconnectAttempts++;
       this.connect();
-    }, delay) as any;
+    }, delay);
   }
 
   private clearReconnectTimeout(): void {
     if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout as any);
+      clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
   }

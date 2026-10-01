@@ -72,10 +72,14 @@ class ApiClient {
         console.warn('Business validation error:', apiError.message);
       }
 
-      const error = new Error(apiError.message);
-      (error as any).status = apiError.status;
-      (error as any).code = apiError.code;
-      (error as any).errors = apiError.errors;
+      const error = new Error(apiError.message) as Error & {
+        status?: number;
+        code?: string;
+        errors?: Array<{ msg: string; param: string; location: string }>;
+      };
+      error.status = apiError.status;
+      error.code = apiError.code;
+      error.errors = apiError.errors;
       throw error;
     }
 

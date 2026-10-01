@@ -10,7 +10,7 @@ import { clsx } from 'clsx';
 
 const mobileNavItems = [
   { name: 'Home', href: '/', icon: LayoutGrid },
-  { name: 'Trade', href: '/trade', icon: LineChart },
+  { name: 'Trade', href: '/trading', icon: LineChart },
   { name: 'Wallet', href: '/wallet', icon: Wallet },
   { name: 'History', href: '/history', icon: History },
   { name: 'Menu', href: '/menu', icon: MoreHorizontal },

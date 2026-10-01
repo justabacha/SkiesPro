@@ -7,6 +7,7 @@ import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { EmailVerificationPage } from '@/pages/auth/EmailVerificationPage';
 import { WalletPage } from '@/pages/wallet/WalletPage';
+import { TradingPage } from '@/pages/trading/TradingPage';
 import { Placeholder } from '@/shared/components/Placeholder';
 import { ProtectedRoute, PublicRoute } from '@/shared/components';
 import DesignSystemPage from '@/pages/DesignSystem';
@@ -21,7 +22,8 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Placeholder title="Dashboard" /> },
-      { path: 'trade', element: <Placeholder title="Trading Engine" /> },
+      { path: 'trading', element: <TradingPage /> },
+      { path: 'trade', element: <TradingPage /> },
       { path: 'wallet', element: <WalletPage /> },
       { path: 'history', element: <Placeholder title="Trade History" /> },
       { path: 'referrals', element: <Placeholder title="Referral System" /> },

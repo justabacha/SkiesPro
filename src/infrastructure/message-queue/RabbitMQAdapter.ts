@@ -66,7 +66,7 @@ export class RabbitMQAdapter implements IMessageQueue {
       // Wait a bit for connection if it was just triggered
       let attempts = 0;
       while (!this.channel && attempts < 10) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         attempts++;
       }
       if (!this.channel) throw new Error('RabbitMQ channel not available');
@@ -92,14 +92,14 @@ export class RabbitMQAdapter implements IMessageQueue {
         arguments: {
           'x-message-ttl': options.expiration,
           'x-dead-letter-exchange': '',
-          'x-dead-letter-routing-key': queueName
-        }
+          'x-dead-letter-routing-key': queueName,
+        },
       });
 
       channel.sendToQueue(delayQueue, Buffer.from(JSON.stringify(message)), {
         persistent,
         priority,
-        headers
+        headers,
       });
 
       logger.debug(`Message published to delay queue ${delayQueue} for ${queueName}`);
@@ -108,7 +108,7 @@ export class RabbitMQAdapter implements IMessageQueue {
         persistent,
         priority,
         expiration: options?.expiration?.toString(),
-        headers
+        headers,
       });
     }
   }
@@ -130,7 +130,9 @@ export class RabbitMQAdapter implements IMessageQueue {
 
           await handler(content, ack, nack);
         } catch (error: any) {
-          logger.error(`Error processing RabbitMQ message from ${queueName}`, { error: error.message });
+          logger.error(`Error processing RabbitMQ message from ${queueName}`, {
+            error: error.message,
+          });
           // Default to nack with requeue for unhandled errors
           channel.nack(msg, false, true);
         }

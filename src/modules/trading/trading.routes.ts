@@ -14,7 +14,9 @@ const assetController = new AssetController();
 
 // Asset routes
 router.get('/assets', authenticateToken, (req, res) => assetController.listAssets(req, res));
-router.get('/assets/:symbol', authenticateToken, (req, res) => assetController.getAssetDetail(req, res));
+router.get('/assets/:symbol', authenticateToken, (req, res) =>
+  assetController.getAssetDetail(req, res)
+);
 
 // Contract routes
 router.post(
@@ -26,7 +28,9 @@ router.post(
   (req, res) => contractController.placeTrade(req, res)
 );
 router.get('/contracts', authenticateToken, (req, res) => contractController.getHistory(req, res));
-router.get('/contracts/active', authenticateToken, (req, res) => contractController.getActive(req, res));
+router.get('/contracts/active', authenticateToken, (req, res) =>
+  contractController.getActive(req, res)
+);
 router.get('/contracts/:id', authenticateToken, (req, res) => contractController.getById(req, res));
 
 export default router;

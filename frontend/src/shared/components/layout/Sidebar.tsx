@@ -13,7 +13,7 @@ import { clsx } from 'clsx';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutGrid },
-  { name: 'Trade', href: '/trade', icon: LineChart },
+  { name: 'Trade', href: '/trading', icon: LineChart },
   { name: 'Wallet', href: '/wallet', icon: Wallet },
   { name: 'History', href: '/history', icon: History },
   { name: 'Referrals', href: '/referrals', icon: Users },

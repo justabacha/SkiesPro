@@ -27,7 +27,7 @@ export class PayoutService {
       return {
         outcome: 'draw',
         payoutAmount: stake, // Refund stake
-        description: `Trade draw: ${contract.assetSymbol} ${contract.contractType} (Price within tolerance)`
+        description: `Trade draw: ${contract.assetSymbol} ${contract.contractType} (Price within tolerance)`,
       };
     }
 
@@ -36,27 +36,28 @@ export class PayoutService {
         return {
           outcome: 'won',
           payoutAmount: potentialPayout,
-          description: `Trade won: ${contract.assetSymbol} Higher at ${settlementPrice.toString()}`
+          description: `Trade won: ${contract.assetSymbol} Higher at ${settlementPrice.toString()}`,
         };
       } else {
         return {
           outcome: 'lost',
           payoutAmount: new Decimal(0),
-          description: `Trade lost: ${contract.assetSymbol} Higher at ${settlementPrice.toString()}`
+          description: `Trade lost: ${contract.assetSymbol} Higher at ${settlementPrice.toString()}`,
         };
       }
-    } else { // contractType === 'lower'
+    } else {
+      // contractType === 'lower'
       if (settlementPrice.lt(strikePrice)) {
         return {
           outcome: 'won',
           payoutAmount: potentialPayout,
-          description: `Trade won: ${contract.assetSymbol} Lower at ${settlementPrice.toString()}`
+          description: `Trade won: ${contract.assetSymbol} Lower at ${settlementPrice.toString()}`,
         };
       } else {
         return {
           outcome: 'lost',
           payoutAmount: new Decimal(0),
-          description: `Trade lost: ${contract.assetSymbol} Lower at ${settlementPrice.toString()}`
+          description: `Trade lost: ${contract.assetSymbol} Lower at ${settlementPrice.toString()}`,
         };
       }
     }
@@ -69,7 +70,7 @@ export class PayoutService {
     return {
       outcome: 'cancelled',
       payoutAmount: new Decimal(contract.stake),
-      description: `Trade cancelled: ${reason}. Stake refunded.`
+      description: `Trade cancelled: ${reason}. Stake refunded.`,
     };
   }
 }

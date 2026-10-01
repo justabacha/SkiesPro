@@ -47,7 +47,7 @@ export class SettlementWorker {
       } catch (error: any) {
         logger.error('Failed to process settlement message', {
           error: error.message,
-          contractId
+          contractId,
         });
 
         // Clear idempotency key on failure to allow retry
@@ -159,7 +159,7 @@ export class SettlementWorker {
             outcome: result.outcome,
             payoutAmount: result.payoutAmount.toString(),
             settlementPrice: settlementPrice.toString(),
-            settledAt: new Date().toISOString()
+            settledAt: new Date().toISOString(),
           },
         });
 
@@ -224,7 +224,7 @@ export class SettlementWorker {
           assetSymbol: contract.assetSymbol,
           outcome: 'cancelled',
           payoutAmount: result.payoutAmount.toString(),
-          settledAt: new Date().toISOString()
+          settledAt: new Date().toISOString(),
         },
       });
 

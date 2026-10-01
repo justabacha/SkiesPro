@@ -26,7 +26,7 @@ export class SettlementRepository extends BaseRepository {
         outcome,
         settlementPrice,
         settlementTime: new Date(),
-        ...details
+        ...details,
       }),
     ]);
   }
