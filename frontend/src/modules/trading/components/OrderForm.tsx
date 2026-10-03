@@ -68,13 +68,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   return (
     <div
       data-testid="order-form"
-      className="w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-5 shadow-xl flex flex-col justify-between text-text-light-primary dark:text-text-dark transition-colors duration-200"
+      className="w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-4 sm:p-5 shadow-xl flex flex-col justify-between text-text-light-primary dark:text-text-dark-primary transition-colors duration-200"
     >
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border-light dark:border-border-dark">
           <div>
-            <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark">Place Binary Contract</h3>
+            <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark-primary">Place Binary Contract</h3>
             {currentPrice > 0 && (
               <span className="text-xs font-mono text-text-light-secondary dark:text-text-dark-secondary">
                 Spot: {currentPrice.toFixed(currentPrice > 100 ? 2 : 5)}
@@ -107,7 +107,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <button
               type="button"
               onClick={onClearError}
-              className="text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark font-bold ml-2"
+              className="text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary font-bold ml-2"
             >
               ×
             </button>
@@ -126,7 +126,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                 key={opt.value}
                 type="button"
                 onClick={() => setExpirySeconds(opt.value)}
-                className={`py-2 px-3 text-xs font-mono font-semibold rounded-xl border transition-all ${
+                className={`py-2 px-2 sm:px-3 text-xs font-mono font-semibold rounded-xl border transition-all ${
                   expirySeconds === opt.value
                     ? 'bg-brand text-white border-brand shadow-md shadow-brand/20'
                     : 'bg-bg-light-tertiary dark:bg-bg-dark-tertiary text-text-light-secondary dark:text-text-dark-secondary border-border-light dark:border-border-dark hover:border-text-light-secondary dark:hover:border-text-dark-secondary'
@@ -160,7 +160,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
               max={maxStake}
               step="10"
               placeholder={`Min ${minStake}`}
-              className="w-full pl-4 pr-16 py-2.5 bg-bg-light-primary dark:bg-bg-dark font-mono text-base font-bold text-text-light-primary dark:text-text-dark rounded-xl border border-border-light dark:border-border-dark focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+              className="w-full pl-4 pr-16 py-2.5 bg-bg-light-primary dark:bg-bg-dark-primary font-mono text-base font-bold text-text-light-primary dark:text-text-dark-primary rounded-xl border border-border-light dark:border-border-dark focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
             <span className="absolute right-4 top-3 text-xs font-bold text-text-light-secondary dark:text-text-dark-secondary">
               KES
@@ -168,14 +168,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           </div>
 
           {/* Quick Stake Adjust Buttons (UI-TRADE-002) */}
-          <div className="grid grid-cols-5 gap-1.5 mt-2">
+          <div className="grid grid-cols-5 gap-1 sm:gap-1.5 mt-2">
             {QUICK_STAKES.map((amt) => (
               <button
                 key={amt}
                 type="button"
                 data-testid={`quick-stake-${amt}`}
                 onClick={() => setStake(amt)}
-                className="py-1 px-2 text-[11px] font-mono font-medium bg-bg-light-tertiary dark:bg-bg-dark-tertiary hover:bg-bg-light-primary dark:hover:bg-bg-dark rounded-lg border border-border-light dark:border-border-dark/60 text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark transition-colors"
+                className="py-1 px-1 sm:px-2 text-[10px] sm:text-[11px] font-mono font-medium bg-bg-light-tertiary dark:bg-bg-dark-tertiary hover:bg-bg-light-primary dark:hover:bg-bg-dark-primary rounded-lg border border-border-light dark:border-border-dark/60 text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary transition-colors"
               >
                 +{amt}
               </button>
@@ -206,19 +206,19 @@ export const OrderForm: React.FC<OrderFormProps> = ({
       </div>
 
       {/* Action Direction Buttons (UI-TRADE-004 & Anti-Double-Click) */}
-      <div className="grid grid-cols-2 gap-3 mt-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mt-5 sm:mt-6">
         <button
           type="button"
           data-testid="btn-higher"
           onClick={handleHigher}
           disabled={isDisabled}
-          className="flex flex-col items-center justify-center py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold transition-all shadow-lg shadow-emerald-950/20 dark:shadow-emerald-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
+          className="flex flex-col items-center justify-center py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold transition-all shadow-lg shadow-emerald-950/20 dark:shadow-emerald-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
         >
-          <div className="flex items-center space-x-1 text-sm uppercase tracking-wide">
-            <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-0.5" />
+          <div className="flex items-center space-x-1 text-xs sm:text-sm uppercase tracking-wide">
+            <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:-translate-y-0.5" />
             <span>Higher</span>
           </div>
-          <span className="text-[11px] font-normal opacity-90 mt-0.5">Spot &gt; Strike</span>
+          <span className="text-[10px] sm:text-[11px] font-normal opacity-90 mt-0.5">Spot &gt; Strike</span>
         </button>
 
         <button
@@ -226,13 +226,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           data-testid="btn-lower"
           onClick={handleLower}
           disabled={isDisabled}
-          className="flex flex-col items-center justify-center py-3.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold transition-all shadow-lg shadow-rose-950/20 dark:shadow-rose-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
+          className="flex flex-col items-center justify-center py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold transition-all shadow-lg shadow-rose-950/20 dark:shadow-rose-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
         >
-          <div className="flex items-center space-x-1 text-sm uppercase tracking-wide">
-            <ArrowDownRight className="h-5 w-5 transition-transform group-hover:translate-y-0.5" />
+          <div className="flex items-center space-x-1 text-xs sm:text-sm uppercase tracking-wide">
+            <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-y-0.5" />
             <span>Lower</span>
           </div>
-          <span className="text-[11px] font-normal opacity-90 mt-0.5">Spot &lt; Strike</span>
+          <span className="text-[10px] sm:text-[11px] font-normal opacity-90 mt-0.5">Spot &lt; Strike</span>
         </button>
       </div>
     </div>

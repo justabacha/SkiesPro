@@ -89,13 +89,13 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   return (
     <div
       data-testid="trading-chart"
-      className="relative w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-4 shadow-xl flex flex-col justify-between overflow-hidden min-h-[380px] transition-colors duration-200"
+      className="relative w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-3 sm:p-4 shadow-xl flex flex-col justify-between overflow-hidden min-h-[320px] sm:min-h-[380px] transition-colors duration-200"
     >
       {/* Chart Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2 z-10 pb-2 border-b border-border-light dark:border-border-dark/50">
-        <div className="flex items-center space-x-3">
-          <span className="font-bold text-base text-text-light-primary dark:text-text-dark-primary font-mono">{symbol}</span>
-          <span className="font-mono text-xl font-bold text-emerald-600 dark:text-emerald-400">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <span className="font-bold text-sm sm:text-base text-text-light-primary dark:text-text-dark-primary font-mono">{symbol}</span>
+          <span className="font-mono text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">
             {currentPrice.toFixed(pipPlaces)}
           </span>
         </div>
@@ -103,14 +103,14 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         {/* Timeframe Selector (UI-TRADE-010) */}
         <div
           data-testid="timeframe-selector"
-          className="flex items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-1 rounded-lg border border-border-light dark:border-border-dark"
+          className="flex items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark"
         >
           {timeframes.map((tf) => (
             <button
               key={tf}
               type="button"
               onClick={() => setSelectedTimeframe(tf)}
-              className={`px-2.5 py-1 text-xs font-mono font-medium rounded-md transition-colors ${
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-mono font-medium rounded-md transition-colors ${
                 selectedTimeframe === tf
                   ? 'bg-brand text-white shadow-sm'
                   : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary hover:bg-bg-light-secondary dark:hover:bg-bg-dark-secondary'
@@ -123,7 +123,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       </div>
 
       {/* Main SVG Canvas */}
-      <div className="relative flex-1 w-full mt-4 min-h-[280px]">
+      <div className="relative flex-1 w-full mt-3 sm:mt-4 min-h-[240px] sm:min-h-[280px]">
         <svg
           viewBox="0 0 800 320"
           className="w-full h-full overflow-visible"
@@ -205,27 +205,34 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           )}
         </svg>
 
-        {/* Top-Left Contract Status Badge Overlay */}
-        {activeContractDetails && (
-          <div
-            className={`absolute left-4 top-2 px-3 py-1.5 rounded-lg text-xs font-mono font-bold text-white shadow-lg z-20 flex items-center space-x-2 ${
-              activeContractDetails.isWinning ? 'bg-emerald-600/90' : 'bg-rose-600/90'
-            } backdrop-blur-sm`}
-          >
-            <span>Strike: {activeContractDetails.strike.toFixed(pipPlaces)}</span>
-            <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded uppercase">
-              {activeContractDetails.isHigher ? '▲ Higher' : '▼ Lower'}
-            </span>
-            <span className="text-[10px] font-extrabold tracking-wide">
-              {activeContractDetails.isWinning ? `WINNING (+KES ${activeContractDetails.payout.toFixed(2)})` : 'LOSING (-KES 0.00)'}
-            </span>
-          </div>
-        )}
+        {/* Bottom Control / Status Overlay Bar */}
+        <div className="absolute left-2 bottom-2 right-2 flex items-center justify-between pointer-events-none z-20 gap-2">
+          {/* Active Position Badge (Screen-Sensitive, Bottom Left) */}
+          {activeContractDetails ? (
+            <div
+              className={`pointer-events-auto px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-mono font-bold text-white shadow-md flex items-center space-x-1.5 backdrop-blur-sm ${
+                activeContractDetails.isWinning ? 'bg-emerald-600/95' : 'bg-rose-600/95'
+              }`}
+            >
+              <span className="hidden sm:inline">Strike: {activeContractDetails.strike.toFixed(pipPlaces)}</span>
+              <span className="bg-black/20 px-1 py-0.5 rounded uppercase text-[9px] sm:text-[10px]">
+                {activeContractDetails.isHigher ? '▲' : '▼'}
+              </span>
+              <span className="font-extrabold truncate">
+                {activeContractDetails.isWinning
+                  ? `WIN +KES ${activeContractDetails.payout.toFixed(2)}`
+                  : 'LOSING'}
+              </span>
+            </div>
+          ) : (
+            <div />
+          )}
 
-        {/* Current Spot Cursor Badge */}
-        <div className="absolute right-2 bottom-2 bg-bg-light-primary/95 dark:bg-bg-dark-tertiary/95 border border-border-light dark:border-border-dark px-3 py-1.5 rounded-lg text-xs font-mono flex items-center space-x-2 backdrop-blur-sm z-20 shadow-md">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-text-light-primary dark:text-text-dark-primary font-bold">Spot: {currentPrice.toFixed(pipPlaces)}</span>
+          {/* Current Spot Cursor Badge (Bottom Right) */}
+          <div className="pointer-events-auto bg-bg-light-primary/95 dark:bg-bg-dark-tertiary/95 border border-border-light dark:border-border-dark px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-mono flex items-center space-x-1.5 backdrop-blur-sm shadow-md">
+            <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-ping" />
+            <span className="text-text-light-primary dark:text-text-dark-primary font-bold">Spot: {currentPrice.toFixed(pipPlaces)}</span>
+          </div>
         </div>
       </div>
     </div>

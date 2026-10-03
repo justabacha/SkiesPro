@@ -59,11 +59,11 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
     return (
       <div
         data-testid="open-positions"
-        className="w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-6 shadow-xl text-center text-text-light-primary dark:text-text-dark"
+        className="w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-6 shadow-xl text-center text-text-light-primary dark:text-text-dark-primary"
       >
         <div className="flex flex-col items-center justify-center space-y-2 py-4">
           <ShieldAlert className="h-8 w-8 text-text-light-secondary/50 dark:text-text-dark-secondary/50" />
-          <p className="text-sm font-medium text-text-light-primary dark:text-text-dark">No Active Positions</p>
+          <p className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">No Active Positions</p>
           <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
             Select an asset and place a contract to start trading.
           </p>
@@ -75,10 +75,10 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
   return (
     <div
       data-testid="open-positions"
-      className="w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-5 shadow-xl text-text-light-primary dark:text-text-dark space-y-4 transition-colors duration-200"
+      className="w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-4 sm:p-5 shadow-xl text-text-light-primary dark:text-text-dark-primary space-y-4 transition-colors duration-200"
     >
       <div className="flex items-center justify-between pb-3 border-b border-border-light dark:border-border-dark">
-        <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark flex items-center space-x-2">
+        <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark-primary flex items-center space-x-2">
           <span>Active Positions</span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-brand/20 text-brand font-mono font-bold">
             {contracts.length}
@@ -97,7 +97,7 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
           return (
             <div
               key={contract.id}
-              className="p-4 rounded-xl bg-bg-light-tertiary/60 dark:bg-bg-dark-tertiary/60 border border-border-light dark:border-border-dark/80 flex flex-wrap items-center justify-between gap-3 text-sm transition-all hover:border-border-light dark:hover:border-border-dark"
+              className="p-3.5 sm:p-4 rounded-xl bg-bg-light-tertiary/60 dark:bg-bg-dark-tertiary/60 border border-border-light dark:border-border-dark/80 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm transition-all hover:border-border-light dark:hover:border-border-dark"
             >
               {/* Asset & Direction */}
               <div className="flex items-center space-x-3">
@@ -108,12 +108,12 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
                       : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
                   }`}
                 >
-                  {isHigher ? <ArrowUpRight className="h-5 w-5" /> : <ArrowDownRight className="h-5 w-5" />}
+                  {isHigher ? <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" /> : <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5" />}
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold font-mono text-text-light-primary dark:text-text-dark">{contract.asset_symbol}</span>
-                    <span className="text-[10px] font-bold uppercase text-text-light-secondary dark:text-text-dark-secondary bg-bg-light-primary dark:bg-bg-dark px-1.5 py-0.5 rounded">
+                    <span className="font-bold font-mono text-text-light-primary dark:text-text-dark-primary">{contract.asset_symbol}</span>
+                    <span className="text-[10px] font-bold uppercase text-text-light-secondary dark:text-text-dark-secondary bg-bg-light-primary dark:bg-bg-dark-primary px-1.5 py-0.5 rounded">
                       {contract.contract_type}
                     </span>
                   </div>
@@ -126,7 +126,7 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
               {/* Price Details */}
               <div className="text-right">
                 <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                  Strike: <span className="font-mono font-semibold text-text-light-primary dark:text-text-dark">{strike.toFixed(pipPlaces)}</span>
+                  Strike: <span className="font-mono font-semibold text-text-light-primary dark:text-text-dark-primary">{strike.toFixed(pipPlaces)}</span>
                 </div>
                 <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
                   Spot: <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{spot.toFixed(pipPlaces)}</span>
@@ -134,10 +134,10 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
               </div>
 
               {/* Live Status & Timer */}
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 sm:space-x-3">
                 <span
                   data-testid="position-status"
-                  className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase ${
                     isWinning
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                       : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'

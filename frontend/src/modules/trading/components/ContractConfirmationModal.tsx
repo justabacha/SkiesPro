@@ -30,10 +30,10 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
       data-testid="confirmation-modal"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-fade-in"
     >
-      <div className="w-full max-w-md rounded-2xl bg-bg-light-primary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-6 shadow-2xl text-text-light-primary dark:text-text-dark">
+      <div className="w-full max-w-md rounded-2xl bg-bg-light-primary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-6 shadow-2xl text-text-light-primary dark:text-text-dark-primary">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border-light dark:border-border-dark">
-          <h3 className="text-lg font-bold text-text-light-primary dark:text-text-dark">Confirm Contract Order</h3>
+          <h3 className="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">Confirm Contract Order</h3>
           <span
             className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold uppercase ${
               isHigher
@@ -50,7 +50,7 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
         <div className="my-5 space-y-3 bg-bg-light-tertiary/60 dark:bg-bg-dark-tertiary/60 p-4 rounded-xl border border-border-light dark:border-border-dark/60 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-text-light-secondary dark:text-text-dark-secondary">Asset Symbol:</span>
-            <span className="font-bold font-mono text-text-light-primary dark:text-text-dark">{pendingOrder.assetSymbol}</span>
+            <span className="font-bold font-mono text-text-light-primary dark:text-text-dark-primary">{pendingOrder.assetSymbol}</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -62,12 +62,12 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
 
           <div className="flex justify-between items-center">
             <span className="text-text-light-secondary dark:text-text-dark-secondary">Stake Amount:</span>
-            <span className="font-semibold font-mono text-text-light-primary dark:text-text-dark">KES {pendingOrder.stake}</span>
+            <span className="font-semibold font-mono text-text-light-primary dark:text-text-dark-primary">KES {pendingOrder.stake}</span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-text-light-secondary dark:text-text-dark-secondary">Contract Duration:</span>
-            <span className="font-semibold font-mono text-text-light-primary dark:text-text-dark">{pendingOrder.expirySeconds}s</span>
+            <span className="font-semibold font-mono text-text-light-primary dark:text-text-dark-primary">{pendingOrder.expirySeconds}s</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -78,7 +78,7 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
           </div>
 
           <div className="pt-2 border-t border-border-light dark:border-border-dark flex justify-between items-center text-base">
-            <span className="font-medium text-text-light-primary dark:text-text-dark">Potential Return:</span>
+            <span className="font-medium text-text-light-primary dark:text-text-dark-primary">Potential Return:</span>
             <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">KES {formattedPayout}</span>
           </div>
         </div>
@@ -98,7 +98,7 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
             data-testid="cancel-btn"
             onClick={onCancel}
             disabled={isPlacing}
-            className="flex-1 py-3 px-4 rounded-xl border border-border-light dark:border-border-dark bg-bg-light-tertiary dark:bg-bg-dark-tertiary hover:bg-bg-light-secondary dark:hover:bg-bg-dark text-text-light-primary dark:text-text-dark font-medium text-sm transition-colors disabled:opacity-50"
+            className="flex-1 py-3 px-4 rounded-xl border border-border-light dark:border-border-dark bg-bg-light-tertiary dark:bg-bg-dark-tertiary hover:bg-bg-light-secondary dark:hover:bg-bg-dark-primary text-text-light-primary dark:text-text-dark-primary font-medium text-sm transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

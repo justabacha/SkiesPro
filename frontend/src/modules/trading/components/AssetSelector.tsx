@@ -43,19 +43,19 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between space-x-3 px-4 py-2.5 rounded-lg bg-bg-light-secondary dark:bg-bg-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary border border-border-light dark:border-border-dark text-text-light-primary dark:text-text-dark transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm"
+        className="flex items-center justify-between space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-bg-light-secondary dark:bg-bg-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary border border-border-light dark:border-border-dark text-text-light-primary dark:text-text-dark-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand shadow-sm"
         aria-expanded={isOpen}
       >
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <div className="p-1.5 rounded-md bg-brand/10 text-brand">
             <TrendingUp className="h-4 w-4" />
           </div>
           <div className="text-left">
-            <div className="flex items-center space-x-2">
-              <span className="font-bold text-sm text-text-light-primary dark:text-text-dark">{selectedAsset?.symbol || 'Select Asset'}</span>
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
+              <span className="font-bold text-xs sm:text-sm text-text-light-primary dark:text-text-dark-primary">{selectedAsset?.symbol || 'Select Asset'}</span>
               <span
                 data-testid="market-status-badge"
-                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded font-medium ${
                   isMarketOpen
                     ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                     : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
@@ -64,19 +64,19 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
                 {isMarketOpen ? 'Open' : 'Closed'}
               </span>
             </div>
-            <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary truncate max-w-[140px]">
+            <p className="text-[11px] sm:text-xs text-text-light-secondary dark:text-text-dark-secondary truncate max-w-[100px] sm:max-w-[140px]">
               {selectedAsset?.name || 'Binary Market'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 pl-2 border-l border-border-light dark:border-border-dark">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 pl-2 border-l border-border-light dark:border-border-dark">
           <div className="text-right">
-            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <div className="text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">
               +{((selectedAsset?.payoutRate || 0.60) * 100).toFixed(0)}%
             </div>
             {currentPrice !== undefined && (
-              <div className="text-[11px] font-mono text-text-light-secondary dark:text-text-dark-secondary">
+              <div className="text-[10px] sm:text-[11px] font-mono text-text-light-secondary dark:text-text-dark-secondary">
                 {currentPrice.toFixed(selectedAsset?.pipDecimalPlaces || (currentPrice > 100 ? 2 : 5))}
               </div>
             )}
@@ -86,7 +86,7 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-72 rounded-xl bg-bg-light-primary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark shadow-2xl z-50 overflow-hidden">
+        <div className="absolute left-0 mt-2 w-64 sm:w-72 rounded-xl bg-bg-light-primary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark shadow-2xl z-50 overflow-hidden">
           {/* Search Header */}
           <div className="p-2.5 border-b border-border-light dark:border-border-dark bg-bg-light-tertiary/50 dark:bg-bg-dark-tertiary/50">
             <div className="relative">
@@ -96,7 +96,7 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search symbol..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-bg-light-secondary dark:bg-bg-dark rounded-md border border-border-light dark:border-border-dark text-text-light-primary dark:text-text-dark focus:outline-none focus:border-brand"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-bg-light-secondary dark:bg-bg-dark-primary rounded-md border border-border-light dark:border-border-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:border-brand"
                 autoFocus
               />
             </div>
@@ -125,7 +125,7 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
                   >
                     <div>
                       <div className="flex items-center space-x-1.5">
-                        <span className="font-semibold text-xs text-text-light-primary dark:text-text-dark">{asset.symbol}</span>
+                        <span className="font-semibold text-xs text-text-light-primary dark:text-text-dark-primary">{asset.symbol}</span>
                         {!isOpenAsset && <Lock className="h-3 w-3 text-rose-500 dark:text-rose-400" />}
                       </div>
                       <span className="text-[11px] text-text-light-secondary dark:text-text-dark-secondary">{asset.name}</span>
