@@ -10,7 +10,6 @@ const DEFAULT_INITIAL_PRICES: Record<string, number> = {
   'GBP/USD': 1.2720,
   'USD/JPY': 151.40,
   'Gold': 2345.50,
-  'Oil': 82.30,
 };
 
 export interface UsePriceStreamReturn {

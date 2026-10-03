@@ -112,7 +112,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     return priceHistory;
   }, [priceHistory, currentPrice, symbol]);
 
-  // Fetch candles when chartType === 'candle'
+  // Fetch base historical candles when symbol, granularity, or chartType changes
   useEffect(() => {
     if (chartType !== 'candle') return;
 
@@ -132,13 +132,31 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       });
 
     return () => { isMounted = false; };
-  }, [symbol, granularity, chartType, displayedHistory, currentPrice]);
+  }, [symbol, granularity, chartType]);
+
+  // Dynamically update the latest open candle in real-time as live ticks arrive
+  const activeCandles = useMemo(() => {
+    if (chartType !== 'candle') return [];
+    if (candles.length === 0) {
+      return generateFallbackCandles(displayedHistory, granularity, currentPrice, symbol);
+    }
+    const updated = [...candles];
+    const lastIndex = updated.length - 1;
+    const lastCandle = { ...updated[lastIndex] };
+
+    lastCandle.close = currentPrice;
+    lastCandle.high = Math.max(lastCandle.high, currentPrice);
+    lastCandle.low = Math.min(lastCandle.low, currentPrice);
+
+    updated[lastIndex] = lastCandle;
+    return updated;
+  }, [candles, currentPrice, chartType, displayedHistory, granularity, symbol]);
 
   // Min and Max prices for chart scaling
   const { minPrice, maxPrice, prices } = useMemo(() => {
-    if (chartType === 'candle' && candles.length > 0) {
-      const highs = candles.map((c) => c.high);
-      const lows = candles.map((c) => c.low);
+    if (chartType === 'candle' && activeCandles.length > 0) {
+      const highs = activeCandles.map((c) => c.high);
+      const lows = activeCandles.map((c) => c.low);
       highs.push(currentPrice);
       lows.push(currentPrice);
       if (activeContracts.length > 0) {
@@ -154,7 +172,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       return {
         minPrice: min - padding,
         maxPrice: max + padding,
-        prices: candles.map((c) => c.close),
+        prices: activeCandles.map((c) => c.close),
       };
     }
 
@@ -167,7 +185,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       maxPrice: max + padding,
       prices: rawPrices,
     };
-  }, [chartType, candles, displayedHistory, currentPrice, activeContracts]);
+  }, [chartType, activeCandles, displayedHistory, currentPrice, activeContracts]);
 
   // Compute SVG polyline points (Line Chart)
   const points = useMemo(() => {
@@ -193,15 +211,15 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
   // SVG Candlesticks Data Calculation
   const candleElementsData = useMemo(() => {
-    if (chartType !== 'candle' || candles.length === 0) return [];
+    if (chartType !== 'candle' || activeCandles.length === 0) return [];
     const width = 800;
     const height = 320;
     const range = maxPrice - minPrice || 1;
-    const count = candles.length;
+    const count = activeCandles.length;
     const colWidth = width / count;
     const bodyWidth = Math.max(3, Math.min(24, colWidth * 0.65));
 
-    return candles.map((c, index) => {
+    return activeCandles.map((c, index) => {
       const centerX = (index + 0.5) * colWidth;
       const highY = height - ((c.high - minPrice) / range) * height;
       const lowY = height - ((c.low - minPrice) / range) * height;
@@ -226,7 +244,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         isBullish,
       };
     });
-  }, [chartType, candles, minPrice, maxPrice]);
+  }, [chartType, activeCandles, minPrice, maxPrice]);
 
   // Active contract strike lines & Pip Delta calculations
   const activeContractDetails = useMemo(() => {

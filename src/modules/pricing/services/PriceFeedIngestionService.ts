@@ -1,4 +1,4 @@
-import { BinanceAdapter } from '../adapters/binanceAdapter.js';
+import { KrakenAdapter } from '../adapters/krakenAdapter.js';
 import { MockPriceAdapter } from '../adapters/mockPriceAdapter.js';
 import { PriceValidationService } from './priceValidationService.js';
 import { TickRepository, TickRow } from '../repositories/tickRepository.js';
@@ -8,7 +8,7 @@ import { Decimal } from 'decimal.js';
 import { logger } from '../../../shared/middleware/logger.js';
 
 export class PriceFeedIngestionService {
-  private adapter: BinanceAdapter | MockPriceAdapter;
+  private adapter: KrakenAdapter | MockPriceAdapter;
   private isUsingMock: boolean = false;
   private tickBuffer: Omit<TickRow, 'id' | 'created_at'>[] = [];
   private readonly batchSize = 50;
@@ -25,9 +25,9 @@ export class PriceFeedIngestionService {
       this.adapter = new MockPriceAdapter(this.handleTick.bind(this));
       this.isUsingMock = true;
     } else {
-      this.adapter = new BinanceAdapter(
+      this.adapter = new KrakenAdapter(
         this.handleTick.bind(this),
-        this.handleBinanceError.bind(this)
+        this.handleKrakenError.bind(this)
       );
     }
   }
@@ -54,9 +54,9 @@ export class PriceFeedIngestionService {
     this.adapter.disconnect();
   }
 
-  private handleBinanceError(error: any) {
+  private handleKrakenError(error: any) {
     if (!this.isUsingMock) {
-      logger.warn('Binance connection failed, falling back to mock prices', {
+      logger.warn('Kraken connection failed, falling back to mock prices', {
         error: error.message,
       });
       this.switchToMock();
@@ -65,8 +65,8 @@ export class PriceFeedIngestionService {
 
   private switchToMock() {
     this.isUsingMock = true;
-    // Disconnect old adapter if it was Binance
-    if (this.adapter instanceof BinanceAdapter) {
+    // Disconnect old adapter if it was Kraken
+    if (this.adapter instanceof KrakenAdapter) {
       try {
         this.adapter.disconnect();
       } catch (e) {
@@ -87,14 +87,11 @@ export class PriceFeedIngestionService {
 
     try {
       await this.tickRepo.saveBatch(ticksToSave);
-      // logger.debug(`Saved batch of ${ticksToSave.length} ticks`);
     } catch (error: any) {
       logger.error('Failed to save tick batch', {
         error: error.message,
         count: ticksToSave.length,
       });
-      // Re-add to buffer if failed? risky if it's a persistent error.
-      // For now just log.
     }
   }
 

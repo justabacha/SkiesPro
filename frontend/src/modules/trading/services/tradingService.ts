@@ -65,19 +65,6 @@ const DEFAULT_ASSETS: Asset[] = [
     pipDecimalPlaces: 2,
     isOpen: true,
   },
-  {
-    symbol: 'Oil',
-    name: 'Crude Oil (WTI)',
-    assetType: 'commodity',
-    isActive: true,
-    payoutRate: 0.60,
-    minStake: 100,
-    maxStake: 50000,
-    minExpirySeconds: 60,
-    maxExpirySeconds: 900,
-    pipDecimalPlaces: 2,
-    isOpen: true,
-  },
 ];
 
 class TradingService {
@@ -99,19 +86,21 @@ class TradingService {
         return DEFAULT_ASSETS;
       }
 
-      return rawAssets.map((asset) => ({
-        symbol: asset.symbol,
-        name: asset.name || asset.symbol,
-        assetType: asset.assetType || 'forex',
-        isActive: asset.isActive !== false,
-        payoutRate: Number(asset.payoutRate) || 0.60,
-        minStake: Number(asset.minStake) || 100,
-        maxStake: Number(asset.maxStake) || 50000,
-        minExpirySeconds: Number(asset.minExpirySeconds) || 60,
-        maxExpirySeconds: Number(asset.maxExpirySeconds) || 900,
-        pipDecimalPlaces: Number(asset.pipDecimalPlaces) || 5,
-        isOpen: asset.isOpen !== false,
-      }));
+      return rawAssets
+        .filter((asset) => asset.symbol !== 'Oil' && asset.symbol !== 'WTI/USD')
+        .map((asset) => ({
+          symbol: asset.symbol,
+          name: asset.name || asset.symbol,
+          assetType: asset.assetType || 'forex',
+          isActive: asset.isActive !== false,
+          payoutRate: Number(asset.payoutRate) || 0.60,
+          minStake: Number(asset.minStake) || 100,
+          maxStake: Number(asset.maxStake) || 50000,
+          minExpirySeconds: Number(asset.minExpirySeconds) || 60,
+          maxExpirySeconds: Number(asset.maxExpirySeconds) || 900,
+          pipDecimalPlaces: Number(asset.pipDecimalPlaces) || 5,
+          isOpen: asset.isOpen !== false,
+        }));
     } catch (error) {
       console.warn('Falling back to default assets:', error);
       return DEFAULT_ASSETS;
