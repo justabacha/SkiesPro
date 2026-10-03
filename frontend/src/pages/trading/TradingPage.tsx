@@ -85,10 +85,10 @@ export const TradingPage: React.FC = () => {
   }, [selectedAsset, currentPrice]);
 
   return (
-    <div className="min-h-screen bg-bg-light-primary dark:bg-bg-dark-primary text-text-light-primary dark:text-text-dark-primary p-4 md:p-6 lg:p-8 space-y-6 transition-colors duration-200">
+    <div className="min-h-screen w-full min-w-0 bg-bg-light-primary dark:bg-bg-dark-primary text-text-light-primary dark:text-text-dark-primary p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6 transition-colors duration-200">
       {/* Top Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border-light dark:border-border-dark">
-        <div className="flex items-center space-x-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
           <AssetSelector
             assets={assets}
             selectedAsset={selectedAsset}
@@ -98,7 +98,7 @@ export const TradingPage: React.FC = () => {
           <LatencyIndicator latencyState={latencyState} />
         </div>
 
-        <div className="flex items-center space-x-4 bg-bg-light-secondary dark:bg-bg-dark-secondary px-4 py-2.5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+        <div className="flex w-fit max-w-full items-center space-x-4 bg-bg-light-secondary dark:bg-bg-dark-secondary px-4 py-2.5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
           <Wallet className="h-5 w-5 text-brand" />
           <div>
             <span className="text-[11px] text-text-light-secondary dark:text-text-dark-secondary uppercase font-semibold block">
@@ -146,9 +146,9 @@ export const TradingPage: React.FC = () => {
       )}
 
       {/* Main Trading Terminal Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-3 lg:gap-6">
         {/* Chart Column (2 Spans) */}
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <TradingChart
             symbol={selectedAsset?.symbol || 'EUR/USD'}
             priceHistory={priceHistory}
@@ -159,7 +159,7 @@ export const TradingPage: React.FC = () => {
         </div>
 
         {/* Order Placement Form Column (1 Span) */}
-        <div className="lg:col-span-1">
+        <div className="min-w-0 lg:col-span-1">
           <OrderForm
             asset={selectedAsset}
             selectedSymbol={selectedAsset?.symbol || initialSymbol}
@@ -178,11 +178,11 @@ export const TradingPage: React.FC = () => {
 
       {/* Bottom Positions & History Section */}
       <div className="space-y-4 pt-4 border-t border-border-light dark:border-border-dark">
-        <div className="flex items-center space-x-2 border-b border-border-light dark:border-border-dark pb-2">
+        <div className="flex max-w-full items-center space-x-2 overflow-x-auto border-b border-border-light dark:border-border-dark pb-2">
           <button
             type="button"
             onClick={() => setActiveBottomTab('positions')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            className={`flex shrink-0 items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               activeBottomTab === 'positions'
                 ? 'bg-brand text-white shadow-md shadow-brand/20'
                 : 'text-text-light-secondary dark:text-text-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary'
@@ -195,7 +195,7 @@ export const TradingPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveBottomTab('history')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            className={`flex shrink-0 items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               activeBottomTab === 'history'
                 ? 'bg-brand text-white shadow-md shadow-brand/20'
                 : 'text-text-light-secondary dark:text-text-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary'
@@ -225,6 +225,18 @@ export const TradingPage: React.FC = () => {
         onConfirm={confirmPendingOrder}
         onCancel={cancelPendingOrder}
       />
+
+      <footer className="pt-2 text-right text-[10px] text-text-light-secondary dark:text-text-dark-secondary">
+        Lightweight Charts™ by{' '}
+        <a
+          className="hover:underline"
+          href="https://www.tradingview.com/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          TradingView
+        </a>
+      </footer>
     </div>
   );
 };
