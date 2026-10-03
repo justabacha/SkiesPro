@@ -6,6 +6,8 @@ dotenv.config();
 // Set test-specific defaults if not provided
 process.env.PORT = process.env.PORT || '3000';
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+process.env.ENABLE_SETTLEMENT_WORKER = 'false';
+process.env.ENABLE_PRICE_FEED = 'false';
 
 // Force in-memory cache for tests to ensure isolation and performance
 process.env.REDIS_URL = '';

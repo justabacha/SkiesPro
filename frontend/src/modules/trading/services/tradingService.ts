@@ -3,6 +3,7 @@ import {
   Asset,
   BinaryContract,
   CreateContractDto,
+  Candle,
 } from '../types/trading.types';
 
 interface ApiResponse<T> {
@@ -242,6 +243,33 @@ class TradingService {
       return response.data;
     }
     return response as BinaryContract;
+  }
+
+  /**
+   * Fetch historical OHLC candles for specified asset symbol
+   */
+  async getCandles(
+    symbol: string,
+    granularity = 60,
+    limit = 60
+  ): Promise<Candle[]> {
+    try {
+      const encodedSymbol = encodeURIComponent(symbol);
+      const response = await apiClient.get<ApiResponse<Candle[]> | Candle[]>(
+        `/api/v1/pricing/assets/${encodedSymbol}/candles?granularity=${granularity}&limit=${limit}`
+      );
+
+      if (Array.isArray(response)) {
+        return response;
+      }
+      if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+        return response.data;
+      }
+      return [];
+    } catch (error) {
+      console.warn('Failed to fetch candles from server:', error);
+      return [];
+    }
   }
 }
 

@@ -8,34 +8,67 @@ export interface OpenPositionsProps {
   isLoading?: boolean;
 }
 
-const CountdownTimer: React.FC<{ expiryTime: string }> = ({ expiryTime }) => {
+const CountdownTimerWithProgress: React.FC<{ purchaseTime?: string; expiryTime: string }> = ({
+  purchaseTime,
+  expiryTime,
+}) => {
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
+  const [progressPct, setProgressPct] = useState<number>(100);
 
   useEffect(() => {
-    const calculateSeconds = () => {
+    const calculateProgress = () => {
       const expTs = new Date(expiryTime).getTime();
       const nowTs = Date.now();
-      const diff = Math.max(0, Math.ceil((expTs - nowTs) / 1000));
-      setSecondsLeft(diff);
+      const remaining = Math.max(0, expTs - nowTs);
+      setSecondsLeft(Math.ceil(remaining / 1000));
+
+      let startTs = purchaseTime ? new Date(purchaseTime).getTime() : 0;
+      if (isNaN(startTs) || startTs <= 0 || startTs >= expTs) {
+        startTs = expTs - 60000;
+      }
+      const totalMs = Math.max(1, expTs - startTs);
+      const ratio = Math.max(0, Math.min(1, remaining / totalMs));
+      setProgressPct(ratio * 100);
     };
 
-    calculateSeconds();
-    const timer = setInterval(calculateSeconds, 1000);
+    calculateProgress();
+    const timer = setInterval(calculateProgress, 250);
     return () => clearInterval(timer);
-  }, [expiryTime]);
+  }, [purchaseTime, expiryTime]);
 
   const mins = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
   const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
   return (
-    <span
-      data-testid="countdown-timer"
-      className="font-mono font-bold text-xs text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-md flex items-center space-x-1"
-    >
-      <Clock className="h-3 w-3" />
-      <span>{formatted}</span>
-    </span>
+    <div className="flex items-center space-x-2">
+      {/* Visual Expiry SVG Progress Bar */}
+      <div
+        data-testid="expiry-progress-bar"
+        className="w-14 sm:w-20 bg-bg-light-primary dark:bg-bg-dark-primary h-2 sm:h-2.5 rounded-full overflow-hidden border border-border-light dark:border-border-dark p-0.5 shadow-inner"
+        title={`Progress: ${Math.round(progressPct)}%`}
+      >
+        <svg className="w-full h-full" viewBox="0 0 100 8" preserveAspectRatio="none">
+          <rect
+            x="0"
+            y="0"
+            width={`${progressPct}%`}
+            height="8"
+            rx="4"
+            className="fill-brand transition-all duration-300 ease-linear"
+          />
+        </svg>
+      </div>
+
+      {/* Countdown Timer Badge */}
+      <span
+        data-testid="countdown-timer"
+        className="font-mono font-bold text-xs text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-md flex items-center space-x-1"
+      >
+        <Clock className="h-3 w-3" />
+        <span>{formatted}</span>
+      </span>
+    </div>
   );
 };
 
@@ -94,6 +127,10 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
           const isWinning = isHigher ? spot > strike : spot < strike;
           const pipPlaces = spot > 100 ? 2 : 5;
 
+          const pipMultiplier = spot > 100 ? 100 : 10000;
+          const pipDelta = (spot - strike) * pipMultiplier;
+          const payout = parseFloat(contract.potential_payout || '0');
+
           return (
             <div
               key={contract.id}
@@ -135,18 +172,23 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
 
               {/* Live Status & Timer */}
               <div className="flex items-center space-x-2 sm:space-x-3">
+                {/* Spot vs. Strike Pip Delta Pill Tag */}
                 <span
                   data-testid="position-status"
-                  className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold uppercase transition-colors ${
                     isWinning
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
                   }`}
                 >
-                  {isWinning ? 'Winning' : 'Losing'}
+                  {pipDelta >= 0 ? '+' : ''}
+                  {pipDelta.toFixed(1)} Pips ({isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})
                 </span>
 
-                <CountdownTimer expiryTime={contract.expiry_time} />
+                <CountdownTimerWithProgress
+                  purchaseTime={contract.purchase_time}
+                  expiryTime={contract.expiry_time}
+                />
               </div>
             </div>
           );

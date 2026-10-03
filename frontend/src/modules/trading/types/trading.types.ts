@@ -66,6 +66,19 @@ export interface PriceTick {
   timestamp: number;
 }
 
+export interface Candle {
+  symbol: string;
+  granularity_seconds: number;
+  open_time: string;
+  close_time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+  tick_count?: number;
+}
+
 export type LatencyStatus = 'good' | 'moderate' | 'poor' | 'disconnected';
 
 export interface LatencyState {
