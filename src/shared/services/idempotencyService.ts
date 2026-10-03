@@ -1,4 +1,4 @@
-import { cacheClient } from '../../../src/infrastructure/cache/index.js';
+import { cacheClient } from '../../infrastructure/cache/index.js';
 
 export class IdempotencyService {
   /**

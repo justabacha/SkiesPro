@@ -65,7 +65,7 @@ export const TradingPage: React.FC = () => {
   }, [selectedAsset, currentPrice]);
 
   return (
-    <div className="min-h-screen bg-bg-light-primary dark:bg-[#0F1117] text-text-light-primary dark:text-text-dark p-4 md:p-6 lg:p-8 space-y-6 transition-colors duration-200">
+    <div className="min-h-screen bg-bg-light-primary dark:bg-bg-dark-primary text-text-light-primary dark:text-text-dark-primary p-4 md:p-6 lg:p-8 space-y-6 transition-colors duration-200">
       {/* Top Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border-light dark:border-border-dark">
         <div className="flex items-center space-x-4">

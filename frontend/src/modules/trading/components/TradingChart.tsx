@@ -76,6 +76,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
     return {
       strike,
+      stake: parseFloat(contract.stake),
+      payout: parseFloat(contract.potential_payout || '0'),
       strikeY: Math.max(10, Math.min(310, strikeY)),
       isHigher,
       isWinning,
@@ -87,12 +89,12 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   return (
     <div
       data-testid="trading-chart"
-      className="relative w-full rounded-2xl bg-bg-light-secondary dark:bg-[#0F1117] border border-border-light dark:border-border-dark p-4 shadow-xl flex flex-col justify-between overflow-hidden min-h-[380px] transition-colors duration-200"
+      className="relative w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-4 shadow-xl flex flex-col justify-between overflow-hidden min-h-[380px] transition-colors duration-200"
     >
       {/* Chart Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2 z-10 pb-2 border-b border-border-light dark:border-border-dark/50">
         <div className="flex items-center space-x-3">
-          <span className="font-bold text-base text-text-light-primary dark:text-text-dark font-mono">{symbol}</span>
+          <span className="font-bold text-base text-text-light-primary dark:text-text-dark-primary font-mono">{symbol}</span>
           <span className="font-mono text-xl font-bold text-emerald-600 dark:text-emerald-400">
             {currentPrice.toFixed(pipPlaces)}
           </span>
@@ -101,7 +103,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         {/* Timeframe Selector (UI-TRADE-010) */}
         <div
           data-testid="timeframe-selector"
-          className="flex items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-secondary p-1 rounded-lg border border-border-light dark:border-border-dark"
+          className="flex items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-1 rounded-lg border border-border-light dark:border-border-dark"
         >
           {timeframes.map((tf) => (
             <button
@@ -111,7 +113,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
               className={`px-2.5 py-1 text-xs font-mono font-medium rounded-md transition-colors ${
                 selectedTimeframe === tf
                   ? 'bg-brand text-white shadow-sm'
-                  : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark hover:bg-bg-light-secondary dark:hover:bg-bg-dark-tertiary'
+                  : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary hover:bg-bg-light-secondary dark:hover:bg-bg-dark-secondary'
               }`}
             >
               {tf}
@@ -135,9 +137,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           </defs>
 
           {/* Grid lines */}
-          <line x1="0" y1="80" x2="800" y2="80" className="stroke-border-light dark:stroke-[#1F2937]" strokeDasharray="4 4" strokeWidth="1" />
-          <line x1="0" y1="160" x2="800" y2="160" className="stroke-border-light dark:stroke-[#1F2937]" strokeDasharray="4 4" strokeWidth="1" />
-          <line x1="0" y1="240" x2="800" y2="240" className="stroke-border-light dark:stroke-[#1F2937]" strokeDasharray="4 4" strokeWidth="1" />
+          <line x1="0" y1="80" x2="800" y2="80" className="stroke-border-light dark:stroke-border-dark/60" strokeDasharray="4 4" strokeWidth="1" />
+          <line x1="0" y1="160" x2="800" y2="160" className="stroke-border-light dark:stroke-border-dark/60" strokeDasharray="4 4" strokeWidth="1" />
+          <line x1="0" y1="240" x2="800" y2="240" className="stroke-border-light dark:stroke-border-dark/60" strokeDasharray="4 4" strokeWidth="1" />
 
           {/* Fill Area under chart line */}
           {areaPoints && <polygon points={areaPoints} fill="url(#chartGradient)" />}
@@ -173,19 +175,25 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         {/* Strike Price Badge Overlay */}
         {activeContractDetails && (
           <div
-            className={`absolute left-4 px-2 py-0.5 rounded text-[10px] font-mono font-bold text-white shadow-md z-20 ${
+            className={`absolute left-4 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-white shadow-lg z-20 flex items-center space-x-2 ${
               activeContractDetails.isWinning ? 'bg-emerald-600' : 'bg-rose-600'
             }`}
             style={{ top: `${(activeContractDetails.strikeY / 320) * 100}%` }}
           >
-            Strike: {activeContractDetails.strike.toFixed(pipPlaces)}
+            <span>Strike: {activeContractDetails.strike.toFixed(pipPlaces)}</span>
+            <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded uppercase">
+              {activeContractDetails.isHigher ? '▲ Higher' : '▼ Lower'}
+            </span>
+            <span className="text-[10px] font-extrabold">
+              {activeContractDetails.isWinning ? `WINNING (+KES ${activeContractDetails.payout.toFixed(2)})` : 'LOSING (-KES 0.00)'}
+            </span>
           </div>
         )}
 
         {/* Current Spot Cursor Badge */}
-        <div className="absolute right-2 bottom-2 bg-bg-light-primary/95 dark:bg-bg-dark-secondary/90 border border-border-light dark:border-border-dark px-3 py-1.5 rounded-lg text-xs font-mono flex items-center space-x-2 backdrop-blur-sm z-20 shadow-sm">
+        <div className="absolute right-2 bottom-2 bg-bg-light-primary/95 dark:bg-bg-dark-tertiary/95 border border-border-light dark:border-border-dark px-3 py-1.5 rounded-lg text-xs font-mono flex items-center space-x-2 backdrop-blur-sm z-20 shadow-md">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-text-light-primary dark:text-text-dark font-bold">Spot: {currentPrice.toFixed(pipPlaces)}</span>
+          <span className="text-text-light-primary dark:text-text-dark-primary font-bold">Spot: {currentPrice.toFixed(pipPlaces)}</span>
         </div>
       </div>
     </div>
