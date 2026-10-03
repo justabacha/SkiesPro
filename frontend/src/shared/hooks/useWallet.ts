@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { apiClient } from '@/shared/services/apiClient';
+import { useAuth } from '@/shared/hooks/useAuth';
 
 interface Balance {
   balance: string;
@@ -30,6 +31,7 @@ interface LedgerResponse {
 }
 
 export const useWallet = () => {
+  const { isAuthenticated } = useAuth();
   const [balance, setBalance] = useState<Balance | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +41,7 @@ export const useWallet = () => {
   const [hasMore, setHasMore] = useState(false);
 
   const fetchBalance = useCallback(async () => {
+    if (!isAuthenticated) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -49,9 +52,10 @@ export const useWallet = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchLedger = useCallback(async (cursor?: string) => {
+    if (!isAuthenticated) return;
     setIsLedgerLoading(true);
     try {
       const query = cursor ? `?cursor=${cursor}` : '';
@@ -70,11 +74,10 @@ export const useWallet = () => {
     } finally {
       setIsLedgerLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const initiateDeposit = async (data: { amount: string; phone: string }) => {
     try {
-      // Ensure amount is sent as string and other fields are correctly named
       return await apiClient.post('/api/v1/payments/deposit/initiate', {
         amount: data.amount.toString(),
         phone: data.phone,
@@ -94,7 +97,6 @@ export const useWallet = () => {
 
   const requestWithdrawal = async (data: { amount: string; phone: string }) => {
     try {
-      // Ensure amount is sent as string and other fields are correctly named
       return await apiClient.post('/api/v1/payments/withdraw/request', {
         amount: data.amount.toString(),
         phone: data.phone,
@@ -112,12 +114,17 @@ export const useWallet = () => {
     }
   };
 
-  // Auto-refresh balance on mount and periodically
+  // Auto-refresh balance on mount and periodically when authenticated
   useEffect(() => {
+    if (!isAuthenticated) {
+      setBalance(null);
+      setLedger([]);
+      return;
+    }
     fetchBalance();
     const interval = setInterval(fetchBalance, 30000); // 30s polling
     return () => clearInterval(interval);
-  }, [fetchBalance]);
+  }, [fetchBalance, isAuthenticated]);
 
   return {
     balance,

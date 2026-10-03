@@ -65,7 +65,14 @@ export class MockPriceAdapter {
     const now = Date.now();
     this.symbols.forEach((s) => {
       const start = s.base * (1 + gauss() * 0.003);
-      this.state[s.name] = { price: start, anchor: start, logVol: 0, drift: 0, lastTs: now, timer: null };
+      this.state[s.name] = {
+        price: start,
+        anchor: start,
+        logVol: 0,
+        drift: 0,
+        lastTs: now,
+        timer: null,
+      };
     });
   }
 
@@ -103,11 +110,14 @@ export class MockPriceAdapter {
 
   private scheduleFactors() {
     if (!this.running) return;
-    this.factorTimer = setTimeout(() => {
-      this.factors.usd = gauss();
-      this.factors.risk = gauss();
-      this.scheduleFactors();
-    }, 400 + rand() * 600);
+    this.factorTimer = setTimeout(
+      () => {
+        this.factors.usd = gauss();
+        this.factors.risk = gauss();
+        this.scheduleFactors();
+      },
+      400 + rand() * 600
+    );
   }
 
   private scheduleSymbol(s: SymbolConfig) {
@@ -144,7 +154,11 @@ export class MockPriceAdapter {
       st.logVol = Math.min(1.5, st.logVol + 0.5);
     }
 
-    st.anchor = clamp(st.anchor + s.volatility * 0.2 * sqrtDt * gauss(), s.base * 0.9, s.base * 1.1);
+    st.anchor = clamp(
+      st.anchor + s.volatility * 0.2 * sqrtDt * gauss(),
+      s.base * 0.9,
+      s.base * 1.1
+    );
     change += 0.003 * (st.anchor - st.price) * dt;
     st.price = clamp(st.price + change, s.base * 0.85, s.base * 1.15);
 

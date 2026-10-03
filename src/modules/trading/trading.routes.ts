@@ -12,13 +12,11 @@ const router = Router();
 const contractController = new ContractController();
 const assetController = new AssetController();
 
-// Asset routes
-router.get('/assets', authenticateToken, (req, res) => assetController.listAssets(req, res));
-router.get('/assets/:symbol', authenticateToken, (req, res) =>
-  assetController.getAssetDetail(req, res)
-);
+// Public Asset routes
+router.get('/assets', (req, res) => assetController.listAssets(req, res));
+router.get('/assets/:symbol', (req, res) => assetController.getAssetDetail(req, res));
 
-// Contract routes
+// Authenticated Contract routes
 router.post(
   '/contracts',
   authenticateToken,

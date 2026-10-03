@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { healthCheck, readinessCheck } from './healthController.js';
+import { metricsCollector } from '../shared/monitoring/MetricsCollector.js';
 import authRoutes from '../modules/auth/auth.routes.js';
 import userRoutes from '../modules/user/user.routes.js';
 import walletRoutes from '../modules/wallet/wallet.routes.js';
@@ -11,6 +12,15 @@ const router = Router();
 
 router.get('/health', healthCheck);
 router.get('/ready', readinessCheck);
+
+router.get('/metrics', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.status(200).json({
+    status: 'success',
+    timestamp: new Date().toISOString(),
+    metrics: metricsCollector.getMetrics(),
+  });
+});
 
 // API v1 routes
 router.use('/api/v1/auth', authRoutes);

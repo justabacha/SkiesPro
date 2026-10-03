@@ -1,16 +1,12 @@
 import { Router } from 'express';
 import { param, query } from 'express-validator';
 import { PricingController } from './controllers/pricingController.js';
-import { authenticate } from '../../shared/middleware/authMiddleware.js';
-import { rateLimit } from '../../shared/middleware/rateLimit.js';
 import { validate } from '../../shared/middleware/validate.js';
 
 const router = Router();
 const controller = new PricingController();
 
-router.use(authenticate);
-router.use(rateLimit('authenticated'));
-
+// Public endpoints for market assets and candles
 router.get('/assets', (req, res) => controller.getAssets(req, res));
 
 router.get(

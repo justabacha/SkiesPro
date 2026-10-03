@@ -132,7 +132,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       });
 
     return () => { isMounted = false; };
-  }, [symbol, granularity, chartType]);
+  }, [symbol, granularity, chartType, displayedHistory, currentPrice]);
 
   // Dynamically update the latest open candle in real-time as live ticks arrive
   const activeCandles = useMemo(() => {

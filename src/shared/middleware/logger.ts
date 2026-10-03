@@ -101,14 +101,20 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
 
   res.on('finish', () => {
     const duration = Date.now() - startTime;
-    logger.info('HTTP Request', {
+    const logData = {
       correlationId: (req as any).correlationId,
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
       duration,
       module: 'http',
-    });
+    };
+
+    if (res.statusCode === 304) {
+      logger.debug('HTTP Request (Not Modified)', logData);
+    } else {
+      logger.info('HTTP Request', logData);
+    }
   });
 
   next();

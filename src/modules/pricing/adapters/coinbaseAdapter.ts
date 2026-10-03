@@ -1,26 +1,23 @@
 import WebSocket from 'ws';
 import { logger } from '../../../shared/middleware/logger.js';
 
-export interface KrakenTick {
-  symbol: string;
-  bid: number;
-  bid_qty: number;
-  ask: number;
-  ask_qty: number;
-  last?: number;
-  timestamp?: string;
+export interface CoinbaseTick {
+  product_id: string;
+  price?: string;
+  best_bid?: string;
+  best_ask?: string;
 }
 
-export class KrakenAdapter {
+export class CoinbaseAdapter {
   private ws: WebSocket | null = null;
-  private readonly url = 'wss://ws.kraken.com/v2';
+  private readonly url = 'wss://advanced-trade-ws.coinbase.com';
   private readonly symbolMapping: Record<string, string> = {
-    'EUR/USD': 'EUR/USD',
-    'GBP/USD': 'GBP/USD',
-    'USD/JPY': 'USD/JPY',
-    'PAXG/USD': 'XAU/USD',
-    'BTC/USD': 'BTC/USD',
-    'ETH/USD': 'ETH/USD',
+    'EUR-USD': 'EUR/USD',
+    'GBP-USD': 'GBP/USD',
+    'USD-JPY': 'USD/JPY',
+    'PAXG-USD': 'XAU/USD',
+    'BTC-USD': 'BTC/USD',
+    'ETH-USD': 'ETH/USD',
   };
 
   private shouldReconnect = false;
@@ -54,28 +51,26 @@ export class KrakenAdapter {
       this.ws.close();
       this.ws = null;
     }
-    logger.info('Kraken WebSocket disconnected');
+    logger.info('Coinbase WebSocket disconnected');
   }
 
   private open() {
-    logger.info(`Connecting to Kraken WebSocket: ${this.url}`);
+    logger.info(`Connecting to Coinbase WebSocket: ${this.url}`);
 
     const ws = new WebSocket(this.url);
     this.ws = ws;
 
     ws.on('open', () => {
-      logger.info('Connected to Kraken WebSocket');
+      logger.info('Connected to Coinbase WebSocket');
       this.reconnectAttempts = 0;
       this.resetWatchdog();
 
+      const productIds = Object.keys(this.symbolMapping);
       ws.send(
         JSON.stringify({
-          method: 'subscribe',
-          params: {
-            channel: 'ticker',
-            symbol: Object.keys(this.symbolMapping),
-            event_trigger: 'bbo',
-          },
+          type: 'subscribe',
+          product_ids: productIds,
+          channel: 'ticker',
         })
       );
     });
@@ -85,19 +80,19 @@ export class KrakenAdapter {
       try {
         this.handleMessage(JSON.parse(raw.toString()));
       } catch (error: any) {
-        logger.error('Error parsing Kraken message', { error: error.message });
+        logger.error('Error parsing Coinbase message', { error: error.message });
       }
     });
 
     ws.on('error', (error: any) => {
-      logger.error('Kraken WebSocket error', { error: error.message });
+      logger.error('Coinbase WebSocket error', { error: error.message });
       if (this.onError) {
         this.onError(error);
       }
     });
 
     ws.on('close', () => {
-      logger.warn('Kraken WebSocket closed');
+      logger.warn('Coinbase WebSocket closed');
       this.clearTimers();
       if (this.ws === ws) {
         this.ws = null;
@@ -109,27 +104,33 @@ export class KrakenAdapter {
   }
 
   private handleMessage(msg: any) {
-    if (msg.method === 'subscribe') {
-      if (msg.success === false) {
-        logger.error('Kraken subscription failed', {
-          symbol: msg.symbol ?? msg.result?.symbol,
-          error: msg.error,
-        });
+    const time = new Date();
+
+    if (msg.channel === 'ticker' && Array.isArray(msg.events)) {
+      for (const event of msg.events) {
+        if (!Array.isArray(event.tickers)) continue;
+        for (const ticker of event.tickers) {
+          const symbol = this.symbolMapping[ticker.product_id];
+          if (!symbol) continue;
+          const bid = ticker.best_bid || ticker.price;
+          const ask = ticker.best_ask || ticker.price;
+          if (bid && ask && Number(bid) > 0 && Number(ask) > 0) {
+            this.onTick(symbol, String(bid), String(ask), time);
+          }
+        }
       }
       return;
     }
 
-    if (msg.channel !== 'ticker' || !Array.isArray(msg.data)) {
-      return;
-    }
-
-    const time = new Date();
-    for (const tick of msg.data as KrakenTick[]) {
-      const symbol = this.symbolMapping[tick.symbol];
-      if (!symbol) continue;
-      if (!(tick.bid > 0) || !(tick.ask > 0) || tick.bid > tick.ask) continue;
-
-      this.onTick(symbol, String(tick.bid), String(tick.ask), time);
+    if (msg.type === 'ticker' && msg.product_id) {
+      const symbol = this.symbolMapping[msg.product_id];
+      if (symbol) {
+        const bid = msg.best_bid || msg.price;
+        const ask = msg.best_ask || msg.price;
+        if (bid && ask && Number(bid) > 0 && Number(ask) > 0) {
+          this.onTick(symbol, String(bid), String(ask), time);
+        }
+      }
     }
   }
 
@@ -141,7 +142,7 @@ export class KrakenAdapter {
     this.reconnectAttempts++;
 
     logger.info(
-      `Reconnecting to Kraken in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts})`
+      `Reconnecting to Coinbase in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts})`
     );
 
     this.reconnectTimer = setTimeout(() => {
@@ -155,7 +156,7 @@ export class KrakenAdapter {
   private resetWatchdog() {
     if (this.watchdogTimer) clearTimeout(this.watchdogTimer);
     this.watchdogTimer = setTimeout(() => {
-      logger.warn('Kraken WebSocket stalled, reconnecting');
+      logger.warn('Coinbase WebSocket stalled, reconnecting');
       this.ws?.terminate();
     }, this.watchdogMs);
   }

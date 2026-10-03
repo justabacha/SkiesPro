@@ -14,6 +14,7 @@ const app: Application = express();
 
 // Trust Render Proxy
 app.set('trust proxy', 1);
+app.set('etag', false);
 
 // Security middleware
 app.use(

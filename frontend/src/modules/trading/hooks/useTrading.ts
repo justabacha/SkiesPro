@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@/shared/hooks/useWallet';
+import { useAuth } from '@/shared/hooks/useAuth';
 import { tradingService } from '../services/tradingService';
 import {
   Asset,
@@ -69,6 +70,7 @@ export interface UseTradingReturn {
 
 export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn => {
   const { fetchBalance } = useWallet();
+  const { isAuthenticated } = useAuth();
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -145,6 +147,7 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
 
   // Fetch active contracts
   const fetchActiveContracts = useCallback(async (isInitial = false) => {
+    if (!isAuthenticated) return;
     if (isInitial || !hasLoadedActiveRef.current) {
       setIsLoadingActive(true);
     }
@@ -197,10 +200,11 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
     } finally {
       setIsLoadingActive(false);
     }
-  }, [fetchBalance]);
+  }, [fetchBalance, isAuthenticated]);
 
   // Fetch trade history
   const fetchTradeHistory = useCallback(async (isInitial = false) => {
+    if (!isAuthenticated) return;
     if (isInitial || !hasLoadedHistoryRef.current) {
       setIsLoadingHistory(true);
     }
@@ -213,10 +217,16 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
     } finally {
       setIsLoadingHistory(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  // Poll active contracts periodically
+  // Poll active contracts periodically when authenticated
   useEffect(() => {
+    if (!isAuthenticated) {
+      setActiveContracts([]);
+      setTradeHistory([]);
+      return;
+    }
+
     fetchActiveContracts(true);
     fetchTradeHistory(true);
 
@@ -226,7 +236,7 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [fetchActiveContracts, fetchTradeHistory]);
+  }, [fetchActiveContracts, fetchTradeHistory, isAuthenticated]);
 
   const clearTradeError = useCallback(() => {
     setTradeError(null);

@@ -1,5 +1,6 @@
 import { ContractRepository } from '../repositories/contractRepository.js';
 import { TickRepository } from '../../pricing/repositories/tickRepository.js';
+import { PriceFeedIngestionService } from '../../pricing/services/PriceFeedIngestionService.js';
 import { WalletService } from '../../wallet/services/walletService.js';
 import { pgPool } from '../../../config/database.js';
 import { messageQueueClient } from '../../../infrastructure/message-queue/MessageQueueClient.js';
@@ -77,6 +78,26 @@ export class SettlementWorker {
       const contract = await this.contractRepo.findById(contractId);
       if (!contract) {
         throw new Error('Contract not found');
+      }
+
+      // 2b. Check Tier 3 (Mock) Price Feed Disruption Protection (>30s grace window)
+      if (
+        PriceFeedIngestionService.currentTier === 'tier3_mock' &&
+        PriceFeedIngestionService.tier3StartedAt !== null
+      ) {
+        const tier3DurationAtExpiryMs =
+          contract.expiryTime.getTime() - PriceFeedIngestionService.tier3StartedAt;
+        if (tier3DurationAtExpiryMs > 30000) {
+          logger.warn(
+            'Trade expired during extended Tier 3 (Mock) price feed state >30s window. Marking CANCELLED_FEED_DISRUPTION.',
+            {
+              contractId,
+              tier3DurationMs: tier3DurationAtExpiryMs,
+            }
+          );
+          await this.cancelAndRefund(contract, 'CANCELLED_FEED_DISRUPTION');
+          return;
+        }
       }
 
       // 3. Fetch settlement price (tick at or just before expiry)
