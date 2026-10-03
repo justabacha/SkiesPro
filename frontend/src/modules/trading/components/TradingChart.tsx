@@ -87,13 +87,13 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   return (
     <div
       data-testid="trading-chart"
-      className="relative w-full rounded-2xl bg-[#0F1117] border border-border-dark p-4 shadow-xl flex flex-col justify-between overflow-hidden min-h-[380px]"
+      className="relative w-full rounded-2xl bg-bg-light-secondary dark:bg-[#0F1117] border border-border-light dark:border-border-dark p-4 shadow-xl flex flex-col justify-between overflow-hidden min-h-[380px] transition-colors duration-200"
     >
       {/* Chart Header Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2 z-10 pb-2 border-b border-border-dark/50">
+      <div className="flex flex-wrap items-center justify-between gap-2 z-10 pb-2 border-b border-border-light dark:border-border-dark/50">
         <div className="flex items-center space-x-3">
-          <span className="font-bold text-base text-text-dark font-mono">{symbol}</span>
-          <span className="font-mono text-xl font-bold text-emerald-400">
+          <span className="font-bold text-base text-text-light-primary dark:text-text-dark font-mono">{symbol}</span>
+          <span className="font-mono text-xl font-bold text-emerald-600 dark:text-emerald-400">
             {currentPrice.toFixed(pipPlaces)}
           </span>
         </div>
@@ -101,7 +101,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         {/* Timeframe Selector (UI-TRADE-010) */}
         <div
           data-testid="timeframe-selector"
-          className="flex items-center space-x-1 bg-bg-dark-secondary p-1 rounded-lg border border-border-dark"
+          className="flex items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-secondary p-1 rounded-lg border border-border-light dark:border-border-dark"
         >
           {timeframes.map((tf) => (
             <button
@@ -110,8 +110,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
               onClick={() => setSelectedTimeframe(tf)}
               className={`px-2.5 py-1 text-xs font-mono font-medium rounded-md transition-colors ${
                 selectedTimeframe === tf
-                  ? 'bg-brand text-white'
-                  : 'text-text-dark-secondary hover:text-text-dark hover:bg-bg-dark-tertiary'
+                  ? 'bg-brand text-white shadow-sm'
+                  : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark hover:bg-bg-light-secondary dark:hover:bg-bg-dark-tertiary'
               }`}
             >
               {tf}
@@ -135,9 +135,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           </defs>
 
           {/* Grid lines */}
-          <line x1="0" y1="80" x2="800" y2="80" stroke="#1F2937" strokeDasharray="4 4" strokeWidth="1" />
-          <line x1="0" y1="160" x2="800" y2="160" stroke="#1F2937" strokeDasharray="4 4" strokeWidth="1" />
-          <line x1="0" y1="240" x2="800" y2="240" stroke="#1F2937" strokeDasharray="4 4" strokeWidth="1" />
+          <line x1="0" y1="80" x2="800" y2="80" className="stroke-border-light dark:stroke-[#1F2937]" strokeDasharray="4 4" strokeWidth="1" />
+          <line x1="0" y1="160" x2="800" y2="160" className="stroke-border-light dark:stroke-[#1F2937]" strokeDasharray="4 4" strokeWidth="1" />
+          <line x1="0" y1="240" x2="800" y2="240" className="stroke-border-light dark:stroke-[#1F2937]" strokeDasharray="4 4" strokeWidth="1" />
 
           {/* Fill Area under chart line */}
           {areaPoints && <polygon points={areaPoints} fill="url(#chartGradient)" />}
@@ -183,9 +183,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         )}
 
         {/* Current Spot Cursor Badge */}
-        <div className="absolute right-2 bottom-2 bg-bg-dark-secondary/90 border border-border-dark px-3 py-1.5 rounded-lg text-xs font-mono flex items-center space-x-2 backdrop-blur-sm z-20">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-text-dark font-bold">Spot: {currentPrice.toFixed(pipPlaces)}</span>
+        <div className="absolute right-2 bottom-2 bg-bg-light-primary/95 dark:bg-bg-dark-secondary/90 border border-border-light dark:border-border-dark px-3 py-1.5 rounded-lg text-xs font-mono flex items-center space-x-2 backdrop-blur-sm z-20 shadow-sm">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+          <span className="text-text-light-primary dark:text-text-dark font-bold">Spot: {currentPrice.toFixed(pipPlaces)}</span>
         </div>
       </div>
     </div>

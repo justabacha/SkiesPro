@@ -48,6 +48,12 @@ export const TradingPage: React.FC = () => {
   };
 
   const numericBalance = useMemo(() => {
+    if (!balance) return 0;
+    if (typeof balance === 'object' && balance !== null) {
+      const bObj = balance as { available_balance?: string; balance?: string };
+      const val = bObj.available_balance || bObj.balance;
+      return parseFloat(val || '0') || 0;
+    }
     if (typeof balance === 'number') return balance;
     if (typeof balance === 'string') return parseFloat(balance) || 0;
     return 0;
@@ -59,9 +65,9 @@ export const TradingPage: React.FC = () => {
   }, [selectedAsset, currentPrice]);
 
   return (
-    <div className="min-h-screen bg-[#0F1117] text-text-dark p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-bg-light-primary dark:bg-[#0F1117] text-text-light-primary dark:text-text-dark p-4 md:p-6 lg:p-8 space-y-6 transition-colors duration-200">
       {/* Top Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border-dark">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border-light dark:border-border-dark">
         <div className="flex items-center space-x-4">
           <AssetSelector
             assets={assets}
@@ -72,13 +78,13 @@ export const TradingPage: React.FC = () => {
           <LatencyIndicator latencyState={latencyState} />
         </div>
 
-        <div className="flex items-center space-x-4 bg-bg-dark-secondary px-4 py-2.5 rounded-xl border border-border-dark">
+        <div className="flex items-center space-x-4 bg-bg-light-secondary dark:bg-bg-dark-secondary px-4 py-2.5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
           <Wallet className="h-5 w-5 text-brand" />
           <div>
-            <span className="text-[11px] text-text-dark-secondary uppercase font-semibold block">
+            <span className="text-[11px] text-text-light-secondary dark:text-text-dark-secondary uppercase font-semibold block">
               Available Balance
             </span>
-            <span className="text-base font-bold font-mono text-emerald-400">
+            <span className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400">
               KES {numericBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -93,10 +99,10 @@ export const TradingPage: React.FC = () => {
               key={event.contractId}
               className={`flex items-center justify-between p-3.5 rounded-xl border text-sm font-semibold animate-bounce ${
                 event.outcome === 'won'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
                   : event.outcome === 'draw'
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40'
+                  : 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40'
               }`}
             >
               <div className="flex items-center space-x-2">
@@ -110,7 +116,7 @@ export const TradingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => dismissSettlementEvent(event.contractId)}
-                className="text-xs px-2 py-1 bg-black/30 rounded hover:bg-black/50"
+                className="text-xs px-2 py-1 bg-black/10 dark:bg-black/30 rounded hover:bg-black/20 dark:hover:bg-black/50"
               >
                 Dismiss
               </button>
@@ -148,15 +154,15 @@ export const TradingPage: React.FC = () => {
       </div>
 
       {/* Bottom Positions & History Section */}
-      <div className="space-y-4 pt-4 border-t border-border-dark">
-        <div className="flex items-center space-x-2 border-b border-border-dark pb-2">
+      <div className="space-y-4 pt-4 border-t border-border-light dark:border-border-dark">
+        <div className="flex items-center space-x-2 border-b border-border-light dark:border-border-dark pb-2">
           <button
             type="button"
             onClick={() => setActiveBottomTab('positions')}
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               activeBottomTab === 'positions'
                 ? 'bg-brand text-white shadow-md shadow-brand/20'
-                : 'text-text-dark-secondary hover:bg-bg-dark-tertiary'
+                : 'text-text-light-secondary dark:text-text-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary'
             }`}
           >
             <Layers className="h-4 w-4" />
@@ -169,7 +175,7 @@ export const TradingPage: React.FC = () => {
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               activeBottomTab === 'history'
                 ? 'bg-brand text-white shadow-md shadow-brand/20'
-                : 'text-text-dark-secondary hover:bg-bg-dark-tertiary'
+                : 'text-text-light-secondary dark:text-text-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary'
             }`}
           >
             <History className="h-4 w-4" />

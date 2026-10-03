@@ -68,20 +68,20 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   return (
     <div
       data-testid="order-form"
-      className="w-full rounded-2xl bg-bg-dark-secondary border border-border-dark p-5 shadow-xl flex flex-col justify-between text-text-dark"
+      className="w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-5 shadow-xl flex flex-col justify-between text-text-light-primary dark:text-text-dark transition-colors duration-200"
     >
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border-dark">
+        <div className="flex items-center justify-between pb-3 border-b border-border-light dark:border-border-dark">
           <div>
-            <h3 className="text-base font-bold text-text-dark">Place Binary Contract</h3>
+            <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark">Place Binary Contract</h3>
             {currentPrice > 0 && (
-              <span className="text-xs font-mono text-text-dark-secondary">
+              <span className="text-xs font-mono text-text-light-secondary dark:text-text-dark-secondary">
                 Spot: {currentPrice.toFixed(currentPrice > 100 ? 2 : 5)}
               </span>
             )}
           </div>
-          <span className="text-xs font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+          <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
             Payout +{(payoutRate * 100).toFixed(0)}%
           </span>
         </div>
@@ -90,7 +90,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         {!isMarketOpen && (
           <div
             data-testid="market-closed-badge"
-            className="flex items-center space-x-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-medium"
+            className="flex items-center space-x-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-medium"
           >
             <Lock className="h-4 w-4 flex-shrink-0" />
             <span>Market is currently closed for {asset?.symbol || 'this asset'}. Orders suspended.</span>
@@ -99,7 +99,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
         {/* Trade Error Banner */}
         {tradeError && (
-          <div className="flex items-start justify-between p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs">
+          <div className="flex items-start justify-between p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 dark:text-rose-400 text-xs">
             <div className="flex items-center space-x-2">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <span>{tradeError}</span>
@@ -107,7 +107,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <button
               type="button"
               onClick={onClearError}
-              className="text-text-dark-secondary hover:text-text-dark font-bold ml-2"
+              className="text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark font-bold ml-2"
             >
               ×
             </button>
@@ -116,7 +116,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
         {/* Duration Selection */}
         <div>
-          <label className="block text-xs font-semibold text-text-dark-secondary mb-2 flex items-center space-x-1">
+          <label className="block text-xs font-semibold text-text-light-secondary dark:text-text-dark-secondary mb-2 flex items-center space-x-1">
             <Clock className="h-3.5 w-3.5" />
             <span>Duration / Expiry</span>
           </label>
@@ -129,7 +129,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                 className={`py-2 px-3 text-xs font-mono font-semibold rounded-xl border transition-all ${
                   expirySeconds === opt.value
                     ? 'bg-brand text-white border-brand shadow-md shadow-brand/20'
-                    : 'bg-bg-dark-tertiary text-text-dark-secondary border-border-dark hover:border-text-dark-secondary'
+                    : 'bg-bg-light-tertiary dark:bg-bg-dark-tertiary text-text-light-secondary dark:text-text-dark-secondary border-border-light dark:border-border-dark hover:border-text-light-secondary dark:hover:border-text-dark-secondary'
                 }`}
               >
                 {opt.label}
@@ -140,12 +140,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
         {/* Stake Input */}
         <div>
-          <label className="block text-xs font-semibold text-text-dark-secondary mb-2 flex items-center justify-between">
+          <label className="block text-xs font-semibold text-text-light-secondary dark:text-text-dark-secondary mb-2 flex items-center justify-between">
             <span className="flex items-center space-x-1">
               <DollarSign className="h-3.5 w-3.5" />
               <span>Stake Amount (KES)</span>
             </span>
-            <span className="font-mono text-[11px] text-text-dark-secondary">
+            <span className="font-mono text-[11px] text-text-light-secondary dark:text-text-dark-secondary">
               Balance: KES {userBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </span>
           </label>
@@ -160,9 +160,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({
               max={maxStake}
               step="10"
               placeholder={`Min ${minStake}`}
-              className="w-full pl-4 pr-16 py-2.5 bg-bg-dark font-mono text-base font-bold text-text-dark rounded-xl border border-border-dark focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+              className="w-full pl-4 pr-16 py-2.5 bg-bg-light-primary dark:bg-bg-dark font-mono text-base font-bold text-text-light-primary dark:text-text-dark rounded-xl border border-border-light dark:border-border-dark focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
-            <span className="absolute right-4 top-3 text-xs font-bold text-text-dark-secondary">
+            <span className="absolute right-4 top-3 text-xs font-bold text-text-light-secondary dark:text-text-dark-secondary">
               KES
             </span>
           </div>
@@ -175,7 +175,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                 type="button"
                 data-testid={`quick-stake-${amt}`}
                 onClick={() => setStake(amt)}
-                className="py-1 px-2 text-[11px] font-mono font-medium bg-bg-dark-tertiary hover:bg-bg-dark rounded-lg border border-border-dark/60 text-text-dark-secondary hover:text-text-dark transition-colors"
+                className="py-1 px-2 text-[11px] font-mono font-medium bg-bg-light-tertiary dark:bg-bg-dark-tertiary hover:bg-bg-light-primary dark:hover:bg-bg-dark rounded-lg border border-border-light dark:border-border-dark/60 text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark transition-colors"
               >
                 +{amt}
               </button>
@@ -184,21 +184,21 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
           {/* Stake Validation Error */}
           {validationError && (
-            <p className="mt-1.5 text-[11px] text-rose-400 font-medium">{validationError}</p>
+            <p className="mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-medium">{validationError}</p>
           )}
         </div>
 
         {/* Expected Payout Display (UI-TRADE-003) */}
-        <div className="p-3.5 bg-bg-dark-tertiary/70 rounded-xl border border-border-dark flex items-center justify-between">
-          <span className="text-xs text-text-dark-secondary font-medium">Expected Payout:</span>
+        <div className="p-3.5 bg-bg-light-tertiary/70 dark:bg-bg-dark-tertiary/70 rounded-xl border border-border-light dark:border-border-dark flex items-center justify-between">
+          <span className="text-xs text-text-light-secondary dark:text-text-dark-secondary font-medium">Expected Payout:</span>
           <div className="text-right">
             <span
               data-testid="payout-amount"
-              className="text-base font-bold font-mono text-emerald-400"
+              className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400"
             >
               KES {expectedPayout.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </span>
-            <p className="text-[10px] text-text-dark-secondary">
+            <p className="text-[10px] text-text-light-secondary dark:text-text-dark-secondary">
               (Return includes KES {stake || '0'} stake)
             </p>
           </div>
@@ -212,7 +212,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           data-testid="btn-higher"
           onClick={handleHigher}
           disabled={isDisabled}
-          className="flex flex-col items-center justify-center py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold transition-all shadow-lg shadow-emerald-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
+          className="flex flex-col items-center justify-center py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold transition-all shadow-lg shadow-emerald-950/20 dark:shadow-emerald-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
         >
           <div className="flex items-center space-x-1 text-sm uppercase tracking-wide">
             <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-0.5" />
@@ -226,7 +226,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           data-testid="btn-lower"
           onClick={handleLower}
           disabled={isDisabled}
-          className="flex flex-col items-center justify-center py-3.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold transition-all shadow-lg shadow-rose-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
+          className="flex flex-col items-center justify-center py-3.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold transition-all shadow-lg shadow-rose-950/20 dark:shadow-rose-950/40 disabled:opacity-40 disabled:cursor-not-allowed group"
         >
           <div className="flex items-center space-x-1 text-sm uppercase tracking-wide">
             <ArrowDownRight className="h-5 w-5 transition-transform group-hover:translate-y-0.5" />

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { apiClient } from '@/shared/services/apiClient';
 import { websocketService } from '../services/websocketService';
 import { PriceTick, LatencyState } from '../types/trading.types';
 
@@ -37,14 +38,15 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
   const historyRef = useRef<PriceTick[]>([]);
   const activeSymbolRef = useRef<string>(initialSymbol);
 
-  // Initialize seed price history when symbol changes
+  // Initialize price & fetch live backend price tick on symbol change
   useEffect(() => {
+    let isMounted = true;
     activeSymbolRef.current = symbol;
+
     const basePrice = DEFAULT_INITIAL_PRICES[symbol] || 1.0850;
     const now = Date.now();
     const seedTicks: PriceTick[] = [];
 
-    // Seed 20 historical ticks
     for (let i = 20; i >= 0; i--) {
       const randomVariance = (Math.random() - 0.5) * (basePrice * 0.0004);
       const price = Number((basePrice + randomVariance).toFixed(5));
@@ -60,6 +62,38 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     historyRef.current = seedTicks;
     setPriceHistory(seedTicks);
     setCurrentPrice(seedTicks[seedTicks.length - 1].price);
+
+    // Fetch actual live price tick from backend REST API
+    const fetchLivePrice = async () => {
+      try {
+        const encoded = encodeURIComponent(symbol);
+        const res = await apiClient.get<{ data?: { price: number; symbol: string } } | { price: number }>(
+          `/api/v1/pricing/assets/${encoded}/price`
+        );
+        const resObj = res as { data?: { price: number; symbol: string }; price?: number };
+        const fetchedPrice = resObj.data ? resObj.data.price : resObj.price;
+
+        if (isMounted && fetchedPrice && typeof fetchedPrice === 'number') {
+          setCurrentPrice(fetchedPrice);
+          const liveTick: PriceTick = {
+            symbol,
+            price: fetchedPrice,
+            tick_time: new Date().toISOString(),
+            timestamp: Date.now(),
+          };
+          historyRef.current = [...historyRef.current.slice(-120), liveTick];
+          setPriceHistory([...historyRef.current]);
+        }
+      } catch {
+        // Fallback to WebSocket tick stream or seed
+      }
+    };
+
+    fetchLivePrice();
+
+    return () => {
+      isMounted = false;
+    };
   }, [symbol]);
 
   // Connect to WebSocket service

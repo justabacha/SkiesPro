@@ -28,17 +28,17 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
   return (
     <div
       data-testid="confirmation-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/70 backdrop-blur-sm animate-fade-in"
     >
-      <div className="w-full max-w-md rounded-2xl bg-bg-dark-secondary border border-border-dark p-6 shadow-2xl text-text-dark">
+      <div className="w-full max-w-md rounded-2xl bg-bg-light-primary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-6 shadow-2xl text-text-light-primary dark:text-text-dark">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border-dark">
-          <h3 className="text-lg font-bold text-text-dark">Confirm Contract Order</h3>
+        <div className="flex items-center justify-between pb-4 border-b border-border-light dark:border-border-dark">
+          <h3 className="text-lg font-bold text-text-light-primary dark:text-text-dark">Confirm Contract Order</h3>
           <span
             className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold uppercase ${
               isHigher
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
             }`}
           >
             {isHigher ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
@@ -47,44 +47,44 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
         </div>
 
         {/* Details Grid */}
-        <div className="my-5 space-y-3 bg-bg-dark-tertiary/60 p-4 rounded-xl border border-border-dark/60 text-sm">
+        <div className="my-5 space-y-3 bg-bg-light-tertiary/60 dark:bg-bg-dark-tertiary/60 p-4 rounded-xl border border-border-light dark:border-border-dark/60 text-sm">
           <div className="flex justify-between items-center">
-            <span className="text-text-dark-secondary">Asset Symbol:</span>
-            <span className="font-bold font-mono text-text-dark">{pendingOrder.assetSymbol}</span>
+            <span className="text-text-light-secondary dark:text-text-dark-secondary">Asset Symbol:</span>
+            <span className="font-bold font-mono text-text-light-primary dark:text-text-dark">{pendingOrder.assetSymbol}</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-text-dark-secondary">Strike Price:</span>
-            <span className="font-semibold font-mono text-emerald-400">
+            <span className="text-text-light-secondary dark:text-text-dark-secondary">Strike Price:</span>
+            <span className="font-semibold font-mono text-emerald-600 dark:text-emerald-400">
               {pendingOrder.strikePrice.toFixed(pendingOrder.strikePrice > 100 ? 2 : 5)}
             </span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-text-dark-secondary">Stake Amount:</span>
-            <span className="font-semibold font-mono text-text-dark">KES {pendingOrder.stake}</span>
+            <span className="text-text-light-secondary dark:text-text-dark-secondary">Stake Amount:</span>
+            <span className="font-semibold font-mono text-text-light-primary dark:text-text-dark">KES {pendingOrder.stake}</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-text-dark-secondary">Contract Duration:</span>
-            <span className="font-semibold font-mono text-text-dark">{pendingOrder.expirySeconds}s</span>
+            <span className="text-text-light-secondary dark:text-text-dark-secondary">Contract Duration:</span>
+            <span className="font-semibold font-mono text-text-light-primary dark:text-text-dark">{pendingOrder.expirySeconds}s</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-text-dark-secondary">Payout Rate:</span>
-            <span className="font-semibold text-emerald-400">
+            <span className="text-text-light-secondary dark:text-text-dark-secondary">Payout Rate:</span>
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
               +{(pendingOrder.payoutRate * 100).toFixed(0)}%
             </span>
           </div>
 
-          <div className="pt-2 border-t border-border-dark flex justify-between items-center text-base">
-            <span className="font-medium text-text-dark">Potential Return:</span>
-            <span className="font-bold font-mono text-emerald-400">KES {formattedPayout}</span>
+          <div className="pt-2 border-t border-border-light dark:border-border-dark flex justify-between items-center text-base">
+            <span className="font-medium text-text-light-primary dark:text-text-dark">Potential Return:</span>
+            <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">KES {formattedPayout}</span>
           </div>
         </div>
 
         {/* Warning Note */}
-        <div className="flex items-start space-x-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-xs mb-6">
+        <div className="flex items-start space-x-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-300 text-xs mb-6">
           <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>
             Capital at risk. Payouts are granted only if the asset price strictly adheres to your chosen direction at expiry time.
@@ -98,7 +98,7 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
             data-testid="cancel-btn"
             onClick={onCancel}
             disabled={isPlacing}
-            className="flex-1 py-3 px-4 rounded-xl border border-border-dark bg-bg-dark-tertiary hover:bg-bg-dark text-text-dark font-medium text-sm transition-colors disabled:opacity-50"
+            className="flex-1 py-3 px-4 rounded-xl border border-border-light dark:border-border-dark bg-bg-light-tertiary dark:bg-bg-dark-tertiary hover:bg-bg-light-secondary dark:hover:bg-bg-dark text-text-light-primary dark:text-text-dark font-medium text-sm transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
