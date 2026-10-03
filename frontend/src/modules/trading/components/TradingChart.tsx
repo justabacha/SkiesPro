@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AreaSeries,
   CandlestickSeries,
   ColorType,
   createChart,
   IPriceLine,
   ISeriesApi,
-  LineSeries,
   LineStyle,
   UTCTimestamp,
 } from 'lightweight-charts';
@@ -22,7 +22,7 @@ export interface TradingChartProps {
 }
 
 type Time = UTCTimestamp;
-type PriceLineSeries = ISeriesApi<'Candlestick'> | ISeriesApi<'Line'>;
+type PriceLineSeries = ISeriesApi<'Candlestick'> | ISeriesApi<'Area'>;
 
 const TIMEFRAMES: Record<string, number> = {
   '1m': 60,
@@ -52,7 +52,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-  const lineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const areaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const currentCandleRef = useRef<{ time: Time; open: number; high: number; low: number; close: number } | null>(null);
   const lastAppliedTickRef = useRef<string>('');
   const priceLinesRef = useRef<Array<{ series: PriceLineSeries; line: IPriceLine }>>([]);
@@ -81,31 +81,39 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#94a3b8',
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: 'rgba(148, 163, 184, 0.12)' },
         horzLines: { color: 'rgba(148, 163, 184, 0.12)' },
       },
-      rightPriceScale: { borderColor: 'rgba(148, 163, 184, 0.2)' },
-      timeScale: { borderColor: 'rgba(148, 163, 184, 0.2)', timeVisible: true },
+      rightPriceScale: { borderColor: 'rgba(148, 163, 184, 0.2)', autoScale: true },
+      timeScale: {
+        borderColor: 'rgba(148, 163, 184, 0.2)',
+        timeVisible: true,
+        barSpacing: 12,
+        rightOffset: 12,
+      },
       crosshair: { mode: 1 },
     });
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#10B981',
-      downColor: '#EF4444',
+      upColor: '#22c55e',
+      downColor: '#ef4444',
       borderVisible: false,
-      wickUpColor: '#10B981',
-      wickDownColor: '#EF4444',
+      wickUpColor: '#22c55e',
+      wickDownColor: '#ef4444',
       visible: false,
     });
-    const lineSeries = chart.addSeries(LineSeries, {
-      color: '#10B981',
+    const areaSeries = chart.addSeries(AreaSeries, {
+      lineColor: '#22c55e',
+      topColor: 'rgba(34, 197, 94, 0.4)',
+      bottomColor: 'rgba(34, 197, 94, 0.0)',
       lineWidth: 2,
       visible: false,
     });
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
-    lineSeriesRef.current = lineSeries;
+    areaSeriesRef.current = areaSeries;
 
     const resizeObserver = new ResizeObserver(([entry]) => {
       chart.applyOptions({
@@ -122,7 +130,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
-      lineSeriesRef.current = null;
+      areaSeriesRef.current = null;
       currentCandleRef.current = null;
       lastAppliedTickRef.current = '';
     };
@@ -130,7 +138,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
   useEffect(() => {
     candleSeriesRef.current?.applyOptions({ visible: chartType === 'candle' });
-    lineSeriesRef.current?.applyOptions({ visible: chartType === 'line' });
+    areaSeriesRef.current?.applyOptions({ visible: chartType === 'line' });
   }, [chartType]);
 
   const activeContractsKey = useMemo(
@@ -175,15 +183,15 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
   useEffect(() => {
     const candleSeries = candleSeriesRef.current;
-    const lineSeries = lineSeriesRef.current;
+    const areaSeries = areaSeriesRef.current;
     const chart = chartRef.current;
-    if (!candleSeries || !lineSeries || !chart) return;
+    if (!candleSeries || !areaSeries || !chart) return;
 
     let isCurrent = true;
     currentCandleRef.current = null;
     lastAppliedTickRef.current = '';
     candleSeries.setData([]);
-    lineSeries.setData([]);
+    areaSeries.setData([]);
 
     const applyTick = (price: number, timestamp: number) => {
       if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return;
@@ -206,7 +214,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         currentCandleRef.current = next;
         candleSeries.update(next);
       }
-      lineSeries.update({ time, value: price });
+      areaSeries.update({ time, value: price });
     };
 
     tradingService.getCandles(symbol, granularity, 200).then((data) => {
@@ -228,7 +236,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
       lastAppliedTickRef.current = '';
       candleSeries.setData(candles);
-      lineSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
+      areaSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
       const last = candles[candles.length - 1];
       currentCandleRef.current = last ? { ...last } : null;
 
@@ -239,7 +247,10 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         const timestamp = new Date(lastTick.tick_time).getTime();
         applyTick(lastTick.price, timestamp);
       }
-      chart.timeScale().fitContent();
+      chart.timeScale().setVisibleLogicalRange({
+        from: Math.max(0, candles.length - 40),
+        to: candles.length + 5,
+      });
     });
 
     return () => {
@@ -256,8 +267,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     if (!Number.isFinite(timestamp)) return;
 
     const candleSeries = candleSeriesRef.current;
-    const lineSeries = lineSeriesRef.current;
-    if (!candleSeries || !lineSeries || lastAppliedTickRef.current === `${Math.floor(timestamp / 1000)}:${lastTick.price}`) {
+    const areaSeries = areaSeriesRef.current;
+    if (!candleSeries || !areaSeries || lastAppliedTickRef.current === `${Math.floor(timestamp / 1000)}:${lastTick.price}`) {
       return;
     }
 
@@ -284,12 +295,12 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       currentCandleRef.current = next;
       candleSeries.update(next);
     }
-    lineSeries.update({ time, value: lastTick.price });
+    areaSeries.update({ time, value: lastTick.price });
   }, [priceHistory, symbol, granularity]);
 
   useEffect(() => {
     const series: PriceLineSeries | null =
-      chartType === 'candle' ? candleSeriesRef.current : lineSeriesRef.current;
+      chartType === 'candle' ? candleSeriesRef.current : areaSeriesRef.current;
     if (!series) return;
 
     priceLinesRef.current.forEach(({ series: previousSeries, line }) =>
@@ -302,7 +313,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         const higher = contract.contract_type === 'higher';
         const line = series.createPriceLine({
           price,
-          color: higher ? '#10B981' : '#EF4444',
+          color: higher ? '#22c55e' : '#ef4444',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
@@ -386,6 +397,14 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           </div>
         </div>
       </div>
+      <a
+        className="mt-1 self-end text-[9px] text-text-light-secondary dark:text-text-dark-secondary hover:underline"
+        href="https://www.tradingview.com/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        TradingView Lightweight Charts™ — Copyright © 2025 TradingView, Inc.
+      </a>
     </div>
   );
 };

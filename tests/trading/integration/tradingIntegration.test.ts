@@ -5,6 +5,8 @@ import { WalletService } from '../../../src/modules/wallet/services/walletServic
 import { messageQueueClient } from '../../../src/infrastructure/message-queue/MessageQueueClient.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
+import { localCache } from '../../../src/infrastructure/cache/memoryCache.js';
+import { priceCacheKey } from '../../../src/modules/pricing/utils/symbolNormalizer.js';
 
 jest.mock('../../../src/infrastructure/message-queue/MessageQueueClient.js', () => ({
   messageQueueClient: {
@@ -70,12 +72,20 @@ describe('Trading Engine Integration', () => {
 
   test('should successfully place a trade', async () => {
     mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    const quoteTime = new Date().toISOString();
+    localCache.set(priceCacheKey(testSymbol), {
+      symbol: testSymbol,
+      bid: '1.1000',
+      ask: '1.1002',
+      mid: '1.1001',
+      time: quoteTime,
+    });
     mockPricingService.getLatestPrice.mockResolvedValue({
       symbol: testSymbol,
       bid: '1.1000',
       ask: '1.1002',
       mid: '1.1001',
-      time: new Date().toISOString()
+      tick_time: quoteTime,
     } as any);
 
     const request = {

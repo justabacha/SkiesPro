@@ -5,6 +5,8 @@ import { pgPool } from '../../../src/config/database.js';
 import { WalletService } from '../../../src/modules/wallet/services/walletService.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
+import { localCache } from '../../../src/infrastructure/cache/memoryCache.js';
+import { priceCacheKey } from '../../../src/modules/pricing/utils/symbolNormalizer.js';
 import { PriceFeedIngestionService } from '../../../src/modules/pricing/services/PriceFeedIngestionService.js';
 
 // Mock MessageQueueClient to avoid real RabbitMQ dependency during tests
@@ -79,13 +81,21 @@ describe('Trade Settlement Integration', () => {
   });
 
   const placeTestTrade = async (strike: string, contractType: 'higher' | 'lower' = 'higher') => {
+    const quote = {
+      symbol: testSymbol,
+      bid: strike,
+      ask: strike,
+      mid: strike,
+      time: new Date().toISOString(),
+    };
+    localCache.set(priceCacheKey(testSymbol), quote);
     mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
     mockPricingService.getLatestPrice.mockResolvedValue({
       symbol: testSymbol,
       bid: strike,
       ask: strike,
       mid: strike,
-      tick_time: new Date().toISOString()
+      tick_time: quote.time,
     } as any);
 
     const tradeRequest = {
@@ -236,10 +246,17 @@ describe('Trade Settlement Integration', () => {
     // Ensure no ticks exist in the database for any symbol
     await pgPool.query('DELETE FROM pricing.price_ticks');
 
-    await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
+    const tickRepo = (settlementWorker as any).tickRepo;
+    const originalGetPriceAt = tickRepo.getPriceAt;
+    tickRepo.getPriceAt = jest.fn().mockResolvedValue(null);
+    try {
+      await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
 
-    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
-    expect(rows[0].status).toBe('active');
+      const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+      expect(rows[0].status).toBe('active');
+    } finally {
+      tickRepo.getPriceAt = originalGetPriceAt;
+    }
   });
 
   test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
