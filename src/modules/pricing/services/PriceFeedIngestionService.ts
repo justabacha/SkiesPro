@@ -7,6 +7,7 @@ import { PriceDistributionService } from './priceDistributionService.js';
 import { OHLCService } from './OHLCService.js';
 import { Decimal } from 'decimal.js';
 import { logger } from '../../../shared/middleware/logger.js';
+import { normalizeSymbol } from '../utils/symbolNormalizer.js';
 
 export type PriceFeedTier = 'tier1_kraken' | 'tier2_coinbase' | 'tier3_mock';
 
@@ -197,17 +198,18 @@ export class PriceFeedIngestionService {
   }
 
   private async handleTick(symbol: string, bid: string, ask: string, time: Date) {
+    const normalizedSymbol = normalizeSymbol(symbol);
     const mid = new Decimal(bid).plus(ask).div(2).toString();
 
     // 1. Validate
-    if (!this.validationService.validate(symbol, mid, time)) {
+    if (!this.validationService.validate(normalizedSymbol, mid, time)) {
       return;
     }
 
     try {
       // 2. Add to persistence buffer
       this.tickBuffer.push({
-        symbol,
+        symbol: normalizedSymbol,
         tick_time: time,
         bid_price: bid,
         ask_price: ask,
@@ -216,17 +218,17 @@ export class PriceFeedIngestionService {
       });
 
       // 3. Distribute (Cache + Pub/Sub) - REALTIME
-      await this.distributionService.distributeTick(symbol, bid, ask, mid, time);
+      await this.distributionService.distributeTick(normalizedSymbol, bid, ask, mid, time);
 
       // 4. Process for OHLC
-      await this.ohlcService.processTick(symbol, mid, '0', time);
+      await this.ohlcService.processTick(normalizedSymbol, mid, '0', time);
 
       // 5. Check if buffer full
       if (this.tickBuffer.length >= this.batchSize) {
         await this.flushTicks();
       }
     } catch (error: any) {
-      logger.error(`Error handling tick for ${symbol}`, { error: error.message });
+      logger.error(`Error handling tick for ${normalizedSymbol}`, { error: error.message });
     }
   }
 }

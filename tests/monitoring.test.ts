@@ -101,14 +101,6 @@ describe('HealthChecker', () => {
     });
   });
 
-  describe('checkRedis', () => {
-    it('should return degraded status when Redis URL not configured', async () => {
-      const result = await checker.checkRedis();
-      expect(result.status).toBe('degraded');
-      expect(result.error).toContain('not configured');
-    });
-  });
-
   describe('checkMessageBroker', () => {
     it('should return degraded status when message broker URL not configured', async () => {
       const result = await checker.checkMessageBroker();
@@ -125,8 +117,7 @@ describe('HealthChecker', () => {
       expect(health.uptime_seconds).toBeGreaterThanOrEqual(0);
       expect(health.dependencies).toBeDefined();
       expect(health.dependencies.postgresql).toBeDefined();
-      expect(health.dependencies.redis_sessions).toBeDefined();
-      expect(health.dependencies.redis_pricing).toBeDefined();
+      expect(health.dependencies.memory_cache).toBeDefined();
       expect(health.dependencies.message_broker).toBeDefined();
     });
 

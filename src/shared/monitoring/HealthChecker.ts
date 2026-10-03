@@ -39,30 +39,6 @@ export class HealthChecker {
     }
   }
 
-  async checkRedis(url?: string): Promise<HealthCheckResult> {
-    if (!url) {
-      return {
-        status: 'degraded',
-        error: 'Redis URL not configured',
-      };
-    }
-    const startTime = Date.now();
-    try {
-      // Placeholder for actual Redis check
-      // Will be implemented when Redis adapter is added
-      const latency = Date.now() - startTime;
-      return {
-        status: 'healthy',
-        latency_ms: latency,
-      };
-    } catch (error) {
-      return {
-        status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
-
   async checkMessageBroker(url?: string): Promise<HealthCheckResult> {
     if (!url) {
       return {
@@ -88,16 +64,14 @@ export class HealthChecker {
   }
 
   async getSystemHealth(): Promise<SystemHealth> {
-    const [postgresql, redis, messageBroker] = await Promise.all([
+    const [postgresql, messageBroker] = await Promise.all([
       this.checkPostgreSQL(),
-      this.checkRedis(process.env.REDIS_URL),
       this.checkMessageBroker(process.env.MESSAGE_BROKER_URL),
     ]);
 
     const dependencies: Record<string, HealthCheckResult> = {
       postgresql,
-      redis_sessions: redis,
-      redis_pricing: redis,
+      memory_cache: { status: 'healthy' },
       message_broker: messageBroker,
     };
 

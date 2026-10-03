@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight, ArrowDownRight, AlertTriangle } from 'lucide-react';
 import { PendingOrder } from '../types/trading.types';
+import { getPriceDecimalPlaces } from '../utils/pricePrecision';
 
 export interface ContractConfirmationModalProps {
   isOpen: boolean;
@@ -56,7 +57,9 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
           <div className="flex justify-between items-center">
             <span className="text-text-light-secondary dark:text-text-dark-secondary">Strike Price:</span>
             <span className="font-semibold font-mono text-emerald-600 dark:text-emerald-400">
-              {pendingOrder.strikePrice.toFixed(pendingOrder.strikePrice > 100 ? 2 : 5)}
+              {pendingOrder.strikePrice.toFixed(
+                getPriceDecimalPlaces(pendingOrder.assetSymbol, undefined, pendingOrder.strikePrice)
+              )}
             </span>
           </div>
 

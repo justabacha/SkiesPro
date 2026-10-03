@@ -93,8 +93,7 @@ export class TokenService {
   }
 
   async isTokenRevoked(jti: string): Promise<boolean> {
-    // Check in Redis if possible, fallback to DB
-    // For MVP, we check DB
+    // The database is the source of truth for token revocation.
     const session = await this.sessionRepo.findByJti(jti);
     return !session || session.is_revoked;
   }

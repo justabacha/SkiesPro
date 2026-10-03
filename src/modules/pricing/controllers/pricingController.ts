@@ -28,7 +28,8 @@ export class PricingController {
       const price = await this.pricingService.getLatestPrice(req.params.symbol);
       res.status(200).json({ data: price });
     } catch (error: any) {
-      res.status(404).json({ error: error.message });
+      const status = error.message === 'MARKET_DATA_UNAVAILABLE' ? 503 : 404;
+      res.status(status).json({ error: error.message });
     }
   }
 

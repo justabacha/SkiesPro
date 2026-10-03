@@ -45,6 +45,7 @@ export interface CreateContractDto {
   contractType: ContractType;
   stake: string;
   expirySeconds: number;
+  strikePrice?: number;
 }
 
 export interface PendingOrder {

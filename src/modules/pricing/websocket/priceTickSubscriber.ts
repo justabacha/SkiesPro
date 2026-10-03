@@ -1,4 +1,5 @@
 import { cacheClient } from '../../../infrastructure/cache/index.js';
+import { normalizeSymbol } from '../utils/symbolNormalizer.js';
 import { ConnectionManager } from './connectionManager.js';
 import { logger } from '../../../shared/middleware/logger.js';
 
@@ -10,7 +11,7 @@ export interface PriceTick {
   time: string;
 }
 
-export class RedisSubscriber {
+export class PriceTickSubscriber {
   private connectionManager: ConnectionManager;
   private isSubscribed: boolean = false;
   private activeChannels: Set<string> = new Set();
@@ -20,7 +21,8 @@ export class RedisSubscriber {
   }
 
   async subscribeToSymbol(symbol: string): Promise<void> {
-    const channel = `ticks:${symbol}`;
+    const normalizedSymbol = normalizeSymbol(symbol);
+    const channel = `ticks:${normalizedSymbol}`;
     if (this.activeChannels.has(channel)) {
       return;
     }
@@ -40,7 +42,7 @@ export class RedisSubscriber {
   }
 
   async unsubscribeFromSymbol(symbol: string): Promise<void> {
-    const channel = `ticks:${symbol}`;
+    const channel = `ticks:${normalizeSymbol(symbol)}`;
     if (!this.activeChannels.has(channel)) {
       return;
     }
@@ -59,7 +61,7 @@ export class RedisSubscriber {
 
   async start(): Promise<void> {
     if (this.isSubscribed) {
-      logger.warn('Redis subscriber already started');
+      logger.warn('Price tick subscriber already started');
       return;
     }
 
@@ -69,9 +71,9 @@ export class RedisSubscriber {
       });
       this.activeChannels.add('ticks:all');
       this.isSubscribed = true;
-      logger.info('Redis subscriber started', { channels: Array.from(this.activeChannels) });
+      logger.info('Price tick subscriber started', { channels: Array.from(this.activeChannels) });
     } catch (error) {
-      logger.error('Failed to start Redis subscriber', {
+      logger.error('Failed to start price tick subscriber', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
@@ -89,9 +91,9 @@ export class RedisSubscriber {
       }
       this.activeChannels.clear();
       this.isSubscribed = false;
-      logger.info('Redis subscriber stopped');
+      logger.info('Price tick subscriber stopped');
     } catch (error) {
-      logger.error('Failed to stop Redis subscriber', {
+      logger.error('Failed to stop price tick subscriber', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
@@ -100,7 +102,7 @@ export class RedisSubscriber {
   private handlePriceMessage(message: string, specificSymbol?: string): void {
     try {
       const tick: PriceTick = JSON.parse(message);
-      const symbol = specificSymbol || tick.symbol;
+      const symbol = normalizeSymbol(specificSymbol || tick.symbol);
 
       // Convert to ADS price message format
       const priceMessage = {

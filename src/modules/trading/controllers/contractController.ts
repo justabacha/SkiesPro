@@ -34,11 +34,27 @@ export class ContractController {
       const userId = (req as any).user.sub;
 
       // Map snake_case API request to camelCase Service request
+      const contractType =
+        req.body.direction === 'CALL'
+          ? 'higher'
+          : req.body.direction === 'PUT'
+            ? 'lower'
+            : req.body.contract_type;
+      if (contractType !== 'higher' && contractType !== 'lower') {
+        return res.status(400).json({
+          status: 'error',
+          code: 'INVALID_DIRECTION',
+          message: 'Direction must be CALL or PUT.',
+        });
+      }
+
       const placeTradeRequest = {
         assetSymbol: req.body.asset_symbol,
-        contractType: req.body.contract_type,
-        stake: req.body.stake,
+        contractType,
+        stake: req.body.amount ?? req.body.stake,
         expirySeconds: req.body.expiry_seconds,
+        strikePrice:
+          req.body.strike_price === undefined ? undefined : Number(req.body.strike_price),
       };
 
       const contract = await tradingService.placeTrade(userId, placeTradeRequest);
@@ -51,11 +67,26 @@ export class ContractController {
       const errorMessage = error.message || 'An unknown error occurred';
       console.error('Trade placement failed:', errorMessage);
 
+      if (errorMessage === 'MARKET_DATA_UNAVAILABLE') {
+        return res.status(503).json({
+          status: 'error',
+          code: 'MARKET_DATA_UNAVAILABLE',
+          message: errorMessage,
+        });
+      }
+
+      if (errorMessage === 'PRICE_SLIPPAGE_EXCEEDED') {
+        return res.status(400).json({
+          status: 'error',
+          code: 'PRICE_SLIPPAGE_EXCEEDED',
+          message: errorMessage,
+        });
+      }
+
       // Map validation errors to 422
       const validationErrors = [
         'Insufficient available balance',
         'Maximum platform exposure reached',
-        'Market price is stale',
         'below minimum',
         'above maximum',
         'is currently closed',

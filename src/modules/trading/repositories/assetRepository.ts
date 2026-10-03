@@ -14,13 +14,22 @@ export interface Asset {
 
 export class AssetRepository {
   async findBySymbol(symbol: string): Promise<Asset | null> {
-    const query = 'SELECT * FROM trading.assets WHERE symbol = $1 AND is_active = TRUE';
+    const query = `
+      SELECT *, pip_decimal_places AS "pipDecimalPlaces"
+      FROM trading.assets
+      WHERE symbol = $1 AND is_active = TRUE
+    `;
     const { rows } = await pgPool.query(query, [symbol]);
     return rows[0] || null;
   }
 
   async getAllActive(): Promise<Asset[]> {
-    const query = 'SELECT * FROM trading.assets WHERE is_active = TRUE';
+    const query = `
+      SELECT *, asset_type AS "assetType", is_active AS "isActive",
+             pip_decimal_places AS "pipDecimalPlaces"
+      FROM trading.assets
+      WHERE is_active = TRUE
+    `;
     const { rows } = await pgPool.query(query);
     return rows;
   }

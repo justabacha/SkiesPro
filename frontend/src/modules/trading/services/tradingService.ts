@@ -153,8 +153,9 @@ class TradingService {
   async placeTrade(dto: CreateContractDto, idempotencyKey: string): Promise<BinaryContract> {
     const payload = {
       asset_symbol: dto.assetSymbol,
-      contract_type: dto.contractType,
-      stake: dto.stake,
+      direction: dto.contractType === 'higher' ? 'CALL' : 'PUT',
+      amount: dto.stake,
+      strike_price: dto.strikePrice,
       expiry_seconds: dto.expirySeconds,
     };
 

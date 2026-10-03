@@ -75,6 +75,7 @@ describe('Trade Settlement Integration', () => {
   beforeEach(() => {
     PriceFeedIngestionService.currentTier = 'tier1_kraken';
     PriceFeedIngestionService.tier3StartedAt = null;
+    process.env.MAX_ORACLE_GAP_MS = '10000';
   });
 
   const placeTestTrade = async (strike: string, contractType: 'higher' | 'lower' = 'higher') => {
@@ -232,8 +233,8 @@ describe('Trade Settlement Integration', () => {
   test('SET-008: should handle missing price tick with error (to trigger retry)', async () => {
     const contract = await placeTestTrade('1.10000');
 
-    // Ensure no ticks exist for this contract's symbol
-    await pgPool.query('DELETE FROM pricing.price_ticks WHERE symbol = $1', [testSymbol]);
+    // Ensure no ticks exist in the database for any symbol
+    await pgPool.query('DELETE FROM pricing.price_ticks');
 
     await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
 

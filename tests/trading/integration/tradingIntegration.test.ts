@@ -21,7 +21,6 @@ describe('Trading Engine Integration', () => {
   const testSymbol = 'EUR/USD';
 
   beforeAll(async () => {
-    process.env.LATENCY_THRESHOLD_MS = '5000';
     mockPricingService = {
       getMarketStatus: jest.fn(),
       getLatestPrice: jest.fn(),

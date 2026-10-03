@@ -1,17 +1,7 @@
 import { ICache, CacheCluster } from './ICache.js';
 import { InMemoryAdapter } from './InMemoryAdapter.js';
-import { RedisAdapter } from './RedisAdapter.js';
 
-function createDefaultCacheAdapter(cluster: 'sessions' | 'pricing'): ICache {
-  const redisUrl =
-    cluster === 'sessions'
-      ? process.env.SESSIONS_REDIS_URL || process.env.REDIS_URL
-      : process.env.PRICING_REDIS_URL || process.env.REDIS_URL;
-
-  if (redisUrl && redisUrl.trim()) {
-    return new RedisAdapter(redisUrl);
-  }
-
+function createDefaultCacheAdapter(): ICache {
   return new InMemoryAdapter();
 }
 
@@ -21,8 +11,8 @@ export class CacheClient {
   private failClosedMode: boolean = false;
 
   constructor(sessionsAdapter?: ICache, pricingAdapter?: ICache) {
-    this.sessionsCluster = sessionsAdapter || createDefaultCacheAdapter('sessions');
-    this.pricingCluster = pricingAdapter || createDefaultCacheAdapter('pricing');
+    this.sessionsCluster = sessionsAdapter || createDefaultCacheAdapter();
+    this.pricingCluster = pricingAdapter || createDefaultCacheAdapter();
   }
 
   async get(cluster: CacheCluster, key: string): Promise<any> {

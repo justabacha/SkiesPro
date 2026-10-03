@@ -34,7 +34,7 @@ export const requireIdempotencyKey = (req: Request, res: Response, next: NextFun
 
 /**
  * Middleware to rate limit trading requests.
- * Redis-backed implementation for distributed environments.
+ * Process-local implementation for this single backend instance.
  * Target: 10 req/sec per user.
  */
 export const tradingRateLimit = async (
@@ -71,7 +71,7 @@ export const tradingRateLimit = async (
 
     next();
   } catch (error) {
-    // Fail open in case of Redis issues, but log it
+    // Fail open if the local cache cannot apply the rate limit.
     console.error('Rate limiting error:', error);
     next();
   }

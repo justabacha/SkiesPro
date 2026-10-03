@@ -12,21 +12,30 @@
 
 export function normalizeSymbol(symbol: string): string {
   if (!symbol) return '';
+  const trimmedSymbol = symbol.replace(/\s/g, '').toUpperCase();
 
   // If already contains a slash, return as-is
-  if (symbol.includes('/')) {
-    return symbol.toUpperCase();
+  if (trimmedSymbol.includes('/')) {
+    return trimmedSymbol;
   }
 
   // If exactly 6 characters, assume it's a forex/crypto pair and insert slash
-  if (symbol.length === 6) {
-    const base = symbol.substring(0, 3).toUpperCase();
-    const quote = symbol.substring(3, 6).toUpperCase();
+  if (trimmedSymbol.length === 6) {
+    const base = trimmedSymbol.substring(0, 3);
+    const quote = trimmedSymbol.substring(3, 6);
     return `${base}/${quote}`;
   }
 
   // For other lengths, return uppercase as-is
-  return symbol.toUpperCase();
+  return trimmedSymbol;
+}
+
+export function normalizeCacheSymbol(symbol: string): string {
+  return symbol.replace(/[^a-z0-9]/gi, '').toUpperCase();
+}
+
+export function priceCacheKey(symbol: string): string {
+  return `price:${normalizeCacheSymbol(symbol)}`;
 }
 
 /**

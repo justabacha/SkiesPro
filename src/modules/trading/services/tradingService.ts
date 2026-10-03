@@ -10,10 +10,23 @@ import { messageQueueClient } from '../../../infrastructure/message-queue/Messag
 import { PriceFeedIngestionService } from '../../pricing/services/PriceFeedIngestionService.js';
 import { PlaceTradeRequest } from '../dto/trading.dto.js';
 import { Decimal } from 'decimal.js';
+import { localCache, DEFAULT_PRICE_TTL_MS } from '../../../infrastructure/cache/memoryCache.js';
+import { priceCacheKey, normalizeSymbol } from '../../pricing/utils/symbolNormalizer.js';
+import { AssetRepository } from '../repositories/assetRepository.js';
+
+function getPipDecimalPlaces(symbol: string, configuredPlaces?: number): number {
+  const normalizedSymbol = symbol.replace(/[^a-z0-9]/gi, '').toUpperCase();
+  if (normalizedSymbol.endsWith('JPY')) return 3;
+  if (normalizedSymbol.startsWith('XAU') || normalizedSymbol.startsWith('GOLD')) return 2;
+  if (normalizedSymbol.startsWith('WTI')) return 3;
+  if (normalizedSymbol.startsWith('BTC') || normalizedSymbol.startsWith('ETH')) return 2;
+  return configuredPlaces && configuredPlaces > 0 ? configuredPlaces : 5;
+}
 
 export class TradingService {
   private contractRepo: ContractRepository;
   private assetConfigRepo: AssetConfigRepository;
+  private assetRepo: AssetRepository;
   private stakeValidator: StakeValidator;
   private walletService: WalletService;
   private pricingService: PricingService;
@@ -22,6 +35,7 @@ export class TradingService {
   constructor(pricingService: PricingService) {
     this.contractRepo = new ContractRepository();
     this.assetConfigRepo = new AssetConfigRepository();
+    this.assetRepo = new AssetRepository();
     this.stakeValidator = new StakeValidator();
     this.walletService = new WalletService();
     this.pricingService = pricingService;
@@ -33,7 +47,7 @@ export class TradingService {
    * Implements the 10-step validation chain from WP-10 §4.5.
    */
   async placeTrade(userId: string, request: PlaceTradeRequest): Promise<BinaryContract> {
-    const serverArrival = Date.now();
+    const assetSymbol = normalizeSymbol(request.assetSymbol);
 
     // 1. User Status Check
     const user = await this.userRepo.findById(userId);
@@ -48,22 +62,27 @@ export class TradingService {
 
     // 2b. Circuit Breaker Check (Block real-money trades during Tier 3 Mock price feed)
     if (PriceFeedIngestionService.currentTier === 'tier3_mock') {
-      const isDemo = (user as any).is_demo === true || (request as any).is_demo === true || (user as any).account_type === 'demo';
+      const isDemo =
+        (user as any).is_demo === true ||
+        (request as any).is_demo === true ||
+        (user as any).account_type === 'demo';
       if (!isDemo) {
-        throw new Error('Trading is temporarily suspended due to live price feed degradation. Please try again shortly.');
+        throw new Error(
+          'Trading is temporarily suspended due to live price feed degradation. Please try again shortly.'
+        );
       }
     }
 
     // 3. Market Hours Check
-    const marketStatus = await this.pricingService.getMarketStatus(request.assetSymbol);
+    const marketStatus = await this.pricingService.getMarketStatus(assetSymbol);
     if (!marketStatus.is_open) {
-      throw new Error(`Market for ${request.assetSymbol} is currently closed`);
+      throw new Error(`Market for ${assetSymbol} is currently closed`);
     }
 
     // Get Asset Configuration for limits
-    const config = await this.assetConfigRepo.findBySymbol(request.assetSymbol);
+    const config = await this.assetConfigRepo.findBySymbol(assetSymbol);
     if (!config) {
-      throw new Error(`No configuration found for asset ${request.assetSymbol}`);
+      throw new Error(`No configuration found for asset ${assetSymbol}`);
     }
 
     // 4. Stake Range Check
@@ -86,24 +105,56 @@ export class TradingService {
     }
 
     // 7. Exposure Limit Check
-    const currentExposure = await this.contractRepo.getActiveExposure(request.assetSymbol);
+    const currentExposure = await this.contractRepo.getActiveExposure(assetSymbol);
     const maxExposure = config.maxExposure
       ? new Decimal(config.maxExposure)
       : new Decimal('1000000000'); // Default to very high if null
     if (new Decimal(currentExposure).plus(stakeAmount).gt(maxExposure)) {
-      throw new Error(`Maximum platform exposure reached for ${request.assetSymbol}`);
+      throw new Error(`Maximum platform exposure reached for ${assetSymbol}`);
     }
 
-    // 8. Latency and Tick Age Check (Hacker Spoofer Fix)
-    const latencyThreshold = parseInt(process.env.LATENCY_THRESHOLD_MS || '800');
+    // 8. Validate the current in-memory quote and the client-visible strike.
+    const tick = localCache.get(priceCacheKey(assetSymbol));
+    if (
+      !tick ||
+      tick.bid === undefined ||
+      tick.ask === undefined ||
+      tick.mid === undefined ||
+      !tick.time
+    ) {
+      throw new Error('MARKET_DATA_UNAVAILABLE');
+    }
 
-    // Get Latest Price for Strike
-    const tick = await this.pricingService.getLatestPrice(request.assetSymbol);
-    const tickTime = new Date(tick.tick_time).getTime();
+    if (
+      ![tick.bid, tick.ask, tick.mid].every(
+        (price: unknown) => Number.isFinite(Number(price)) && Number(price) > 0
+      )
+    ) {
+      throw new Error('MARKET_DATA_UNAVAILABLE');
+    }
 
-    // Verify tick is fresh (not older than threshold relative to server arrival)
-    if (serverArrival - tickTime > latencyThreshold) {
-      throw new Error('Market price is stale. Please try again.');
+    const tickTime = new Date(tick.time).getTime();
+    const tickAgeMs = Date.now() - tickTime;
+    if (!Number.isFinite(tickTime) || tickAgeMs < 0 || tickAgeMs > DEFAULT_PRICE_TTL_MS) {
+      throw new Error('MARKET_DATA_UNAVAILABLE');
+    }
+
+    if (request.strikePrice !== undefined) {
+      if (!Number.isFinite(request.strikePrice) || request.strikePrice <= 0) {
+        throw new Error('INVALID_STRIKE_PRICE');
+      }
+      const clientStrike = new Decimal(request.strikePrice);
+      const serverMid = new Decimal(tick.mid);
+      const asset = await this.assetRepo.findBySymbol(assetSymbol);
+      if (!asset) throw new Error(`No configuration found for asset ${assetSymbol}`);
+      const pipDecimalPlaces = getPipDecimalPlaces(assetSymbol, asset.pipDecimalPlaces);
+      const pipSize =
+        pipDecimalPlaces >= 4
+          ? new Decimal(10).pow(1 - pipDecimalPlaces)
+          : new Decimal(10).pow(-pipDecimalPlaces);
+      if (clientStrike.minus(serverMid).abs().gt(pipSize.times(5))) {
+        throw new Error('PRICE_SLIPPAGE_EXCEEDED');
+      }
     }
 
     const strikePrice = request.contractType === 'higher' ? tick.ask : tick.bid;
@@ -123,13 +174,13 @@ export class TradingService {
 
       // Lock the asset config row to serialize exposure calculations for this asset
       await client.query('SELECT 1 FROM trading.asset_config WHERE asset_symbol = $1 FOR SHARE', [
-        request.assetSymbol,
+        assetSymbol,
       ]);
 
       // 7. Atomic Exposure Limit Check (Inside Transaction)
-      const currentExposure = await txContractRepo.getActiveExposure(request.assetSymbol);
+      const currentExposure = await txContractRepo.getActiveExposure(assetSymbol);
       if (new Decimal(currentExposure).plus(stakeAmount).gt(maxExposure)) {
-        throw new Error(`Maximum platform exposure reached for ${request.assetSymbol}`);
+        throw new Error(`Maximum platform exposure reached for ${assetSymbol}`);
       }
 
       // 9. Wallet Lock (Explicit for visibility and compliance with Blueprint §4.1)
@@ -141,7 +192,7 @@ export class TradingService {
         stakeAmount,
         'trade_stake',
         undefined,
-        `Stake for ${request.assetSymbol} ${request.contractType} trade`
+        `Stake for ${assetSymbol} ${request.contractType} trade`
       );
 
       // 11. Persistence
@@ -150,7 +201,7 @@ export class TradingService {
 
       const contract: BinaryContract = {
         userId,
-        assetSymbol: request.assetSymbol,
+        assetSymbol,
         stake: stakeAmount.toString(),
         contractType: request.contractType,
         strikePrice: strikePrice.toString(),
@@ -178,7 +229,7 @@ export class TradingService {
         payload: {
           userId,
           contractId: createdContract.id,
-          assetSymbol: request.assetSymbol,
+          assetSymbol,
           stake: stakeAmount.toNumber(),
           contractType: request.contractType,
           strikePrice: parseFloat(strikePrice),

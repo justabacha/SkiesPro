@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 import { ConnectionManager } from './connectionManager.js';
 import { SubscriptionManager } from './subscriptionManager.js';
-import { RedisSubscriber } from './redisSubscriber.js';
+import { PriceTickSubscriber } from './priceTickSubscriber.js';
 import { webSocketAuthMiddleware } from './authMiddleware.js';
 import { logger } from '../../../shared/middleware/logger.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,7 +10,7 @@ export class PriceGateway {
   private wss: WebSocket.Server | null = null;
   private connectionManager: ConnectionManager;
   private subscriptionManager: SubscriptionManager;
-  private redisSubscriber: RedisSubscriber;
+  private priceTickSubscriber: PriceTickSubscriber;
   private readonly MAX_CONNECTIONS_PER_USER = parseInt(
     process.env.WS_MAX_CONNECTIONS_PER_USER || '5',
     10
@@ -23,14 +23,14 @@ export class PriceGateway {
 
   constructor() {
     this.connectionManager = new ConnectionManager();
-    this.redisSubscriber = new RedisSubscriber(this.connectionManager);
+    this.priceTickSubscriber = new PriceTickSubscriber(this.connectionManager);
     this.subscriptionManager = new SubscriptionManager(this.connectionManager, (symbol, action) => {
       if (action === 'subscribe') {
-        void this.redisSubscriber.subscribeToSymbol(symbol);
+        void this.priceTickSubscriber.subscribeToSymbol(symbol);
         return;
       }
 
-      void this.redisSubscriber.unsubscribeFromSymbol(symbol);
+      void this.priceTickSubscriber.unsubscribeFromSymbol(symbol);
     });
   }
 
@@ -98,12 +98,11 @@ export class PriceGateway {
       this.handleMessage(connId, auth.userId, data);
     });
 
-    // Start Redis subscriber if not already started
-    if (!this.redisSubscriber.isActive()) {
+    if (!this.priceTickSubscriber.isActive()) {
       try {
-        await this.redisSubscriber.start();
+        await this.priceTickSubscriber.start();
       } catch (error) {
-        logger.error('Failed to start Redis subscriber', {
+        logger.error('Failed to start price tick subscriber', {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
@@ -194,20 +193,19 @@ export class PriceGateway {
     totalConnections: number;
     totalUsers: number;
     totalSubscriptions: number;
-    redisSubscriberActive: boolean;
+    priceTickSubscriberActive: boolean;
   } {
     const connStats = this.connectionManager.getStats();
     return {
       ...connStats,
-      redisSubscriberActive: this.redisSubscriber.isActive(),
+      priceTickSubscriberActive: this.priceTickSubscriber.isActive(),
     };
   }
 
   async shutdown(): Promise<void> {
     logger.info('Shutting down WebSocket gateway');
 
-    // Stop Redis subscriber
-    await this.redisSubscriber.stop();
+    await this.priceTickSubscriber.stop();
 
     // Shutdown connection manager
     this.connectionManager.shutdown();

@@ -1,5 +1,4 @@
 import { pgPool } from '../../../config/database.js';
-import { TickRepository } from '../repositories/tickRepository.js';
 import { CandleRepository } from '../repositories/candleRepository.js';
 import { PriceDistributionService } from './priceDistributionService.js';
 import { MarketStatusService } from './MarketStatusService.js';
@@ -12,13 +11,11 @@ import {
 import { normalizeSymbol } from '../utils/symbolNormalizer.js';
 
 export class PricingService {
-  private tickRepo: TickRepository;
   private candleRepo: CandleRepository;
   private distributionService: PriceDistributionService;
   private marketStatusService: MarketStatusService;
 
   constructor(marketStatusService: MarketStatusService) {
-    this.tickRepo = new TickRepository();
     this.candleRepo = new CandleRepository();
     this.distributionService = new PriceDistributionService();
     this.marketStatusService = marketStatusService;
@@ -34,21 +31,8 @@ export class PricingService {
   async getLatestPrice(symbol: string): Promise<PriceResponseDto> {
     const normalizedSymbol = normalizeSymbol(symbol);
 
-    // Try cache first
-    let tick = await this.distributionService.getLatestPrice(normalizedSymbol);
-
-    if (!tick) {
-      // Fallback to DB
-      const dbTick = await this.tickRepo.getLatest(normalizedSymbol);
-      if (!dbTick) throw new Error(`No price data available for ${normalizedSymbol}`);
-      tick = {
-        symbol: dbTick.symbol,
-        bid: dbTick.bid_price,
-        ask: dbTick.ask_price,
-        mid: dbTick.mid_price,
-        time: dbTick.tick_time.toISOString(),
-      };
-    }
+    const tick = await this.distributionService.getLatestPrice(normalizedSymbol);
+    if (!tick) throw new Error('MARKET_DATA_UNAVAILABLE');
 
     return {
       symbol: tick.symbol,

@@ -30,6 +30,7 @@ export const TradingPage: React.FC = () => {
 
   const {
     currentPrice,
+    isPriceAvailable,
     priceHistory,
     latencyState,
     subscribeToSymbol,
@@ -163,10 +164,11 @@ export const TradingPage: React.FC = () => {
             asset={selectedAsset}
             selectedSymbol={selectedAsset?.symbol || initialSymbol}
             currentPrice={currentPrice}
+            isPriceAvailable={isPriceAvailable}
             userBalance={numericBalance}
             isPlacingTrade={isPlacingTrade}
-            onPlaceTrade={(contractType, stake, expirySeconds, symbol) => {
-              executeDirectTrade(contractType, stake, expirySeconds, symbol);
+            onPlaceTrade={(contractType, stake, expirySeconds, symbol, strikePrice) => {
+              executeDirectTrade(contractType, stake, expirySeconds, symbol, strikePrice);
             }}
             tradeError={tradeError}
             onClearError={clearTradeError}

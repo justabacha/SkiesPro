@@ -3,6 +3,7 @@ export interface PlaceTradeRequest {
   contractType: 'higher' | 'lower';
   stake: string;
   expirySeconds: number;
+  strikePrice?: number;
 }
 
 export interface ListTradesRequest {

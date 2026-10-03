@@ -14,8 +14,7 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
     uptime_seconds: process.uptime(),
     dependencies: {
       postgresql: { status: 'healthy', latency_ms: 0 },
-      redis_sessions: { status: 'degraded' },
-      redis_pricing: { status: 'degraded' },
+      memory_cache: { status: 'healthy' },
       message_broker: { status: 'degraded' },
     },
   });

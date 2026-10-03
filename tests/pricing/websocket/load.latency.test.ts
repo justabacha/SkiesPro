@@ -1,18 +1,18 @@
 import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager.js';
-import { RedisSubscriber } from '../../../src/modules/pricing/websocket/redisSubscriber.js';
+import { PriceTickSubscriber } from '../../../src/modules/pricing/websocket/priceTickSubscriber.js';
 import { cacheClient } from '../../../src/infrastructure/cache/index.js';
 
 describe('WebSocket Performance and Latency Tests', () => {
   let connectionManager: ConnectionManager;
-  let redisSubscriber: RedisSubscriber;
+  let priceTickSubscriber: PriceTickSubscriber;
 
   beforeEach(() => {
     connectionManager = new ConnectionManager();
-    redisSubscriber = new RedisSubscriber(connectionManager);
+    priceTickSubscriber = new PriceTickSubscriber(connectionManager);
   });
 
   afterEach(async () => {
-    await redisSubscriber.stop();
+    await priceTickSubscriber.stop();
     connectionManager.shutdown();
   });
 
@@ -38,7 +38,7 @@ describe('WebSocket Performance and Latency Tests', () => {
         connectionIds.push(connId);
       }
 
-      await redisSubscriber.start();
+      await priceTickSubscriber.start();
 
       // Send 100 messages rapidly (reduced for test environment)
       const startTime = Date.now();
@@ -60,12 +60,11 @@ describe('WebSocket Performance and Latency Tests', () => {
       const endTime = Date.now();
       const totalTime = endTime - startTime;
 
-      // Verify that Redis subscriber is active and processed messages
-      expect(redisSubscriber.isActive()).toBe(true);
+      expect(priceTickSubscriber.isActive()).toBe(true);
 
       console.log(`Processed 100 messages to 10 connections in ${totalTime}ms`);
 
-      await redisSubscriber.stop();
+      await priceTickSubscriber.stop();
     });
   });
 
@@ -82,7 +81,7 @@ describe('WebSocket Performance and Latency Tests', () => {
       const connectionId = connectionManager.addConnection('user123', mockWebSocket);
       connectionManager.subscribe(connectionId, 'price.EUR/USD');
 
-      await redisSubscriber.start();
+      await priceTickSubscriber.start();
 
       const latencies: number[] = [];
 
@@ -119,7 +118,7 @@ describe('WebSocket Performance and Latency Tests', () => {
       // Relaxed P95 requirement for test environment
       expect(p95Latency).toBeLessThan(100);
 
-      await redisSubscriber.stop();
+      await priceTickSubscriber.stop();
     });
   });
 

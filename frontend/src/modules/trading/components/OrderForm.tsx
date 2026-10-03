@@ -1,18 +1,21 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Lock, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { Asset, ContractType } from '../types/trading.types';
+import { getPriceDecimalPlaces } from '../utils/pricePrecision';
 
 export interface OrderFormProps {
   asset: Asset | null;
   selectedSymbol?: string;
   currentPrice: number;
+  isPriceAvailable: boolean;
   userBalance: number;
   isPlacingTrade: boolean;
   onPlaceTrade: (
     contractType: ContractType,
     stake: string,
     expirySeconds: number,
-    assetSymbol?: string
+    assetSymbol: string,
+    strikePrice: number
   ) => void;
   tradeError: string | null;
   onClearError: () => void;
@@ -29,6 +32,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   asset,
   selectedSymbol,
   currentPrice,
+  isPriceAvailable,
   userBalance,
   isPlacingTrade,
   onPlaceTrade,
@@ -58,7 +62,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   const isMarketOpen = asset?.isOpen !== false && asset?.isActive !== false;
 
   const numericStake = parseFloat(stake) || 0;
-  const pipPlaces = asset?.pipDecimalPlaces ?? (currentPrice > 100 ? 2 : 5);
+  const pipPlaces = getPriceDecimalPlaces(activeSymbol, asset?.pipDecimalPlaces, currentPrice);
 
   // Expected payout calculation (Stake + Stake * PayoutRate)
   const expectedPayout = useMemo(() => {
@@ -75,16 +79,16 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     return null;
   }, [stake, numericStake, minStake, maxStake, userBalance]);
 
-  const isDisabled = !isMarketOpen || isPlacingTrade || Boolean(validationError);
+  const isDisabled = !isMarketOpen || !isPriceAvailable || isPlacingTrade || Boolean(validationError);
 
   const handleHigher = () => {
     if (isDisabled) return;
-    onPlaceTrade('higher', stake, expirySeconds, activeSymbol);
+    onPlaceTrade('higher', stake, expirySeconds, activeSymbol, currentPrice);
   };
 
   const handleLower = () => {
     if (isDisabled) return;
-    onPlaceTrade('lower', stake, expirySeconds, activeSymbol);
+    onPlaceTrade('lower', stake, expirySeconds, activeSymbol, currentPrice);
   };
 
   return (
@@ -97,7 +101,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-border-light dark:border-border-dark">
           <div>
             <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark-primary">Place Binary Contract</h3>
-            {currentPrice > 0 && (
+            {isPriceAvailable && currentPrice > 0 && (
               <span className="text-xs font-mono text-text-light-secondary dark:text-text-dark-secondary">
                 Spot: {currentPrice.toFixed(pipPlaces)}
               </span>
@@ -116,6 +120,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           >
             <Lock className="h-4 w-4 flex-shrink-0" />
             <span>Market is currently closed for {activeSymbol}. Orders suspended.</span>
+          </div>
+        )}
+
+        {!isPriceAvailable && isMarketOpen && (
+          <div className="flex items-center space-x-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-700 dark:text-amber-300 text-xs font-medium">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>Waiting for a live market quote. Orders are temporarily disabled.</span>
           </div>
         )}
 
@@ -241,7 +252,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <span>Higher</span>
           </div>
           <span className="text-[10px] sm:text-[11px] font-mono font-medium opacity-90 mt-0.5">
-            Buy @ {currentPrice > 0 ? currentPrice.toFixed(pipPlaces) : 'Spot'}
+            Buy @ {isPriceAvailable ? currentPrice.toFixed(pipPlaces) : 'Spot'}
           </span>
         </button>
 
@@ -257,7 +268,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <span>Lower</span>
           </div>
           <span className="text-[10px] sm:text-[11px] font-mono font-medium opacity-90 mt-0.5">
-            Sell @ {currentPrice > 0 ? currentPrice.toFixed(pipPlaces) : 'Spot'}
+            Sell @ {isPriceAvailable ? currentPrice.toFixed(pipPlaces) : 'Spot'}
           </span>
         </button>
       </div>

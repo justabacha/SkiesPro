@@ -1,6 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { PriceTick, BinaryContract, Candle } from '../types/trading.types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CandlestickSeries,
+  ColorType,
+  createChart,
+  IPriceLine,
+  ISeriesApi,
+  LineSeries,
+  LineStyle,
+  UTCTimestamp,
+} from 'lightweight-charts';
+import { PriceTick, BinaryContract } from '../types/trading.types';
 import { tradingService } from '../services/tradingService';
+import { getPipSize, getPriceDecimalPlaces } from '../utils/pricePrecision';
 
 export interface TradingChartProps {
   symbol: string;
@@ -10,77 +21,20 @@ export interface TradingChartProps {
   pipDecimalPlaces?: number;
 }
 
-function generateFallbackCandles(
-  history: PriceTick[],
-  granularitySec: number,
-  latestPrice: number,
-  symbolStr: string
-): Candle[] {
-  const sanitizedHistory = history.filter((t) => !t.symbol || t.symbol === symbolStr);
-  if (sanitizedHistory.length >= 4) {
-    const count = Math.min(30, Math.max(10, Math.floor(sanitizedHistory.length / 2)));
-    const chunkSize = Math.max(1, Math.floor(sanitizedHistory.length / count));
-    const result: Candle[] = [];
+type Time = UTCTimestamp;
+type PriceLineSeries = ISeriesApi<'Candlestick'> | ISeriesApi<'Line'>;
 
-    for (let i = 0; i < sanitizedHistory.length; i += chunkSize) {
-      const chunk = sanitizedHistory.slice(i, i + chunkSize);
-      const prices = chunk.map((t) => t.price);
-      const open = prices[0];
-      const close = prices[prices.length - 1];
-      const high = Math.max(...prices);
-      const low = Math.min(...prices);
-      const openTime = chunk[0].tick_time;
-      const closeTime = chunk[chunk.length - 1].tick_time;
+const TIMEFRAMES: Record<string, number> = {
+  '1m': 60,
+  '5m': 300,
+  '15m': 900,
+  '1H': 3600,
+  '4H': 14400,
+  '1D': 86400,
+};
 
-      result.push({
-        symbol: symbolStr,
-        granularity_seconds: granularitySec,
-        open_time: openTime,
-        close_time: closeTime,
-        open,
-        high,
-        low,
-        close,
-      });
-    }
-    return result;
-  }
-
-  const result: Candle[] = [];
-  const candleCount = 20;
-  let basePrice = latestPrice;
-  const now = Date.now();
-
-  for (let i = candleCount; i >= 1; i--) {
-    const openTime = new Date(now - i * granularitySec * 1000).toISOString();
-    const closeTime = new Date(now - (i - 1) * granularitySec * 1000).toISOString();
-    const delta = (Math.random() - 0.48) * (basePrice * 0.001);
-    const open = basePrice;
-    const close = open + delta;
-    const high = Math.max(open, close) + Math.random() * (basePrice * 0.0005);
-    const low = Math.min(open, close) - Math.random() * (basePrice * 0.0005);
-    basePrice = close;
-
-    result.push({
-      symbol: symbolStr,
-      granularity_seconds: granularitySec,
-      open_time: openTime,
-      close_time: closeTime,
-      open,
-      high,
-      low,
-      close,
-    });
-  }
-
-  if (result.length > 0) {
-    result[result.length - 1].close = latestPrice;
-    result[result.length - 1].high = Math.max(result[result.length - 1].high, latestPrice);
-    result[result.length - 1].low = Math.min(result[result.length - 1].low, latestPrice);
-  }
-  return result;
-}
-
+const cacheSymbol = (symbol: string) => symbol.replace(/[^a-z0-9]/gi, '').toUpperCase();
+const toTime = (time: string): Time => Math.floor(new Date(time).getTime() / 1000) as Time;
 export const TradingChart: React.FC<TradingChartProps> = ({
   symbol,
   priceHistory,
@@ -95,7 +49,20 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     const saved = localStorage.getItem('skies_chart_type');
     return saved === 'candle' || saved === 'line' ? saved : 'line';
   });
-  const [candles, setCandles] = useState<Candle[]>([]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const lineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const currentCandleRef = useRef<{ time: Time; open: number; high: number; low: number; close: number } | null>(null);
+  const lastAppliedTickRef = useRef<string>('');
+  const priceLinesRef = useRef<Array<{ series: PriceLineSeries; line: IPriceLine }>>([]);
+  const priceHistoryRef = useRef(priceHistory);
+  const activeContractsRef = useRef(activeContracts);
+  const symbolRef = useRef(symbol);
+  priceHistoryRef.current = priceHistory;
+  activeContractsRef.current = activeContracts;
+  symbolRef.current = symbol;
+  const granularity = TIMEFRAMES[selectedTimeframe] || TIMEFRAMES['1m'];
 
   useEffect(() => {
     localStorage.setItem('skies_timeframe', selectedTimeframe);
@@ -105,455 +72,317 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     localStorage.setItem('skies_chart_type', chartType);
   }, [chartType]);
 
-  const timeframes = ['1m', '5m', '15m', '1H', '4H', '1D'];
-
-  const granularity = useMemo(() => {
-    switch (selectedTimeframe) {
-      case '5m': return 300;
-      case '15m': return 900;
-      case '1H': return 3600;
-      case '4H': return 14400;
-      case '1D': return 86400;
-      case '1m':
-      default:
-        return 60;
-    }
-  }, [selectedTimeframe]);
-
-  // Filter history based on selected timeframe & symbol
-  const displayedHistory = useMemo(() => {
-    const symbolTicks = priceHistory.filter((t) => !t.symbol || t.symbol === symbol);
-    if (symbolTicks.length === 0) {
-      return [{ symbol, price: currentPrice, tick_time: new Date().toISOString(), timestamp: Date.now() }];
-    }
-    return symbolTicks;
-  }, [priceHistory, currentPrice, symbol]);
-
-  // Stable active contracts key to avoid unnecessary re-computations during polling
-  const activeContractsKey = useMemo(() => {
-    return activeContracts
-      .filter((c) => c.asset_symbol === symbol)
-      .map((c) => `${c.id}_${c.status}_${c.strike_price}_${c.stake}`)
-      .join('|');
-  }, [activeContracts, symbol]);
-
-  // Filter active contracts by active symbol
-  const assetActiveContracts = useMemo(() => {
-    return activeContracts.filter((c) => c.asset_symbol === symbol);
-  }, [activeContractsKey, activeContracts, symbol]);
-
-  // Fetch base historical candles when symbol, granularity, or chartType changes
   useEffect(() => {
-    if (chartType !== 'candle') return;
+    if (!containerRef.current) return;
 
-    let isMounted = true;
-    setCandles([]); // Flush stale candles on symbol switch
-    tradingService
-      .getCandles(symbol, granularity, 30)
-      .then((data) => {
-        if (!isMounted) return;
-        if (data && data.length > 0) {
-          setCandles(data);
-        } else {
-          setCandles(generateFallbackCandles(displayedHistory, granularity, currentPrice, symbol));
-        }
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setCandles(generateFallbackCandles(displayedHistory, granularity, currentPrice, symbol));
+    const chart = createChart(containerRef.current, {
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight,
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#94a3b8',
+      },
+      grid: {
+        vertLines: { color: 'rgba(148, 163, 184, 0.12)' },
+        horzLines: { color: 'rgba(148, 163, 184, 0.12)' },
+      },
+      rightPriceScale: { borderColor: 'rgba(148, 163, 184, 0.2)' },
+      timeScale: { borderColor: 'rgba(148, 163, 184, 0.2)', timeVisible: true },
+      crosshair: { mode: 1 },
+    });
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: '#10B981',
+      downColor: '#EF4444',
+      borderVisible: false,
+      wickUpColor: '#10B981',
+      wickDownColor: '#EF4444',
+      visible: false,
+    });
+    const lineSeries = chart.addSeries(LineSeries, {
+      color: '#10B981',
+      lineWidth: 2,
+      visible: false,
+    });
+    chartRef.current = chart;
+    candleSeriesRef.current = candleSeries;
+    lineSeriesRef.current = lineSeries;
+
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      chart.applyOptions({
+        width: Math.floor(entry.contentRect.width),
+        height: Math.floor(entry.contentRect.height),
       });
+    });
+    resizeObserver.observe(containerRef.current);
 
     return () => {
-      isMounted = false;
+      resizeObserver.disconnect();
+      priceLinesRef.current.forEach(({ series, line }) => series.removePriceLine(line));
+      priceLinesRef.current = [];
+      chart.remove();
+      chartRef.current = null;
+      candleSeriesRef.current = null;
+      lineSeriesRef.current = null;
+      currentCandleRef.current = null;
+      lastAppliedTickRef.current = '';
     };
-  }, [symbol, granularity, chartType]);
+  }, []);
 
-  // Smoothly update the current candle or append a new one on live price ticks
   useEffect(() => {
-    if (chartType !== 'candle' || !currentPrice || currentPrice <= 0) return;
+    candleSeriesRef.current?.applyOptions({ visible: chartType === 'candle' });
+    lineSeriesRef.current?.applyOptions({ visible: chartType === 'line' });
+  }, [chartType]);
 
-    const latestTickTime =
-      priceHistory.length > 0
-        ? new Date(priceHistory[priceHistory.length - 1].tick_time).getTime()
-        : Date.now();
+  const activeContractsKey = useMemo(
+    () =>
+      activeContracts
+        .filter((contract) => cacheSymbol(contract.asset_symbol) === cacheSymbol(symbol))
+        .map((contract) =>
+          [
+            contract.id,
+            contract.contract_type,
+            contract.strike_price,
+            contract.stake,
+            contract.potential_payout,
+          ].join(':')
+        )
+        .join('|'),
+    [activeContracts, symbol]
+  );
 
-    setCandles((prevCandles) => {
-      if (prevCandles.length === 0) return prevCandles;
+  const symbolContracts = useMemo(
+    () => {
+      if (!activeContractsKey) return [];
+      return activeContractsRef.current.filter(
+        (contract) => cacheSymbol(contract.asset_symbol) === cacheSymbol(symbolRef.current)
+      );
+    },
+    // The key intentionally keeps the same result reference during identical polling responses.
+    [activeContractsKey]
+  );
 
-      const lastIndex = prevCandles.length - 1;
-      const lastCandle = prevCandles[lastIndex];
-      const lastOpenMs = new Date(lastCandle.open_time).getTime();
-      const intervalMs = granularity * 1000;
+  const latestContract = symbolContracts[symbolContracts.length - 1];
+  const pipPlaces = getPriceDecimalPlaces(symbol, pipDecimalPlaces, currentPrice);
+  const pipSize = getPipSize(symbol, pipPlaces, currentPrice);
+  const strike = latestContract ? Number(latestContract.strike_price) : NaN;
+  const isHigher = latestContract?.contract_type === 'higher';
+  const isWinning =
+    currentPrice > 0 &&
+    latestContract !== undefined &&
+    (isHigher ? currentPrice > strike : currentPrice < strike);
+  const pipDelta = latestContract && Number.isFinite(strike) ? (currentPrice - strike) / pipSize : 0;
+  const payout = latestContract ? Number(latestContract.potential_payout || 0) : 0;
 
-      if (isNaN(lastOpenMs)) return prevCandles;
+  useEffect(() => {
+    const candleSeries = candleSeriesRef.current;
+    const lineSeries = lineSeriesRef.current;
+    const chart = chartRef.current;
+    if (!candleSeries || !lineSeries || !chart) return;
 
-      // Check if incoming tick timestamp falls within the current candle's interval
-      if (latestTickTime < lastOpenMs + intervalMs) {
-        // YES: Update high, low, close of the LAST candle in state without re-creating historical candles
-        const updatedLast: Candle = {
-          ...lastCandle,
-          close: currentPrice,
-          high: Math.max(lastCandle.high, currentPrice),
-          low: Math.min(lastCandle.low, currentPrice),
-        };
-        const nextCandles = [...prevCandles];
-        nextCandles[lastIndex] = updatedLast;
-        return nextCandles;
+    let isCurrent = true;
+    currentCandleRef.current = null;
+    lastAppliedTickRef.current = '';
+    candleSeries.setData([]);
+    lineSeries.setData([]);
+
+    const applyTick = (price: number, timestamp: number) => {
+      if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return;
+      const time = Math.floor(timestamp / 1000) as Time;
+      const tickKey = `${time}:${price}`;
+      if (lastAppliedTickRef.current === tickKey) return;
+      lastAppliedTickRef.current = tickKey;
+
+      const candleStart = (Math.floor(Number(time) / granularity) * granularity) as Time;
+      const current = currentCandleRef.current;
+      if (current && Number(candleStart) < Number(current.time)) return;
+
+      if (current && candleStart === current.time) {
+        current.high = Math.max(current.high, price);
+        current.low = Math.min(current.low, price);
+        current.close = price;
+        candleSeries.update({ ...current });
       } else {
-        // NO: Append a new candle to the series
-        const newCandleStartMs = Math.floor(latestTickTime / intervalMs) * intervalMs;
-        const newCandle: Candle = {
-          symbol,
-          granularity_seconds: granularity,
-          open_time: new Date(newCandleStartMs).toISOString(),
-          close_time: new Date(newCandleStartMs + intervalMs).toISOString(),
-          open: currentPrice,
-          high: currentPrice,
-          low: currentPrice,
-          close: currentPrice,
-        };
-        return [...prevCandles, newCandle];
+        const next = { time: candleStart, open: price, high: price, low: price, close: price };
+        currentCandleRef.current = next;
+        candleSeries.update(next);
       }
+      lineSeries.update({ time, value: price });
+    };
+
+    tradingService.getCandles(symbol, granularity, 200).then((data) => {
+      if (!isCurrent) return;
+      const candles = data
+        .map((candle) => ({
+          time: toTime(candle.open_time),
+          open: Number(candle.open),
+          high: Number(candle.high),
+          low: Number(candle.low),
+          close: Number(candle.close),
+        }))
+        .filter(
+          (candle) =>
+            Number.isFinite(Number(candle.time)) &&
+            [candle.open, candle.high, candle.low, candle.close].every(Number.isFinite)
+        )
+        .sort((a, b) => Number(a.time) - Number(b.time));
+
+      lastAppliedTickRef.current = '';
+      candleSeries.setData(candles);
+      lineSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
+      const last = candles[candles.length - 1];
+      currentCandleRef.current = last ? { ...last } : null;
+
+      const lastTick = [...priceHistoryRef.current]
+        .reverse()
+        .find((tick) => cacheSymbol(tick.symbol) === cacheSymbol(symbol));
+      if (lastTick) {
+        const timestamp = new Date(lastTick.tick_time).getTime();
+        applyTick(lastTick.price, timestamp);
+      }
+      chart.timeScale().fitContent();
     });
-  }, [currentPrice, priceHistory, granularity, symbol, chartType]);
 
-  // Active candles for rendering
-  const activeCandles = useMemo(() => {
-    if (chartType !== 'candle') return [];
-    if (candles.length > 0) return candles;
-    return generateFallbackCandles(displayedHistory, granularity, currentPrice, symbol);
-  }, [chartType, candles, displayedHistory, granularity, currentPrice, symbol]);
+    return () => {
+      isCurrent = false;
+    };
+  }, [symbol, granularity]);
 
-  // Min and Max prices for chart scaling
-  const { minPrice, maxPrice, prices } = useMemo(() => {
-    if (chartType === 'candle' && activeCandles.length > 0) {
-      const highs = activeCandles.map((c) => c.high);
-      const lows = activeCandles.map((c) => c.low);
-      highs.push(currentPrice);
-      lows.push(currentPrice);
-      if (assetActiveContracts.length > 0) {
-        const strike = parseFloat(assetActiveContracts[assetActiveContracts.length - 1].strike_price);
-        if (!isNaN(strike)) {
-          highs.push(strike);
-          lows.push(strike);
-        }
-      }
-      const min = Math.min(...lows);
-      const max = Math.max(...highs);
-      const padding = (max - min) * 0.1 || (min * 0.001);
-      return {
-        minPrice: min - padding,
-        maxPrice: max + padding,
-        prices: activeCandles.map((c) => c.close),
-      };
+  useEffect(() => {
+    const lastTick = [...priceHistory]
+      .reverse()
+      .find((tick) => cacheSymbol(tick.symbol) === cacheSymbol(symbol));
+    if (!lastTick) return;
+    const timestamp = new Date(lastTick.tick_time).getTime();
+    if (!Number.isFinite(timestamp)) return;
+
+    const candleSeries = candleSeriesRef.current;
+    const lineSeries = lineSeriesRef.current;
+    if (!candleSeries || !lineSeries || lastAppliedTickRef.current === `${Math.floor(timestamp / 1000)}:${lastTick.price}`) {
+      return;
     }
 
-    const rawPrices = displayedHistory.map((t) => t.price);
-    const min = Math.min(...rawPrices);
-    const max = Math.max(...rawPrices);
-    const padding = (max - min) * 0.1 || (min * 0.001);
-    return {
-      minPrice: min - padding,
-      maxPrice: max + padding,
-      prices: rawPrices,
-    };
-  }, [chartType, activeCandles, displayedHistory, currentPrice, assetActiveContracts]);
+    const time = Math.floor(timestamp / 1000) as Time;
+    const tickKey = `${time}:${lastTick.price}`;
+    lastAppliedTickRef.current = tickKey;
+    const candleStart = (Math.floor(Number(time) / granularity) * granularity) as Time;
+    const current = currentCandleRef.current;
+    if (current && Number(candleStart) < Number(current.time)) return;
 
-  // Compute SVG polyline points (Line Chart)
-  const points = useMemo(() => {
-    if (prices.length < 2) return '';
-    const width = 800;
-    const height = 320;
-    const range = maxPrice - minPrice || 1;
-
-    return prices
-      .map((p, index) => {
-        const x = (index / (prices.length - 1)) * width;
-        const y = height - ((p - minPrice) / range) * height;
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(' ');
-  }, [prices, minPrice, maxPrice]);
-
-  // Compute area SVG points
-  const areaPoints = useMemo(() => {
-    if (!points) return '';
-    return `0,320 ${points} 800,320`;
-  }, [points]);
-
-  // SVG Candlesticks Data Calculation
-  const candleElementsData = useMemo(() => {
-    if (chartType !== 'candle' || activeCandles.length === 0) return [];
-    const width = 800;
-    const height = 320;
-    const range = maxPrice - minPrice || 1;
-    const count = activeCandles.length;
-    const colWidth = width / count;
-    const bodyWidth = Math.max(3, Math.min(24, colWidth * 0.65));
-
-    return activeCandles.map((c, index) => {
-      const centerX = (index + 0.5) * colWidth;
-      const highY = height - ((c.high - minPrice) / range) * height;
-      const lowY = height - ((c.low - minPrice) / range) * height;
-      const openY = height - ((c.open - minPrice) / range) * height;
-      const closeY = height - ((c.close - minPrice) / range) * height;
-
-      const isBullish = c.close >= c.open;
-      const color = isBullish ? '#10B981' : '#EF4444';
-      const bodyTop = Math.min(openY, closeY);
-      const bodyHeight = Math.max(2, Math.abs(openY - closeY));
-
-      return {
-        key: index,
-        centerX,
-        highY,
-        lowY,
-        bodyLeft: centerX - bodyWidth / 2,
-        bodyWidth,
-        bodyTop,
-        bodyHeight,
-        color,
-        isBullish,
+    if (current && candleStart === current.time) {
+      current.high = Math.max(current.high, lastTick.price);
+      current.low = Math.min(current.low, lastTick.price);
+      current.close = lastTick.price;
+      candleSeries.update({ ...current });
+    } else {
+      const next = {
+        time: candleStart,
+        open: lastTick.price,
+        high: lastTick.price,
+        low: lastTick.price,
+        close: lastTick.price,
       };
-    });
-  }, [chartType, activeCandles, minPrice, maxPrice]);
+      currentCandleRef.current = next;
+      candleSeries.update(next);
+    }
+    lineSeries.update({ time, value: lastTick.price });
+  }, [priceHistory, symbol, granularity]);
 
-  // Active contract strike lines & Pip Delta calculations
-  const activeContractDetails = useMemo(() => {
-    if (assetActiveContracts.length === 0) return null;
-    const contract = assetActiveContracts[assetActiveContracts.length - 1];
-    const strike = parseFloat(contract.strike_price);
-    if (isNaN(strike)) return null;
+  useEffect(() => {
+    const series: PriceLineSeries | null =
+      chartType === 'candle' ? candleSeriesRef.current : lineSeriesRef.current;
+    if (!series) return;
 
-    const isHigher = contract.contract_type === 'higher';
-    const isWinning = isHigher ? currentPrice > strike : currentPrice < strike;
-
-    const range = maxPrice - minPrice || 1;
-    const strikeY = 320 - ((strike - minPrice) / range) * 320;
-
-    const pipMultiplier = currentPrice > 100 ? 100 : 10000;
-    const pipDelta = (currentPrice - strike) * pipMultiplier;
-
-    return {
-      strike,
-      stake: parseFloat(contract.stake),
-      payout: parseFloat(contract.potential_payout || '0'),
-      strikeY: Math.max(16, Math.min(304, strikeY)),
-      isHigher,
-      isWinning,
-      pipDelta,
-    };
-  }, [assetActiveContracts, currentPrice, minPrice, maxPrice]);
-
-  const pipPlaces = pipDecimalPlaces ?? (currentPrice > 100 ? 2 : 5);
+    priceLinesRef.current.forEach(({ series: previousSeries, line }) =>
+      previousSeries.removePriceLine(line)
+    );
+    priceLinesRef.current = symbolContracts
+      .map((contract) => {
+        const price = Number(contract.strike_price);
+        if (!Number.isFinite(price)) return null;
+        const higher = contract.contract_type === 'higher';
+        const line = series.createPriceLine({
+          price,
+          color: higher ? '#10B981' : '#EF4444',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `${higher ? 'CALL' : 'PUT'} ${contract.asset_symbol}`,
+        });
+        return { series, line };
+      })
+      .filter((entry): entry is { series: PriceLineSeries; line: IPriceLine } => entry !== null);
+  }, [activeContractsKey, chartType, symbol, symbolContracts]);
 
   return (
     <div
       data-testid="trading-chart"
       className="relative w-full rounded-2xl bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-3 sm:p-4 shadow-xl flex flex-col justify-between overflow-hidden min-h-[320px] sm:min-h-[380px] transition-colors duration-200"
     >
-      {/* Chart Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-2 z-10 pb-2 border-b border-border-light dark:border-border-dark/50">
         <div className="flex items-center space-x-2 sm:space-x-3">
           <span className="font-bold text-sm sm:text-base text-text-light-primary dark:text-text-dark-primary font-mono">{symbol}</span>
           <span className="font-mono text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">
-            {currentPrice.toFixed(pipPlaces)}
+            {currentPrice > 0 ? currentPrice.toFixed(pipPlaces) : '--'}
           </span>
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Chart Type Toggle (Line | Candle) */}
-          <div
-            data-testid="chart-type-toggle"
-            className="flex items-center space-x-0.5 sm:space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark"
-          >
-            <button
-              type="button"
-              data-testid="chart-type-line"
-              onClick={() => setChartType('line')}
-              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-mono font-medium rounded-md transition-colors ${
-                chartType === 'line'
-                  ? 'bg-brand text-white shadow-sm'
-                  : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary hover:bg-bg-light-secondary dark:hover:bg-bg-dark-secondary'
-              }`}
-            >
-              Line
-            </button>
-            <button
-              type="button"
-              data-testid="chart-type-candle"
-              onClick={() => setChartType('candle')}
-              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-mono font-medium rounded-md transition-colors ${
-                chartType === 'candle'
-                  ? 'bg-brand text-white shadow-sm'
-                  : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary hover:bg-bg-light-secondary dark:hover:bg-bg-dark-secondary'
-              }`}
-            >
-              Candle
-            </button>
-          </div>
-
-          {/* Timeframe Selector (UI-TRADE-010) */}
-          <div
-            data-testid="timeframe-selector"
-            className="flex items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark"
-          >
-            {timeframes.map((tf) => (
+          <div data-testid="chart-type-toggle" className="flex items-center space-x-0.5 sm:space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark">
+            {(['line', 'candle'] as const).map((type) => (
               <button
-                key={tf}
+                key={type}
                 type="button"
-                onClick={() => setSelectedTimeframe(tf)}
+                data-testid={`chart-type-${type}`}
+                onClick={() => setChartType(type)}
                 className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-mono font-medium rounded-md transition-colors ${
-                  selectedTimeframe === tf
+                  chartType === type
                     ? 'bg-brand text-white shadow-sm'
                     : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary hover:bg-bg-light-secondary dark:hover:bg-bg-dark-secondary'
                 }`}
               >
-                {tf}
+                {type === 'line' ? 'Line' : 'Candle'}
+              </button>
+            ))}
+          </div>
+
+          <div data-testid="timeframe-selector" className="flex items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark">
+            {Object.keys(TIMEFRAMES).map((timeframe) => (
+              <button
+                key={timeframe}
+                type="button"
+                onClick={() => setSelectedTimeframe(timeframe)}
+                className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-mono font-medium rounded-md transition-colors ${
+                  selectedTimeframe === timeframe
+                    ? 'bg-brand text-white shadow-sm'
+                    : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary hover:bg-bg-light-secondary dark:hover:bg-bg-dark-secondary'
+                }`}
+              >
+                {timeframe}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Main SVG Canvas */}
       <div className="relative flex-1 w-full mt-3 sm:mt-4 min-h-[240px] sm:min-h-[280px]">
-        <svg
-          viewBox="0 0 800 320"
-          className="w-full h-full overflow-visible"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10B981" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
-
-          {/* Grid lines */}
-          <line x1="0" y1="80" x2="800" y2="80" className="stroke-border-light dark:stroke-border-dark/60" strokeDasharray="4 4" strokeWidth="1" />
-          <line x1="0" y1="160" x2="800" y2="160" className="stroke-border-light dark:stroke-border-dark/60" strokeDasharray="4 4" strokeWidth="1" />
-          <line x1="0" y1="240" x2="800" y2="240" className="stroke-border-light dark:stroke-border-dark/60" strokeDasharray="4 4" strokeWidth="1" />
-
-          {/* Line Chart View */}
-          {chartType === 'line' && (
-            <>
-              {areaPoints && <polygon points={areaPoints} fill="url(#chartGradient)" />}
-              {points && (
-                <polyline
-                  fill="none"
-                  stroke="#10B981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points={points}
-                />
-              )}
-            </>
-          )}
-
-          {/* Candlestick Chart View */}
-          {chartType === 'candle' && (
-            <g data-testid="candlestick-group">
-              {candleElementsData.map((c) => (
-                <g key={c.key}>
-                  {/* Wick line */}
-                  <line
-                    x1={c.centerX}
-                    y1={c.highY}
-                    x2={c.centerX}
-                    y2={c.lowY}
-                    stroke={c.color}
-                    strokeWidth="1.5"
-                  />
-                  {/* Candlestick body */}
-                  <rect
-                    x={c.bodyLeft}
-                    y={c.bodyTop}
-                    width={c.bodyWidth}
-                    height={c.bodyHeight}
-                    fill={c.color}
-                    rx="1"
-                  />
-                </g>
-              ))}
-            </g>
-          )}
-
-          {/* Active Contract Strike Line with Price Tag Embedded on Line */}
-          {activeContractDetails && (
-            <g>
-              <line
-                x1="0"
-                y1={activeContractDetails.strikeY}
-                x2="650"
-                y2={activeContractDetails.strikeY}
-                stroke={activeContractDetails.isWinning ? '#10B981' : '#EF4444'}
-                strokeWidth="2"
-                strokeDasharray="6 4"
-              />
-
-              <rect
-                x="655"
-                y={activeContractDetails.strikeY - 12}
-                width="110"
-                height="24"
-                rx="6"
-                fill={activeContractDetails.isWinning ? '#10B981' : '#EF4444'}
-              />
-              <text
-                x="710"
-                y={activeContractDetails.strikeY + 4}
-                textAnchor="middle"
-                fill="#FFFFFF"
-                fontSize="11"
-                fontWeight="bold"
-                fontFamily="monospace"
-              >
-                {activeContractDetails.strike.toFixed(pipPlaces)}
-              </text>
-
-              <line
-                x1="770"
-                y1={activeContractDetails.strikeY}
-                x2="800"
-                y2={activeContractDetails.strikeY}
-                stroke={activeContractDetails.isWinning ? '#10B981' : '#EF4444'}
-                strokeWidth="2"
-                strokeDasharray="6 4"
-              />
-            </g>
-          )}
-        </svg>
-
-        {/* Bottom Control / Status Overlay Bar */}
+        <div ref={containerRef} className="absolute inset-0" data-testid="chart-canvas" />
         <div className="absolute left-2 bottom-2 right-2 flex items-center justify-between pointer-events-none z-20 gap-2">
-          {/* Active Position Badge with Pip Delta Pill */}
-          {activeContractDetails ? (
+          {latestContract && currentPrice > 0 ? (
             <div
               data-testid="pip-delta-pill"
               className={`pointer-events-auto px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-mono font-bold text-white shadow-md flex items-center space-x-1.5 backdrop-blur-sm ${
-                activeContractDetails.isWinning ? 'bg-emerald-600/95' : 'bg-rose-600/95'
+                isWinning ? 'bg-emerald-600/95' : 'bg-rose-600/95'
               }`}
             >
-              <span>
-                {activeContractDetails.pipDelta >= 0 ? '+' : ''}
-                {activeContractDetails.pipDelta.toFixed(1)} Pips
-              </span>
-              <span>
-                ({activeContractDetails.isWinning
-                  ? `WINNING +KES ${activeContractDetails.payout.toFixed(2)}`
-                  : 'LOSING'})
-              </span>
+              <span>{pipDelta >= 0 ? '+' : ''}{pipDelta.toFixed(1)} Pips</span>
+              <span>({isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})</span>
             </div>
-          ) : (
-            <div />
-          )}
-
-          {/* Current Spot Cursor Badge (Bottom Right) */}
+          ) : <div />}
           <div className="pointer-events-auto bg-bg-light-primary/95 dark:bg-bg-dark-tertiary/95 border border-border-light dark:border-border-dark px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-mono flex items-center space-x-1.5 backdrop-blur-sm shadow-md">
             <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-ping" />
-            <span className="text-text-light-primary dark:text-text-dark-primary font-bold">Spot: {currentPrice.toFixed(pipPlaces)}</span>
+            <span className="text-text-light-primary dark:text-text-dark-primary font-bold">
+              Spot: {currentPrice > 0 ? currentPrice.toFixed(pipPlaces) : '--'}
+            </span>
           </div>
         </div>
       </div>

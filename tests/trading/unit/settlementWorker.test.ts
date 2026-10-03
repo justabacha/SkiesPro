@@ -36,7 +36,7 @@ describe('SettlementWorker (SET-UNIT-004 to 010)', () => {
     expect(tickRepo.getPriceAt).not.toHaveBeenCalled();
   });
 
-  test('SET-UNIT-005: settle_priceFromRedisNotUsed - should fetch price from repository (DB)', async () => {
+  test('SET-UNIT-005: should fetch settlement price from repository (DB)', async () => {
     contractRepo.updateStatusCAS.mockResolvedValue(true);
     contractRepo.findById.mockResolvedValue({ assetSymbol: 'EUR/USD', expiryTime: new Date() } as any);
     tickRepo.getPriceAt.mockResolvedValue({ mid_price: '1.10000', tick_time: new Date().toISOString() } as any);

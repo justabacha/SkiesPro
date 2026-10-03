@@ -1,19 +1,19 @@
 import { PriceGateway } from '../../../src/modules/pricing/websocket/priceGateway.js';
 import { ConnectionManager } from '../../../src/modules/pricing/websocket/connectionManager.js';
 import { SubscriptionManager } from '../../../src/modules/pricing/websocket/subscriptionManager.js';
-import { RedisSubscriber } from '../../../src/modules/pricing/websocket/redisSubscriber.js';
+import { PriceTickSubscriber } from '../../../src/modules/pricing/websocket/priceTickSubscriber.js';
 import { cacheClient } from '../../../src/infrastructure/cache/index.js';
 
 describe('WebSocket Gateway Integration Tests', () => {
   let gateway: PriceGateway;
   let connectionManager: ConnectionManager;
   let subscriptionManager: SubscriptionManager;
-  let redisSubscriber: RedisSubscriber;
+  let priceTickSubscriber: PriceTickSubscriber;
 
   beforeEach(() => {
     connectionManager = new ConnectionManager();
     subscriptionManager = new SubscriptionManager(connectionManager);
-    redisSubscriber = new RedisSubscriber(connectionManager);
+    priceTickSubscriber = new PriceTickSubscriber(connectionManager);
     gateway = new PriceGateway();
   });
 
@@ -47,7 +47,7 @@ describe('WebSocket Gateway Integration Tests', () => {
       connectionManager.shutdown();
     });
 
-    it('should integrate Redis subscriber with connection manager', async () => {
+    it('should integrate the local tick subscriber with connection manager', async () => {
       const mockWebSocket = {
         readyState: 1,
         send: jest.fn(),
@@ -59,9 +59,8 @@ describe('WebSocket Gateway Integration Tests', () => {
       const connectionId = connectionManager.addConnection('user123', mockWebSocket);
       connectionManager.subscribe(connectionId, 'price.EUR/USD');
 
-      // Start Redis subscriber and subscribe to the specific symbol
-      await redisSubscriber.start();
-      await redisSubscriber.subscribeToSymbol('EUR/USD');
+      await priceTickSubscriber.start();
+      await priceTickSubscriber.subscribeToSymbol('EUR/USD');
 
       // Publish a test tick
       const tickData = {
@@ -80,13 +79,13 @@ describe('WebSocket Gateway Integration Tests', () => {
       // Verify message was sent to connection
       expect(mockWebSocket.send).toHaveBeenCalled();
 
-      await redisSubscriber.stop();
+      await priceTickSubscriber.stop();
       connectionManager.shutdown();
     });
   });
 
   describe('Message flow', () => {
-    it('should handle complete message flow from Redis to client', async () => {
+    it('should handle complete message flow from local pub/sub to client', async () => {
       const mockWebSocket = {
         readyState: 1,
         send: jest.fn(),
@@ -98,8 +97,8 @@ describe('WebSocket Gateway Integration Tests', () => {
       const connectionId = connectionManager.addConnection('user123', mockWebSocket);
       connectionManager.subscribe(connectionId, 'price.EUR/USD');
 
-      await redisSubscriber.start();
-      await redisSubscriber.subscribeToSymbol('EUR/USD');
+      await priceTickSubscriber.start();
+      await priceTickSubscriber.subscribeToSymbol('EUR/USD');
 
       // Simulate price tick from WP-08
       const tickData = {
@@ -124,7 +123,7 @@ describe('WebSocket Gateway Integration Tests', () => {
       expect(sentMessage.bid).toBe('1.1234');
       expect(sentMessage.ask).toBe('1.1236');
 
-      await redisSubscriber.stop();
+      await priceTickSubscriber.stop();
       connectionManager.shutdown();
     });
 
@@ -141,8 +140,8 @@ describe('WebSocket Gateway Integration Tests', () => {
       connectionManager.subscribe(connectionId, 'price.EUR/USD');
       connectionManager.subscribe(connectionId, 'price.all');
 
-      await redisSubscriber.start();
-      await redisSubscriber.subscribeToSymbol('EUR/USD');
+      await priceTickSubscriber.start();
+      await priceTickSubscriber.subscribeToSymbol('EUR/USD');
 
       const tickData = {
         symbol: 'EUR/USD',
@@ -160,32 +159,8 @@ describe('WebSocket Gateway Integration Tests', () => {
       expect(sentMessage.type).toBe('price');
       expect(sentMessage.symbol).toBe('EUR/USD');
 
-      await redisSubscriber.stop();
+      await priceTickSubscriber.stop();
       connectionManager.shutdown();
-    });
-  });
-
-  describe('Error handling', () => {
-    it('should handle Redis Pub/Sub errors gracefully', async () => {
-      // This test verifies error handling when Redis is unavailable
-      const mockWebSocket = {
-        readyState: 1,
-        send: jest.fn(),
-        ping: jest.fn(),
-        close: jest.fn(),
-        on: jest.fn(),
-      } as any;
-
-      connectionManager.addConnection('user123', mockWebSocket);
-
-      // Try to start subscriber without Redis
-      // Should handle error gracefully
-      try {
-        await redisSubscriber.start();
-      } catch (error) {
-        // Expected to throw without proper Redis setup
-        expect(error).toBeDefined();
-      }
     });
   });
 

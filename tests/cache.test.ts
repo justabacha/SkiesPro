@@ -1,29 +1,41 @@
 import { InMemoryAdapter } from '../src/infrastructure/cache/InMemoryAdapter.js';
 import { CacheClient } from '../src/infrastructure/cache/CacheClient.js';
 import { KEY_PATTERNS, DEFAULT_TTLS, getClusterForKey } from '../src/infrastructure/cache/keyPatterns.js';
-import { handleRedisError, isRedisDisabled, resetRedisDisabled, RedisAdapter } from '../src/infrastructure/cache/RedisAdapter.js';
+import { DEFAULT_PRICE_TTL_MS, localCache } from '../src/infrastructure/cache/memoryCache.js';
+import { normalizeCacheSymbol, priceCacheKey } from '../src/modules/pricing/utils/symbolNormalizer.js';
+import { PriceDistributionService } from '../src/modules/pricing/services/priceDistributionService.js';
 
-describe('Redis Quota Limit Fault-Tolerance', () => {
+describe('localCache', () => {
   beforeEach(() => {
-    resetRedisDisabled();
+    localCache.flush();
   });
 
-  it('should enable isRedisDisabled when ERR max requests limit exceeded is raised', () => {
-    expect(isRedisDisabled).toBe(false);
-    handleRedisError(new Error('ERR max requests limit exceeded'));
-    expect(isRedisDisabled).toBe(true);
+  it('stores and removes values in process-local memory', () => {
+    localCache.set('price:EURUSD', { mid: '1.12345' });
+    expect(localCache.get('price:EURUSD')).toEqual({ mid: '1.12345' });
+    localCache.del('price:EURUSD');
+    expect(localCache.get('price:EURUSD')).toBeUndefined();
   });
 
-  it('should bypass Redis operations when isRedisDisabled is true', async () => {
-    handleRedisError(new Error('ERR max requests limit exceeded'));
-    const adapter = new RedisAdapter('redis://localhost:6379');
+  it('normalizes cache symbols to uppercase alphanumeric keys', () => {
+    expect(normalizeCacheSymbol(' eur / usd ')).toBe('EURUSD');
+    expect(priceCacheKey('EUR/USD')).toBe('price:EURUSD');
+  });
 
-    // All methods should immediately return without throwing
-    const value = await adapter.get('test_key');
-    expect(value).toBeNull();
+  it('uses a 10-second default TTL and accepts explicit millisecond TTLs', async () => {
+    expect(DEFAULT_PRICE_TTL_MS).toBe(10_000);
+    localCache.set('custom', 'value', 20);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(localCache.get('custom')).toBeUndefined();
+  });
 
-    await expect(adapter.set('test_key', 'val')).resolves.toBeUndefined();
-    await expect(adapter.del('test_key')).resolves.toBeUndefined();
+  it('stores prices under a normalized symbol and publishes the canonical symbol', async () => {
+    const service = new PriceDistributionService();
+    await service.distributeTick(' eurusd ', '1.10000', '1.10002', '1.10001', new Date());
+    expect(localCache.get('price:EURUSD')).toMatchObject({
+      symbol: 'EUR/USD',
+      mid: '1.10001',
+    });
   });
 });
 
@@ -188,7 +200,7 @@ describe('keyPatterns', () => {
 
     it('should generate latest price key', () => {
       const key = KEY_PATTERNS.PRICING.LATEST_PRICE('EUR/USD');
-      expect(key).toBe('price:EUR/USD:latest');
+      expect(key).toBe('price:EURUSD');
     });
 
     it('should generate candle key', () => {
@@ -211,8 +223,8 @@ describe('keyPatterns', () => {
       expect(DEFAULT_TTLS.RATE_LIMIT).toBe(60);
     });
 
-    it('should have latest price TTL of 2 seconds', () => {
-      expect(DEFAULT_TTLS.LATEST_PRICE).toBe(2);
+    it('should have latest price TTL of 10 seconds', () => {
+      expect(DEFAULT_TTLS.LATEST_PRICE).toBe(10);
     });
   });
 

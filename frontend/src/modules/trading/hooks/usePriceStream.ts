@@ -4,16 +4,25 @@ import { apiClient } from '@/shared/services/apiClient';
 import { websocketService } from '../services/websocketService';
 import { PriceTick, LatencyState } from '../types/trading.types';
 
-// Default initial prices for supported assets
-const DEFAULT_INITIAL_PRICES: Record<string, number> = {
-  'EUR/USD': 1.0850,
-  'GBP/USD': 1.2720,
-  'USD/JPY': 151.40,
-  'Gold': 2345.50,
-};
+const MAX_QUOTE_AGE_MS = 10_000;
+const normalizeSymbol = (value: string) => value.replace(/[^a-z0-9]/gi, '').toUpperCase();
+
+interface LatestPriceResponse {
+  data?: {
+    symbol?: string;
+    mid?: number | string;
+    price?: number | string;
+    tick_time?: string;
+  };
+  symbol?: string;
+  mid?: number | string;
+  price?: number | string;
+  tick_time?: string;
+}
 
 export interface UsePriceStreamReturn {
   currentPrice: number;
+  isPriceAvailable: boolean;
   priceHistory: PriceTick[];
   latencyState: LatencyState;
   isConnected: boolean;
@@ -23,104 +32,90 @@ export interface UsePriceStreamReturn {
 export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStreamReturn => {
   const { isAuthenticated, user } = useAuth();
   const [symbol, setSymbol] = useState<string>(initialSymbol);
-  const [currentPrice, setCurrentPrice] = useState<number>(
-    DEFAULT_INITIAL_PRICES[initialSymbol] || 1.0850
-  );
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [isPriceAvailable, setIsPriceAvailable] = useState(false);
+  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState(0);
   const [priceHistory, setPriceHistory] = useState<PriceTick[]>([]);
   const [latencyState, setLatencyState] = useState<LatencyState>({
-    latencyMs: 35,
-    status: 'good',
+    latencyMs: 0,
+    status: 'disconnected',
     isConnected: false,
   });
-  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   const historyRef = useRef<PriceTick[]>([]);
   const activeSymbolRef = useRef<string>(initialSymbol);
 
-  // Initialize price & fetch live backend price tick on symbol change
+  const acceptTick = useCallback((tick: PriceTick) => {
+    if (
+      normalizeSymbol(tick.symbol) !== normalizeSymbol(activeSymbolRef.current) ||
+      !Number.isFinite(tick.price) ||
+      tick.price <= 0
+    ) {
+      return;
+    }
+
+    const timestamp = new Date(tick.tick_time).getTime();
+    const now = Date.now();
+    if (!Number.isFinite(timestamp) || timestamp > now + 1000 || now - timestamp > MAX_QUOTE_AGE_MS) {
+      return;
+    }
+
+    const liveTick = { ...tick, timestamp };
+    setCurrentPrice(liveTick.price);
+    setIsPriceAvailable(true);
+    setQuoteUpdatedAt(now);
+    historyRef.current = [...historyRef.current.slice(-119), liveTick];
+    setPriceHistory([...historyRef.current]);
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     activeSymbolRef.current = symbol;
+    historyRef.current = [];
+    setPriceHistory([]);
+    setCurrentPrice(0);
+    setIsPriceAvailable(false);
+    setQuoteUpdatedAt(0);
 
-    const basePrice = DEFAULT_INITIAL_PRICES[symbol] || 1.0850;
-    const now = Date.now();
-    const seedTicks: PriceTick[] = [];
-
-    for (let i = 20; i >= 0; i--) {
-      const randomVariance = (Math.random() - 0.5) * (basePrice * 0.0004);
-      const price = Number((basePrice + randomVariance).toFixed(5));
-      const tickTime = new Date(now - i * 1000).toISOString();
-      seedTicks.push({
-        symbol,
-        price,
-        tick_time: tickTime,
-        timestamp: now - i * 1000,
-      });
-    }
-
-    historyRef.current = seedTicks;
-    setPriceHistory(seedTicks);
-    setCurrentPrice(seedTicks[seedTicks.length - 1].price);
-
-    // Fetch actual live price tick from backend REST API
     const fetchLivePrice = async () => {
       try {
         const encoded = encodeURIComponent(symbol);
-        const res = await apiClient.get<{ data?: { price: number; symbol: string } } | { price: number }>(
+        const response = await apiClient.get<LatestPriceResponse>(
           `/api/v1/pricing/assets/${encoded}/price`
         );
-        const resObj = res as { data?: { price: number; symbol: string }; price?: number };
-        const fetchedPrice = resObj.data ? resObj.data.price : resObj.price;
+        const quote = response.data || response;
+        const price = Number(quote.mid ?? quote.price);
+        const quoteSymbol = quote.symbol || symbol;
+        if (!isMounted || !Number.isFinite(price) || price <= 0) return;
 
-        if (isMounted && fetchedPrice && typeof fetchedPrice === 'number') {
-          setCurrentPrice(fetchedPrice);
-          const liveTick: PriceTick = {
-            symbol,
-            price: fetchedPrice,
-            tick_time: new Date().toISOString(),
-            timestamp: Date.now(),
-          };
-          historyRef.current = [...historyRef.current.slice(-120), liveTick];
-          setPriceHistory([...historyRef.current]);
-        }
-      } catch {
-        // Fallback to WebSocket tick stream or seed
+        acceptTick({
+          symbol: quoteSymbol,
+          price,
+          tick_time: quote.tick_time || new Date().toISOString(),
+          timestamp: Date.now(),
+        });
+      } catch (error) {
+        console.warn('Live price is not available; waiting for the price stream.', error);
       }
     };
 
-    fetchLivePrice();
-
+    void fetchLivePrice();
     return () => {
       isMounted = false;
     };
-  }, [symbol]);
+  }, [symbol, acceptTick]);
 
-  // Connect to WebSocket service
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setIsConnected(false);
+      return;
+    }
 
     websocketService.initialize(user?.id || 'session-token');
-
-    const unsubscribePrice = websocketService.onPriceTick((tick) => {
-      if (
-        tick.symbol === activeSymbolRef.current ||
-        tick.symbol.replace('/', '') === activeSymbolRef.current.replace('/', '')
-      ) {
-        setCurrentPrice(tick.price);
-
-        historyRef.current = [...historyRef.current.slice(-120), tick];
-        setPriceHistory([...historyRef.current]);
-      }
-    });
-
-    const unsubscribeLatency = websocketService.onLatencyChange((state) => {
-      setLatencyState(state);
-    });
-
-    const unsubscribeConn = websocketService.onConnectionStateChange((connState) => {
-      setIsConnected(connState);
-    });
-
+    const unsubscribePrice = websocketService.onPriceTick(acceptTick);
+    const unsubscribeLatency = websocketService.onLatencyChange(setLatencyState);
+    const unsubscribeConn = websocketService.onConnectionStateChange(setIsConnected);
     websocketService.subscribeSymbol(symbol);
 
     return () => {
@@ -128,47 +123,36 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
       unsubscribeLatency();
       unsubscribeConn();
     };
-  }, [isAuthenticated, user?.id, symbol]);
+  }, [acceptTick, isAuthenticated, user?.id, symbol]);
 
-  // Simulated tick fallback generator if WebSocket is disconnected
   useEffect(() => {
-    if (isConnected) return;
-
+    if (!isPriceAvailable || quoteUpdatedAt === 0) return;
     const interval = setInterval(() => {
-      const activeSym = activeSymbolRef.current;
-      const base = currentPrice || DEFAULT_INITIAL_PRICES[activeSym] || 1.0850;
-      const pip = base > 100 ? 0.05 : 0.0001;
-      const delta = (Math.random() - 0.49) * pip * 2;
-      const newPrice = Number((base + delta).toFixed(base > 100 ? 2 : 5));
-      const now = Date.now();
-
-      const simulatedTick: PriceTick = {
-        symbol: activeSym,
-        price: newPrice,
-        tick_time: new Date(now).toISOString(),
-        timestamp: now,
-      };
-
-      setCurrentPrice(newPrice);
-      historyRef.current = [...historyRef.current.slice(-120), simulatedTick];
-      setPriceHistory([...historyRef.current]);
+      if (Date.now() - quoteUpdatedAt > MAX_QUOTE_AGE_MS) {
+        setIsPriceAvailable(false);
+        setCurrentPrice(0);
+      }
     }, 1000);
-
     return () => clearInterval(interval);
-  }, [isConnected, currentPrice]);
+  }, [isPriceAvailable, quoteUpdatedAt]);
 
   const subscribeToSymbol = useCallback((newSymbol: string) => {
+    activeSymbolRef.current = newSymbol;
+    historyRef.current = [];
     setSymbol(newSymbol);
+    setCurrentPrice(0);
+    setIsPriceAvailable(false);
+    setQuoteUpdatedAt(0);
+    setPriceHistory([]);
     websocketService.subscribeSymbol(newSymbol);
   }, []);
 
   return {
     currentPrice,
+    isPriceAvailable,
     priceHistory,
-    latencyState: isConnected
-      ? latencyState
-      : { latencyMs: 28, status: 'good', isConnected: true },
-    isConnected: true,
+    latencyState,
+    isConnected,
     subscribeToSymbol,
   };
 };

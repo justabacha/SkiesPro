@@ -22,6 +22,16 @@ const generateUuidV4 = (): string => {
   });
 };
 
+const isUnauthorizedError = (error: unknown): boolean => {
+  if (typeof error !== 'object' || error === null) return false;
+  return (
+    ('status' in error && error.status === 401) ||
+    ('message' in error &&
+      typeof error.message === 'string' &&
+      error.message.includes('Unauthorized'))
+  );
+};
+
 export interface SettlementEvent {
   contractId: string;
   outcome: 'won' | 'lost' | 'draw';
@@ -62,7 +72,8 @@ export interface UseTradingReturn {
     contractType: ContractType,
     stake: string,
     expirySeconds: number,
-    assetSymbol?: string
+    assetSymbol: string | undefined,
+    strikePrice: number
   ) => Promise<BinaryContract | null>;
 
   settlementEvents: SettlementEvent[];
@@ -212,9 +223,9 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
       }
 
       previousActiveIdsRef.current = currentActiveIds;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Failed to fetch active contracts:', err);
-      if (err?.status === 401 || err?.message?.includes('Unauthorized')) {
+      if (isUnauthorizedError(err)) {
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
@@ -235,9 +246,9 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
       const history = await tradingService.getContracts({ limit: 20 });
       setTradeHistory(history);
       hasLoadedHistoryRef.current = true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Failed to fetch trade history:', err);
-      if (err?.status === 401 || err?.message?.includes('Unauthorized')) {
+      if (isUnauthorizedError(err)) {
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
@@ -288,7 +299,10 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
       expirySeconds: number,
       currentPrice: number
     ) => {
-      if (!selectedAsset) return;
+      if (!selectedAsset || !Number.isFinite(currentPrice) || currentPrice <= 0) {
+        setTradeError('MARKET_DATA_UNAVAILABLE');
+        return;
+      }
 
       const numericStake = parseFloat(stake);
       const payoutRate = selectedAsset.payoutRate || 0.60;
@@ -345,6 +359,7 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
       contractType: pendingOrder.contractType,
       stake: pendingOrder.stake,
       expirySeconds: pendingOrder.expirySeconds,
+      strikePrice: pendingOrder.strikePrice,
     };
 
     setIsConfirmModalOpen(false);
@@ -363,16 +378,25 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
     contractType: ContractType,
     stake: string,
     expirySeconds: number,
-    assetSymbol?: string
+    assetSymbol?: string,
+    strikePrice?: number
   ): Promise<BinaryContract | null> => {
     const symbolToUse = assetSymbol || selectedAsset?.symbol || activeSymbol;
-    if (!symbolToUse) return null;
+    if (!symbolToUse) {
+      setTradeError('MARKET_DATA_UNAVAILABLE');
+      return null;
+    }
+    if (!Number.isFinite(strikePrice) || (strikePrice ?? 0) <= 0) {
+      setTradeError('MARKET_DATA_UNAVAILABLE');
+      return null;
+    }
 
     const dto: CreateContractDto = {
       assetSymbol: symbolToUse,
       contractType,
       stake,
       expirySeconds,
+      strikePrice,
     };
 
     return submitTradeInternal(dto);

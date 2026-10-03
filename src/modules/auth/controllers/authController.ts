@@ -62,8 +62,7 @@ export class AuthController {
   }
 
   async verifyMfa(req: Request, res: Response): Promise<void> {
-    // In production, get userId from mfa_session_token in Redis
-    // For MVP, we'll assume it's passed or handled via temporary session
+    // The current MFA verification flow receives the user ID with the one-time code.
     const { userId, totp_code } = req.body;
     try {
       const result = await this.authService.verifyMfa(

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Lock, TrendingUp } from 'lucide-react';
 import { Asset } from '../types/trading.types';
+import { getPriceDecimalPlaces } from '../utils/pricePrecision';
 
 export interface AssetSelectorProps {
   assets: Asset[];
@@ -75,9 +76,11 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
             <div className="text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">
               +{((selectedAsset?.payoutRate || 0.60) * 100).toFixed(0)}%
             </div>
-            {currentPrice !== undefined && (
+            {currentPrice !== undefined && currentPrice > 0 && (
               <div className="text-[10px] sm:text-[11px] font-mono text-text-light-secondary dark:text-text-dark-secondary">
-                {currentPrice.toFixed(selectedAsset?.pipDecimalPlaces || (currentPrice > 100 ? 2 : 5))}
+                {currentPrice.toFixed(
+                  getPriceDecimalPlaces(selectedAsset?.symbol || '', selectedAsset?.pipDecimalPlaces, currentPrice)
+                )}
               </div>
             )}
           </div>

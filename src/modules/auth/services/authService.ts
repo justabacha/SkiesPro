@@ -121,7 +121,7 @@ export class AuthService {
 
     if (user.mfa_enabled) {
       const mfaSessionToken = uuidv4();
-      // In production, store this in Redis: redis.set(`mfa_session:${mfaSessionToken}`, user.id, 'EX', 300)
+      // The MFA token is returned for verification; no server-side cache is used.
       return {
         requires_mfa: true,
         mfa_session_token: mfaSessionToken,

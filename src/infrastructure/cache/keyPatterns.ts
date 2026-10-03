@@ -1,4 +1,5 @@
 import { CacheCluster } from './ICache.js';
+import { normalizeCacheSymbol } from '../../modules/pricing/utils/symbolNormalizer.js';
 
 export const KEY_PATTERNS = {
   SESSION: {
@@ -7,7 +8,7 @@ export const KEY_PATTERNS = {
     TOKEN_BLACKLIST: (jti: string) => `token:blacklist:${jti}`,
   },
   PRICING: {
-    LATEST_PRICE: (symbol: string) => `price:${symbol}:latest`,
+    LATEST_PRICE: (symbol: string) => `price:${normalizeCacheSymbol(symbol)}`,
     CANDLE: (symbol: string, granularity: string, epoch: number) =>
       `candle:${symbol}:${granularity}:${epoch}`,
     EXPOSURE: (symbol: string) => `exposure:${symbol}`,
@@ -18,7 +19,7 @@ export const DEFAULT_TTLS = {
   SESSION: 15 * 60, // 15 minutes (JWT expiry)
   RATE_LIMIT: 60, // 1 minute
   TOKEN_BLACKLIST: 15 * 60, // 15 minutes (max JWT TTL)
-  LATEST_PRICE: 2, // 2 seconds
+  LATEST_PRICE: 10, // 10 seconds
   CANDLE: 120, // 2 minutes
 } as const;
 

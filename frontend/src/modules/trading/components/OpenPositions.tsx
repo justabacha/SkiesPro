@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Clock, ShieldAlert } from 'lucide-react';
 import { BinaryContract } from '../types/trading.types';
+import { getPipSize, getPriceDecimalPlaces } from '../utils/pricePrecision';
 
 export interface OpenPositionsProps {
   contracts: BinaryContract[];
@@ -123,12 +124,17 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
         {contracts.map((contract) => {
           const isHigher = contract.contract_type === 'higher';
           const strike = parseFloat(contract.strike_price);
-          const spot = currentPrices[contract.asset_symbol] || strike;
-          const isWinning = isHigher ? spot > strike : spot < strike;
-          const pipPlaces = spot > 100 ? 2 : 5;
-
-          const pipMultiplier = spot > 100 ? 100 : 10000;
-          const pipDelta = (spot - strike) * pipMultiplier;
+          const spot = currentPrices[contract.asset_symbol];
+          const liveSpot =
+            typeof spot === 'number' && Number.isFinite(spot) && spot > 0 ? spot : null;
+          const priceAvailable = liveSpot !== null;
+          const pipPlaces = getPriceDecimalPlaces(contract.asset_symbol, undefined, liveSpot || 0);
+          const isWinning =
+            liveSpot !== null && (isHigher ? liveSpot > strike : liveSpot < strike);
+          const pipDelta =
+            liveSpot === null
+              ? 0
+              : (liveSpot - strike) / getPipSize(contract.asset_symbol, pipPlaces, liveSpot);
           const payout = parseFloat(contract.potential_payout || '0');
 
           return (
@@ -166,7 +172,7 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
                   Strike: <span className="font-mono font-semibold text-text-light-primary dark:text-text-dark-primary">{strike.toFixed(pipPlaces)}</span>
                 </div>
                 <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                  Spot: <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{spot.toFixed(pipPlaces)}</span>
+                  Spot: <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{liveSpot === null ? '--' : liveSpot.toFixed(pipPlaces)}</span>
                 </div>
               </div>
 
@@ -176,13 +182,16 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
                 <span
                   data-testid="position-status"
                   className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold uppercase transition-colors ${
-                    isWinning
+                    !priceAvailable
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                      : isWinning
                       ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                       : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
                   }`}
                 >
-                  {pipDelta >= 0 ? '+' : ''}
-                  {pipDelta.toFixed(1)} Pips ({isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})
+                  {priceAvailable
+                    ? `${pipDelta >= 0 ? '+' : ''}${pipDelta.toFixed(1)} Pips (${isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})`
+                    : 'LIVE PRICE UNAVAILABLE'}
                 </span>
 
                 <CountdownTimerWithProgress

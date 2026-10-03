@@ -5,7 +5,7 @@ The Trading Module handles binary options trade placement, validation, and lifec
 
 ## Key Features
 - **Trade Placement**: REST API for opening new binary contracts.
-- **Validation**: 10-step validation chain (account status, self-exclusion, market hours, limits, balance, latency).
+- **Validation**: account status, self-exclusion, market hours, limits, balance, current quote, and slippage.
 - **Expiry Scheduling**: Enqueues expiry tasks to RabbitMQ.
 - **Audit Trail**: Detailed event logging for every trade state change.
 
@@ -19,10 +19,10 @@ The Trading Module handles binary options trade placement, validation, and lifec
 - `MAX_STAKE_AMOUNT`
 - `MIN_STAKE_AMOUNT`
 - `MAX_ASSET_EXPOSURE`
-- `LATENCY_THRESHOLD_MS`: Maximum allowed age for a strike price tick (default: 800ms).
+- In-process price ticks expire after 10 seconds; no Redis connection or environment variable is required.
 
 ## Security & Hardening
-- **Latency Protection**: Rejects trades if the server's arrival time differs from the market price tick time by more than `LATENCY_THRESHOLD_MS`.
+- **Quote Protection**: Rejects trades without a cached tick no older than 10 seconds and rejects client quotes more than five symbol-specific pips from the server mid.
 - **Atomic Exposure**: Exposure checks are performed inside a database transaction with a row-level lock on `asset_config` to prevent over-exposure bursts.
 - **Oracle Gap Protection**: Trades are automatically cancelled and refunded if the settlement price tick is more than 10 seconds older than the expiry time.
 - **Precision Math**: All financial fields are handled as strings and calculated using `Decimal.js` to eliminate floating-point rounding exploits.
