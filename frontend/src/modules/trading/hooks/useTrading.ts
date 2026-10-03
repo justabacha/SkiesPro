@@ -89,6 +89,8 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
   const [settlementEvents, setSettlementEvents] = useState<SettlementEvent[]>([]);
 
   const previousActiveIdsRef = useRef<Set<string>>(new Set());
+  const hasLoadedActiveRef = useRef<boolean>(false);
+  const hasLoadedHistoryRef = useRef<boolean>(false);
 
   // Load assets on mount
   useEffect(() => {
@@ -142,11 +144,14 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
   );
 
   // Fetch active contracts
-  const fetchActiveContracts = useCallback(async () => {
-    setIsLoadingActive(true);
+  const fetchActiveContracts = useCallback(async (isInitial = false) => {
+    if (isInitial || !hasLoadedActiveRef.current) {
+      setIsLoadingActive(true);
+    }
     try {
       const active = await tradingService.getActiveContracts();
       setActiveContracts(active);
+      hasLoadedActiveRef.current = true;
 
       const currentActiveIds = new Set(active.map((c) => c.id));
       const previousIds = previousActiveIdsRef.current;
@@ -195,11 +200,14 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
   }, [fetchBalance]);
 
   // Fetch trade history
-  const fetchTradeHistory = useCallback(async () => {
-    setIsLoadingHistory(true);
+  const fetchTradeHistory = useCallback(async (isInitial = false) => {
+    if (isInitial || !hasLoadedHistoryRef.current) {
+      setIsLoadingHistory(true);
+    }
     try {
       const history = await tradingService.getContracts({ limit: 20 });
       setTradeHistory(history);
+      hasLoadedHistoryRef.current = true;
     } catch (err) {
       console.warn('Failed to fetch trade history:', err);
     } finally {
@@ -209,11 +217,12 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
 
   // Poll active contracts periodically
   useEffect(() => {
-    fetchActiveContracts();
-    fetchTradeHistory();
+    fetchActiveContracts(true);
+    fetchTradeHistory(true);
 
     const interval = setInterval(() => {
-      fetchActiveContracts();
+      fetchActiveContracts(false);
+      fetchTradeHistory(false);
     }, 3000);
 
     return () => clearInterval(interval);

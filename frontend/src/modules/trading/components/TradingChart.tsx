@@ -78,7 +78,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       strike,
       stake: parseFloat(contract.stake),
       payout: parseFloat(contract.potential_payout || '0'),
-      strikeY: Math.max(10, Math.min(310, strikeY)),
+      strikeY: Math.max(16, Math.min(304, strikeY)),
       isHigher,
       isWinning,
     };
@@ -156,11 +156,44 @@ export const TradingChart: React.FC<TradingChartProps> = ({
             />
           )}
 
-          {/* Active Contract Strike Line */}
+          {/* Active Contract Strike Line with Price Tag Embedded on Line */}
           {activeContractDetails && (
             <g>
+              {/* First segment of dashed line */}
               <line
                 x1="0"
+                y1={activeContractDetails.strikeY}
+                x2="650"
+                y2={activeContractDetails.strikeY}
+                stroke={activeContractDetails.isWinning ? '#10B981' : '#EF4444'}
+                strokeWidth="2"
+                strokeDasharray="6 4"
+              />
+
+              {/* Price Pill Tag on Line: ------------------- 1.08752 --- */}
+              <rect
+                x="655"
+                y={activeContractDetails.strikeY - 12}
+                width="110"
+                height="24"
+                rx="6"
+                fill={activeContractDetails.isWinning ? '#10B981' : '#EF4444'}
+              />
+              <text
+                x="710"
+                y={activeContractDetails.strikeY + 4}
+                textAnchor="middle"
+                fill="#FFFFFF"
+                fontSize="11"
+                fontWeight="bold"
+                fontFamily="monospace"
+              >
+                {activeContractDetails.strike.toFixed(pipPlaces)}
+              </text>
+
+              {/* Final segment of line */}
+              <line
+                x1="770"
                 y1={activeContractDetails.strikeY}
                 x2="800"
                 y2={activeContractDetails.strikeY}
@@ -172,19 +205,18 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           )}
         </svg>
 
-        {/* Strike Price Badge Overlay */}
+        {/* Top-Left Contract Status Badge Overlay */}
         {activeContractDetails && (
           <div
-            className={`absolute left-4 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-white shadow-lg z-20 flex items-center space-x-2 ${
-              activeContractDetails.isWinning ? 'bg-emerald-600' : 'bg-rose-600'
-            }`}
-            style={{ top: `${(activeContractDetails.strikeY / 320) * 100}%` }}
+            className={`absolute left-4 top-2 px-3 py-1.5 rounded-lg text-xs font-mono font-bold text-white shadow-lg z-20 flex items-center space-x-2 ${
+              activeContractDetails.isWinning ? 'bg-emerald-600/90' : 'bg-rose-600/90'
+            } backdrop-blur-sm`}
           >
             <span>Strike: {activeContractDetails.strike.toFixed(pipPlaces)}</span>
-            <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded uppercase">
+            <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded uppercase">
               {activeContractDetails.isHigher ? '▲ Higher' : '▼ Lower'}
             </span>
-            <span className="text-[10px] font-extrabold">
+            <span className="text-[10px] font-extrabold tracking-wide">
               {activeContractDetails.isWinning ? `WINNING (+KES ${activeContractDetails.payout.toFixed(2)})` : 'LOSING (-KES 0.00)'}
             </span>
           </div>
