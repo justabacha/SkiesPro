@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Lock, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { Asset, ContractType } from '../types/trading.types';
 
@@ -28,8 +28,21 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   tradeError,
   onClearError,
 }) => {
-  const [stake, setStake] = useState<string>('100');
-  const [expirySeconds, setExpirySeconds] = useState<number>(60);
+  const [stake, setStake] = useState<string>(() => {
+    return localStorage.getItem('skies_trade_stake') || '100';
+  });
+  const [expirySeconds, setExpirySeconds] = useState<number>(() => {
+    const saved = localStorage.getItem('skies_trade_expiry');
+    return saved ? parseInt(saved, 10) || 60 : 60;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('skies_trade_stake', stake);
+  }, [stake]);
+
+  useEffect(() => {
+    localStorage.setItem('skies_trade_expiry', expirySeconds.toString());
+  }, [expirySeconds]);
 
   const payoutRate = asset?.payoutRate || 0.60;
   const minStake = asset?.minStake || 100;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiClient } from '@/shared/services/apiClient';
 import { useAuth } from '@/shared/hooks/useAuth';
 
@@ -40,6 +40,8 @@ export const useWallet = () => {
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
 
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const fetchBalance = useCallback(async () => {
     if (!isAuthenticated) return;
     setIsLoading(true);
@@ -47,8 +49,14 @@ export const useWallet = () => {
     try {
       const response = await apiClient.get<{ data: Balance }>('/api/v1/wallets/balance');
       setBalance(response.data);
-    } catch (err) {
-      setError((err as Error).message);
+    } catch (err: any) {
+      setError(err.message);
+      if (err?.status === 401 || err?.message?.includes('Unauthorized')) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -119,11 +127,20 @@ export const useWallet = () => {
     if (!isAuthenticated) {
       setBalance(null);
       setLedger([]);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       return;
     }
     fetchBalance();
-    const interval = setInterval(fetchBalance, 30000); // 30s polling
-    return () => clearInterval(interval);
+    intervalRef.current = setInterval(fetchBalance, 30000); // 30s polling
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [fetchBalance, isAuthenticated]);
 
   return {

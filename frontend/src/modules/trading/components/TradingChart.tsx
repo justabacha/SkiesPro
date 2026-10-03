@@ -7,6 +7,7 @@ export interface TradingChartProps {
   priceHistory: PriceTick[];
   currentPrice: number;
   activeContracts?: BinaryContract[];
+  pipDecimalPlaces?: number;
 }
 
 function generateFallbackCandles(
@@ -15,13 +16,14 @@ function generateFallbackCandles(
   latestPrice: number,
   symbolStr: string
 ): Candle[] {
-  if (history.length >= 4) {
-    const count = Math.min(30, Math.max(10, Math.floor(history.length / 2)));
-    const chunkSize = Math.max(1, Math.floor(history.length / count));
+  const sanitizedHistory = history.filter((t) => !t.symbol || t.symbol === symbolStr);
+  if (sanitizedHistory.length >= 4) {
+    const count = Math.min(30, Math.max(10, Math.floor(sanitizedHistory.length / 2)));
+    const chunkSize = Math.max(1, Math.floor(sanitizedHistory.length / count));
     const result: Candle[] = [];
 
-    for (let i = 0; i < history.length; i += chunkSize) {
-      const chunk = history.slice(i, i + chunkSize);
+    for (let i = 0; i < sanitizedHistory.length; i += chunkSize) {
+      const chunk = sanitizedHistory.slice(i, i + chunkSize);
       const prices = chunk.map((t) => t.price);
       const open = prices[0];
       const close = prices[prices.length - 1];
@@ -84,10 +86,24 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   priceHistory,
   currentPrice,
   activeContracts = [],
+  pipDecimalPlaces,
 }) => {
-  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1m');
-  const [chartType, setChartType] = useState<'line' | 'candle'>('line');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>(() => {
+    return localStorage.getItem('skies_timeframe') || '1m';
+  });
+  const [chartType, setChartType] = useState<'line' | 'candle'>(() => {
+    const saved = localStorage.getItem('skies_chart_type');
+    return saved === 'candle' || saved === 'line' ? saved : 'line';
+  });
   const [candles, setCandles] = useState<Candle[]>([]);
+
+  useEffect(() => {
+    localStorage.setItem('skies_timeframe', selectedTimeframe);
+  }, [selectedTimeframe]);
+
+  useEffect(() => {
+    localStorage.setItem('skies_chart_type', chartType);
+  }, [chartType]);
 
   const timeframes = ['1m', '5m', '15m', '1H', '4H', '1D'];
 
@@ -104,19 +120,26 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     }
   }, [selectedTimeframe]);
 
-  // Filter history based on selected timeframe
+  // Filter history based on selected timeframe & symbol
   const displayedHistory = useMemo(() => {
-    if (priceHistory.length === 0) {
+    const symbolTicks = priceHistory.filter((t) => !t.symbol || t.symbol === symbol);
+    if (symbolTicks.length === 0) {
       return [{ symbol, price: currentPrice, tick_time: new Date().toISOString(), timestamp: Date.now() }];
     }
-    return priceHistory;
+    return symbolTicks;
   }, [priceHistory, currentPrice, symbol]);
+
+  // Filter active contracts by active symbol
+  const assetActiveContracts = useMemo(() => {
+    return activeContracts.filter((c) => c.asset_symbol === symbol);
+  }, [activeContracts, symbol]);
 
   // Fetch base historical candles when symbol, granularity, or chartType changes
   useEffect(() => {
     if (chartType !== 'candle') return;
 
     let isMounted = true;
+    setCandles([]); // Flush stale candles on symbol switch
     tradingService.getCandles(symbol, granularity, 30)
       .then((data) => {
         if (!isMounted) return;
@@ -159,8 +182,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       const lows = activeCandles.map((c) => c.low);
       highs.push(currentPrice);
       lows.push(currentPrice);
-      if (activeContracts.length > 0) {
-        const strike = parseFloat(activeContracts[activeContracts.length - 1].strike_price);
+      if (assetActiveContracts.length > 0) {
+        const strike = parseFloat(assetActiveContracts[assetActiveContracts.length - 1].strike_price);
         if (!isNaN(strike)) {
           highs.push(strike);
           lows.push(strike);
@@ -185,7 +208,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       maxPrice: max + padding,
       prices: rawPrices,
     };
-  }, [chartType, activeCandles, displayedHistory, currentPrice, activeContracts]);
+  }, [chartType, activeCandles, displayedHistory, currentPrice, assetActiveContracts]);
 
   // Compute SVG polyline points (Line Chart)
   const points = useMemo(() => {
@@ -248,8 +271,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
   // Active contract strike lines & Pip Delta calculations
   const activeContractDetails = useMemo(() => {
-    if (activeContracts.length === 0) return null;
-    const contract = activeContracts[activeContracts.length - 1];
+    if (assetActiveContracts.length === 0) return null;
+    const contract = assetActiveContracts[assetActiveContracts.length - 1];
     const strike = parseFloat(contract.strike_price);
     if (isNaN(strike)) return null;
 
@@ -271,9 +294,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       isWinning,
       pipDelta,
     };
-  }, [activeContracts, currentPrice, minPrice, maxPrice]);
+  }, [assetActiveContracts, currentPrice, minPrice, maxPrice]);
 
-  const pipPlaces = currentPrice > 100 ? 2 : 5;
+  const pipPlaces = pipDecimalPlaces ?? (currentPrice > 100 ? 2 : 5);
 
   return (
     <div

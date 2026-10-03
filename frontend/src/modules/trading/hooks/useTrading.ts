@@ -68,7 +68,19 @@ export interface UseTradingReturn {
   dismissSettlementEvent: (contractId: string) => void;
 }
 
-export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn => {
+const getInitialSymbol = (): string => {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const urlSymbol = params.get('symbol');
+    if (urlSymbol) return urlSymbol;
+    const storedSymbol = localStorage.getItem('skies_selected_symbol');
+    if (storedSymbol) return storedSymbol;
+  }
+  return 'EUR/USD';
+};
+
+export const useTrading = (initialSymbol?: string): UseTradingReturn => {
+  const activeSymbol = initialSymbol || getInitialSymbol();
   const { fetchBalance } = useWallet();
   const { isAuthenticated } = useAuth();
 
@@ -93,6 +105,7 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
   const previousActiveIdsRef = useRef<Set<string>>(new Set());
   const hasLoadedActiveRef = useRef<boolean>(false);
   const hasLoadedHistoryRef = useRef<boolean>(false);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load assets on mount
   useEffect(() => {
@@ -104,7 +117,7 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
         const list = await tradingService.getAssets();
         if (isMounted) {
           setAssets(list);
-          const current = list.find((a) => a.symbol === initialSymbol) || list[0] || null;
+          const current = list.find((a) => a.symbol === activeSymbol) || list[0] || null;
           setSelectedAsset(current);
         }
       } catch (err) {
@@ -119,11 +132,14 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
     return () => {
       isMounted = false;
     };
-  }, [initialSymbol]);
+  }, [activeSymbol]);
 
   // Select asset handler
   const selectAsset = useCallback(
     (symbol: string) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('skies_selected_symbol', symbol);
+      }
       const found = assets.find((a) => a.symbol === symbol);
       if (found) {
         setSelectedAsset(found);
@@ -195,8 +211,14 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
       }
 
       previousActiveIdsRef.current = currentActiveIds;
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Failed to fetch active contracts:', err);
+      if (err?.status === 401 || err?.message?.includes('Unauthorized')) {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      }
     } finally {
       setIsLoadingActive(false);
     }
@@ -212,8 +234,14 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
       const history = await tradingService.getContracts({ limit: 20 });
       setTradeHistory(history);
       hasLoadedHistoryRef.current = true;
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Failed to fetch trade history:', err);
+      if (err?.status === 401 || err?.message?.includes('Unauthorized')) {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      }
     } finally {
       setIsLoadingHistory(false);
     }
@@ -224,18 +252,27 @@ export const useTrading = (initialSymbol: string = 'EUR/USD'): UseTradingReturn 
     if (!isAuthenticated) {
       setActiveContracts([]);
       setTradeHistory([]);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
       return;
     }
 
     fetchActiveContracts(true);
     fetchTradeHistory(true);
 
-    const interval = setInterval(() => {
+    pollingIntervalRef.current = setInterval(() => {
       fetchActiveContracts(false);
       fetchTradeHistory(false);
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
   }, [fetchActiveContracts, fetchTradeHistory, isAuthenticated]);
 
   const clearTradeError = useCallback(() => {

@@ -5,6 +5,7 @@ import { pgPool } from '../../../src/config/database.js';
 import { WalletService } from '../../../src/modules/wallet/services/walletService.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
+import { PriceFeedIngestionService } from '../../../src/modules/pricing/services/PriceFeedIngestionService.js';
 
 // Mock MessageQueueClient to avoid real RabbitMQ dependency during tests
 jest.mock('../../../src/infrastructure/message-queue/MessageQueueClient.js', () => ({
@@ -69,6 +70,11 @@ describe('Trade Settlement Integration', () => {
     await pgPool.query('DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)', [testUserId]);
     await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
+  });
+
+  beforeEach(() => {
+    PriceFeedIngestionService.currentTier = 'tier1_kraken';
+    PriceFeedIngestionService.tier3StartedAt = null;
   });
 
   const placeTestTrade = async (strike: string, contractType: 'higher' | 'lower' = 'higher') => {

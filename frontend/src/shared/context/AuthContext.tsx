@@ -192,6 +192,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [setAuthData]);
 
+  const handleUnauthorized = useCallback(() => {
+    apiClient.setAccessToken(null);
+    localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('mfa_session');
+    setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      requiresMfa: false,
+      mfaSessionToken: null,
+      userId: null,
+    });
+  }, []);
+
+  useEffect(() => {
+    apiClient.registerUnauthorizedCallback(handleUnauthorized);
+    return () => {
+      apiClient.registerUnauthorizedCallback(null);
+    };
+  }, [handleUnauthorized]);
+
   useEffect(() => {
     // Check for persisted MFA session first
     const persistedMfa = sessionStorage.getItem('mfa_session');

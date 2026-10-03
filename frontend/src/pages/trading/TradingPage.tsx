@@ -11,16 +11,29 @@ import { TradeHistory } from '@/modules/trading/components/TradeHistory';
 import { ContractConfirmationModal } from '@/modules/trading/components/ContractConfirmationModal';
 import { CheckCircle2, Wallet, Layers, History } from 'lucide-react';
 
+const getInitialSymbol = (): string => {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const urlSymbol = params.get('symbol');
+    if (urlSymbol) return urlSymbol;
+    const storedSymbol = localStorage.getItem('skies_selected_symbol');
+    if (storedSymbol) return storedSymbol;
+  }
+  return 'EUR/USD';
+};
+
 export const TradingPage: React.FC = () => {
   const { balance } = useWallet();
   const [activeBottomTab, setActiveBottomTab] = useState<'positions' | 'history'>('positions');
+
+  const initialSymbol = useMemo(() => getInitialSymbol(), []);
 
   const {
     currentPrice,
     priceHistory,
     latencyState,
     subscribeToSymbol,
-  } = usePriceStream('EUR/USD');
+  } = usePriceStream(initialSymbol);
 
   const {
     assets,
@@ -40,11 +53,17 @@ export const TradingPage: React.FC = () => {
     executeDirectTrade,
     settlementEvents,
     dismissSettlementEvent,
-  } = useTrading('EUR/USD');
+  } = useTrading(initialSymbol);
 
   const handleSelectAsset = (symbol: string) => {
     selectAsset(symbol);
     subscribeToSymbol(symbol);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('skies_selected_symbol', symbol);
+      const url = new URL(window.location.href);
+      url.searchParams.set('symbol', symbol);
+      window.history.replaceState({}, '', url.toString());
+    }
   };
 
   const numericBalance = useMemo(() => {
@@ -134,6 +153,7 @@ export const TradingPage: React.FC = () => {
             priceHistory={priceHistory}
             currentPrice={currentPrice}
             activeContracts={activeContracts}
+            pipDecimalPlaces={selectedAsset?.pipDecimalPlaces}
           />
         </div>
 

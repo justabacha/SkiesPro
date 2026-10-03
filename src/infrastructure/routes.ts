@@ -10,6 +10,13 @@ import tradingRoutes from '../modules/trading/trading.routes.js';
 
 const router = Router();
 
+const rootHandler = (_req: any, res: any) => {
+  res.status(200).json({ status: 'ok', service: 'SkiesPro API' });
+};
+
+router.get('/', rootHandler);
+router.head('/', rootHandler);
+
 router.get('/health', healthCheck);
 router.get('/ready', readinessCheck);
 

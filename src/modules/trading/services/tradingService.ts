@@ -7,6 +7,7 @@ import { PricingService } from '../../pricing/services/pricingService.js';
 import { UserRepository } from '../../auth/repositories/userRepository.js';
 import { OutboxRepository } from '../../auth/repositories/outboxRepository.js';
 import { messageQueueClient } from '../../../infrastructure/message-queue/MessageQueueClient.js';
+import { PriceFeedIngestionService } from '../../pricing/services/PriceFeedIngestionService.js';
 import { PlaceTradeRequest } from '../dto/trading.dto.js';
 import { Decimal } from 'decimal.js';
 
@@ -43,6 +44,14 @@ export class TradingService {
     // 2. Self-Exclusion Check
     if (user.self_excluded_until && user.self_excluded_until > new Date()) {
       throw new Error(`User is self-excluded until ${user.self_excluded_until.toISOString()}`);
+    }
+
+    // 2b. Circuit Breaker Check (Block real-money trades during Tier 3 Mock price feed)
+    if (PriceFeedIngestionService.currentTier === 'tier3_mock') {
+      const isDemo = (user as any).is_demo === true || (request as any).is_demo === true || (user as any).account_type === 'demo';
+      if (!isDemo) {
+        throw new Error('Trading is temporarily suspended due to live price feed degradation. Please try again shortly.');
+      }
     }
 
     // 3. Market Hours Check

@@ -14,6 +14,11 @@ export interface ApiError {
 
 class ApiClient {
   private accessToken: string | null = null;
+  private onUnauthorizedCallback: (() => void) | null = null;
+
+  registerUnauthorizedCallback(cb: (() => void) | null) {
+    this.onUnauthorizedCallback = cb;
+  }
 
   setAccessToken(token: string | null) {
     this.accessToken = token;
@@ -64,6 +69,11 @@ class ApiClient {
       } else if (Array.isArray(errorData.errors) && errorData.errors.length > 0) {
         const firstError = errorData.errors[0];
         apiError.message = firstError.msg || firstError.message || apiError.message;
+      }
+
+      // Special handling for 401 Unauthorized
+      if (response.status === 401 && this.onUnauthorizedCallback) {
+        this.onUnauthorizedCallback();
       }
 
       // Special handling for 422 Unprocessable Entity
