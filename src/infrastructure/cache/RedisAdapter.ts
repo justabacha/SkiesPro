@@ -1,6 +1,30 @@
 import { ICache } from './ICache.js';
 import { createClient, type RedisClientType } from 'redis';
 
+export let isRedisDisabled = false;
+let warningLogged = false;
+
+export function handleRedisError(error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  if (
+    message.includes('ERR max requests limit exceeded') ||
+    message.includes('max requests limit exceeded')
+  ) {
+    if (!isRedisDisabled) {
+      isRedisDisabled = true;
+      if (!warningLogged) {
+        warningLogged = true;
+        console.warn('Redis quota limit exceeded: ERR max requests limit exceeded. Redis operations will be bypassed.');
+      }
+    }
+  }
+}
+
+export function resetRedisDisabled(): void {
+  isRedisDisabled = false;
+  warningLogged = false;
+}
+
 export class RedisAdapter implements ICache {
   private client: RedisClientType | null = null;
   private subscriber: RedisClientType | null = null;
@@ -20,10 +44,12 @@ export class RedisAdapter implements ICache {
     this.subscriber = this.client.duplicate();
 
     this.client.on('error', (error: unknown) => {
+      handleRedisError(error);
       console.error('Redis cache client error:', error);
     });
 
     this.subscriber.on('error', (error: unknown) => {
+      handleRedisError(error);
       console.error('Redis cache subscriber error:', error);
     });
 
@@ -38,7 +64,7 @@ export class RedisAdapter implements ICache {
   }
 
   private async ensureConnected(): Promise<void> {
-    if (!this.enabled || !this.client || !this.subscriber) {
+    if (isRedisDisabled || !this.enabled || !this.client || !this.subscriber) {
       return;
     }
 
@@ -52,110 +78,146 @@ export class RedisAdapter implements ICache {
   }
 
   async get(key: string): Promise<any> {
-    if (!this.enabled || !this.client) {
+    if (isRedisDisabled || !this.enabled || !this.client) {
       return null;
     }
 
-    await this.ensureConnected();
-    return this.client.get(key);
+    try {
+      await this.ensureConnected();
+      return await this.client.get(key);
+    } catch (error) {
+      handleRedisError(error);
+      return null;
+    }
   }
 
   async set(key: string, value: any, ttl?: number): Promise<void> {
-    if (!this.enabled || !this.client) {
+    if (isRedisDisabled || !this.enabled || !this.client) {
       return;
     }
 
-    await this.ensureConnected();
-    const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+    try {
+      await this.ensureConnected();
+      const serialized = typeof value === 'string' ? value : JSON.stringify(value);
 
-    if (ttl !== undefined) {
-      await this.client.set(key, serialized, { EX: ttl });
-      return;
+      if (ttl !== undefined) {
+        await this.client.set(key, serialized, { EX: ttl });
+        return;
+      }
+
+      await this.client.set(key, serialized);
+    } catch (error) {
+      handleRedisError(error);
     }
-
-    await this.client.set(key, serialized);
   }
 
   async del(key: string): Promise<void> {
-    if (!this.enabled || !this.client) {
+    if (isRedisDisabled || !this.enabled || !this.client) {
       return;
     }
 
-    await this.ensureConnected();
-    await this.client.del(key);
+    try {
+      await this.ensureConnected();
+      await this.client.del(key);
+    } catch (error) {
+      handleRedisError(error);
+    }
   }
 
   async incr(key: string): Promise<number> {
-    if (!this.enabled || !this.client) {
+    if (isRedisDisabled || !this.enabled || !this.client) {
       return 0;
     }
 
-    await this.ensureConnected();
-    return this.client.incr(key);
+    try {
+      await this.ensureConnected();
+      return await this.client.incr(key);
+    } catch (error) {
+      handleRedisError(error);
+      return 0;
+    }
   }
 
   async expire(key: string, ttl: number): Promise<void> {
-    if (!this.enabled || !this.client) {
+    if (isRedisDisabled || !this.enabled || !this.client) {
       return;
     }
 
-    await this.ensureConnected();
-    await this.client.expire(key, ttl);
+    try {
+      await this.ensureConnected();
+      await this.client.expire(key, ttl);
+    } catch (error) {
+      handleRedisError(error);
+    }
   }
 
   async keys(pattern: string): Promise<string[]> {
-    if (!this.enabled || !this.client) {
+    if (isRedisDisabled || !this.enabled || !this.client) {
       return [];
     }
 
-    await this.ensureConnected();
-    const normalizedPattern = pattern.replace(/\*/g, '*');
-    const keys = await this.client.keys(normalizedPattern);
-    return keys;
+    try {
+      await this.ensureConnected();
+      const normalizedPattern = pattern.replace(/\*/g, '*');
+      const keys = await this.client.keys(normalizedPattern);
+      return keys;
+    } catch (error) {
+      handleRedisError(error);
+      return [];
+    }
   }
 
   async publish(channel: string, message: string): Promise<void> {
-    if (!this.enabled || !this.client) {
+    if (isRedisDisabled || !this.enabled || !this.client) {
       return;
     }
 
-    await this.ensureConnected();
-    await this.client.publish(channel, message);
+    try {
+      await this.ensureConnected();
+      await this.client.publish(channel, message);
+    } catch (error) {
+      handleRedisError(error);
+    }
   }
 
   async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
-    if (!this.enabled || !this.subscriber) {
+    if (isRedisDisabled || !this.enabled || !this.subscriber) {
       return;
     }
 
-    await this.ensureConnected();
+    try {
+      await this.ensureConnected();
 
-    if (!this.callbackMap.has(channel)) {
-      this.callbackMap.set(channel, new Set());
-    }
-
-    const listeners = this.callbackMap.get(channel)!;
-    listeners.add(callback);
-
-    // In node-redis v4, subscribe takes a callback.
-    // We route it to our callback map to support multiple listeners per channel if needed,
-    // although our internal map already does this.
-    await this.subscriber.subscribe(channel, (message) => {
-      const currentListeners = this.callbackMap.get(channel);
-      if (currentListeners) {
-        currentListeners.forEach((l) => l(message));
+      if (!this.callbackMap.has(channel)) {
+        this.callbackMap.set(channel, new Set());
       }
-    });
+
+      const listeners = this.callbackMap.get(channel)!;
+      listeners.add(callback);
+
+      await this.subscriber.subscribe(channel, (message) => {
+        const currentListeners = this.callbackMap.get(channel);
+        if (currentListeners) {
+          currentListeners.forEach((l) => l(message));
+        }
+      });
+    } catch (error) {
+      handleRedisError(error);
+    }
   }
 
   async unsubscribe(channel: string): Promise<void> {
-    if (!this.enabled || !this.subscriber) {
+    if (isRedisDisabled || !this.enabled || !this.subscriber) {
       return;
     }
 
-    await this.ensureConnected();
-    await this.subscriber.unsubscribe(channel);
-    this.callbackMap.delete(channel);
+    try {
+      await this.ensureConnected();
+      await this.subscriber.unsubscribe(channel);
+      this.callbackMap.delete(channel);
+    } catch (error) {
+      handleRedisError(error);
+    }
   }
 
   async close(): Promise<void> {
@@ -163,12 +225,16 @@ export class RedisAdapter implements ICache {
       return;
     }
 
-    if (this.subscriber && this.subscriber.isOpen) {
-      await this.subscriber.quit();
-    }
+    try {
+      if (this.subscriber && this.subscriber.isOpen) {
+        await this.subscriber.quit();
+      }
 
-    if (this.client && this.client.isOpen) {
-      await this.client.quit();
+      if (this.client && this.client.isOpen) {
+        await this.client.quit();
+      }
+    } catch (error) {
+      handleRedisError(error);
     }
 
     this.callbackMap.clear();

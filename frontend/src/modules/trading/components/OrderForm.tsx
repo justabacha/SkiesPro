@@ -4,10 +4,16 @@ import { Asset, ContractType } from '../types/trading.types';
 
 export interface OrderFormProps {
   asset: Asset | null;
+  selectedSymbol?: string;
   currentPrice: number;
   userBalance: number;
   isPlacingTrade: boolean;
-  onPlaceTrade: (contractType: ContractType, stake: string, expirySeconds: number) => void;
+  onPlaceTrade: (
+    contractType: ContractType,
+    stake: string,
+    expirySeconds: number,
+    assetSymbol?: string
+  ) => void;
   tradeError: string | null;
   onClearError: () => void;
 }
@@ -21,6 +27,7 @@ const DURATION_OPTIONS = [
 
 export const OrderForm: React.FC<OrderFormProps> = ({
   asset,
+  selectedSymbol,
   currentPrice,
   userBalance,
   isPlacingTrade,
@@ -44,12 +51,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     localStorage.setItem('skies_trade_expiry', expirySeconds.toString());
   }, [expirySeconds]);
 
+  const activeSymbol = selectedSymbol || asset?.symbol || 'EUR/USD';
   const payoutRate = asset?.payoutRate || 0.60;
   const minStake = asset?.minStake || 100;
   const maxStake = asset?.maxStake || 50000;
   const isMarketOpen = asset?.isOpen !== false && asset?.isActive !== false;
 
   const numericStake = parseFloat(stake) || 0;
+  const pipPlaces = asset?.pipDecimalPlaces ?? (currentPrice > 100 ? 2 : 5);
 
   // Expected payout calculation (Stake + Stake * PayoutRate)
   const expectedPayout = useMemo(() => {
@@ -70,12 +79,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
   const handleHigher = () => {
     if (isDisabled) return;
-    onPlaceTrade('higher', stake, expirySeconds);
+    onPlaceTrade('higher', stake, expirySeconds, activeSymbol);
   };
 
   const handleLower = () => {
     if (isDisabled) return;
-    onPlaceTrade('lower', stake, expirySeconds);
+    onPlaceTrade('lower', stake, expirySeconds, activeSymbol);
   };
 
   return (
@@ -90,7 +99,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark-primary">Place Binary Contract</h3>
             {currentPrice > 0 && (
               <span className="text-xs font-mono text-text-light-secondary dark:text-text-dark-secondary">
-                Spot: {currentPrice.toFixed(currentPrice > 100 ? 2 : 5)}
+                Spot: {currentPrice.toFixed(pipPlaces)}
               </span>
             )}
           </div>
@@ -106,7 +115,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             className="flex items-center space-x-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-medium"
           >
             <Lock className="h-4 w-4 flex-shrink-0" />
-            <span>Market is currently closed for {asset?.symbol || 'this asset'}. Orders suspended.</span>
+            <span>Market is currently closed for {activeSymbol}. Orders suspended.</span>
           </div>
         )}
 
@@ -231,7 +240,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:-translate-y-0.5" />
             <span>Higher</span>
           </div>
-          <span className="text-[10px] sm:text-[11px] font-normal opacity-90 mt-0.5">Spot &gt; Strike</span>
+          <span className="text-[10px] sm:text-[11px] font-mono font-medium opacity-90 mt-0.5">
+            Buy @ {currentPrice > 0 ? currentPrice.toFixed(pipPlaces) : 'Spot'}
+          </span>
         </button>
 
         <button
@@ -245,7 +256,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-y-0.5" />
             <span>Lower</span>
           </div>
-          <span className="text-[10px] sm:text-[11px] font-normal opacity-90 mt-0.5">Spot &lt; Strike</span>
+          <span className="text-[10px] sm:text-[11px] font-mono font-medium opacity-90 mt-0.5">
+            Sell @ {currentPrice > 0 ? currentPrice.toFixed(pipPlaces) : 'Spot'}
+          </span>
         </button>
       </div>
     </div>

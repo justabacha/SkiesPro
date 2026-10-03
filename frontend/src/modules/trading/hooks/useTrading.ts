@@ -61,7 +61,8 @@ export interface UseTradingReturn {
   executeDirectTrade: (
     contractType: ContractType,
     stake: string,
-    expirySeconds: number
+    expirySeconds: number,
+    assetSymbol?: string
   ) => Promise<BinaryContract | null>;
 
   settlementEvents: SettlementEvent[];
@@ -361,12 +362,14 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   const executeDirectTrade = async (
     contractType: ContractType,
     stake: string,
-    expirySeconds: number
+    expirySeconds: number,
+    assetSymbol?: string
   ): Promise<BinaryContract | null> => {
-    if (!selectedAsset) return null;
+    const symbolToUse = assetSymbol || selectedAsset?.symbol || activeSymbol;
+    if (!symbolToUse) return null;
 
     const dto: CreateContractDto = {
-      assetSymbol: selectedAsset.symbol,
+      assetSymbol: symbolToUse,
       contractType,
       stake,
       expirySeconds,

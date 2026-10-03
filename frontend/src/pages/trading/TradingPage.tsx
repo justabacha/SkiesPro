@@ -161,11 +161,12 @@ export const TradingPage: React.FC = () => {
         <div className="lg:col-span-1">
           <OrderForm
             asset={selectedAsset}
+            selectedSymbol={selectedAsset?.symbol || initialSymbol}
             currentPrice={currentPrice}
             userBalance={numericBalance}
             isPlacingTrade={isPlacingTrade}
-            onPlaceTrade={(contractType, stake, expirySeconds) => {
-              executeDirectTrade(contractType, stake, expirySeconds);
+            onPlaceTrade={(contractType, stake, expirySeconds, symbol) => {
+              executeDirectTrade(contractType, stake, expirySeconds, symbol);
             }}
             tradeError={tradeError}
             onClearError={clearTradeError}

@@ -2,6 +2,7 @@ import { cacheClient } from '../../../infrastructure/cache/index.js';
 
 export class PriceDistributionService {
   private readonly cluster = 'pricing';
+  private static inMemoryTicks: Map<string, any> = new Map();
 
   async distributeTick(
     symbol: string,
@@ -18,18 +19,33 @@ export class PriceDistributionService {
       time: time.toISOString(),
     };
 
+    // Store in-memory for fallback when Redis is unavailable or quota-exceeded
+    PriceDistributionService.inMemoryTicks.set(symbol, tickData);
+
     const message = JSON.stringify(tickData);
 
-    // 1. Update Latest Price Cache
-    await cacheClient.set(this.cluster, `latest_price:${symbol}`, message);
+    try {
+      // 1. Update Latest Price Cache
+      await cacheClient.set(this.cluster, `latest_price:${symbol}`, message);
 
-    // 2. Publish to Pub/Sub
-    await cacheClient.publish(this.cluster, `ticks:${symbol}`, message);
-    await cacheClient.publish(this.cluster, 'ticks:all', message);
+      // 2. Publish to Pub/Sub
+      await cacheClient.publish(this.cluster, `ticks:${symbol}`, message);
+      await cacheClient.publish(this.cluster, 'ticks:all', message);
+    } catch (error) {
+      // Cache operations failed or were bypassed; in-memory fallback is active
+    }
   }
 
   async getLatestPrice(symbol: string): Promise<any | null> {
-    const data = await cacheClient.get(this.cluster, `latest_price:${symbol}`);
-    return data ? JSON.parse(data) : null;
+    try {
+      const data = await cacheClient.get(this.cluster, `latest_price:${symbol}`);
+      if (data) {
+        return typeof data === 'string' ? JSON.parse(data) : data;
+      }
+    } catch (error) {
+      // Redis error, fall through to in-memory store
+    }
+
+    return PriceDistributionService.inMemoryTicks.get(symbol) || null;
   }
 }

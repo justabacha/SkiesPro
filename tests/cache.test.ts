@@ -1,6 +1,31 @@
 import { InMemoryAdapter } from '../src/infrastructure/cache/InMemoryAdapter.js';
 import { CacheClient } from '../src/infrastructure/cache/CacheClient.js';
 import { KEY_PATTERNS, DEFAULT_TTLS, getClusterForKey } from '../src/infrastructure/cache/keyPatterns.js';
+import { handleRedisError, isRedisDisabled, resetRedisDisabled, RedisAdapter } from '../src/infrastructure/cache/RedisAdapter.js';
+
+describe('Redis Quota Limit Fault-Tolerance', () => {
+  beforeEach(() => {
+    resetRedisDisabled();
+  });
+
+  it('should enable isRedisDisabled when ERR max requests limit exceeded is raised', () => {
+    expect(isRedisDisabled).toBe(false);
+    handleRedisError(new Error('ERR max requests limit exceeded'));
+    expect(isRedisDisabled).toBe(true);
+  });
+
+  it('should bypass Redis operations when isRedisDisabled is true', async () => {
+    handleRedisError(new Error('ERR max requests limit exceeded'));
+    const adapter = new RedisAdapter('redis://localhost:6379');
+
+    // All methods should immediately return without throwing
+    const value = await adapter.get('test_key');
+    expect(value).toBeNull();
+
+    await expect(adapter.set('test_key', 'val')).resolves.toBeUndefined();
+    await expect(adapter.del('test_key')).resolves.toBeUndefined();
+  });
+});
 
 describe('InMemoryAdapter', () => {
   let adapter: InMemoryAdapter;

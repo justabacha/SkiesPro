@@ -129,10 +129,18 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     return symbolTicks;
   }, [priceHistory, currentPrice, symbol]);
 
+  // Stable active contracts key to avoid unnecessary re-computations during polling
+  const activeContractsKey = useMemo(() => {
+    return activeContracts
+      .filter((c) => c.asset_symbol === symbol)
+      .map((c) => `${c.id}_${c.status}_${c.strike_price}_${c.stake}`)
+      .join('|');
+  }, [activeContracts, symbol]);
+
   // Filter active contracts by active symbol
   const assetActiveContracts = useMemo(() => {
     return activeContracts.filter((c) => c.asset_symbol === symbol);
-  }, [activeContracts, symbol]);
+  }, [activeContractsKey, activeContracts, symbol]);
 
   // Fetch base historical candles when symbol, granularity, or chartType changes
   useEffect(() => {
@@ -140,7 +148,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
     let isMounted = true;
     setCandles([]); // Flush stale candles on symbol switch
-    tradingService.getCandles(symbol, granularity, 30)
+    tradingService
+      .getCandles(symbol, granularity, 30)
       .then((data) => {
         if (!isMounted) return;
         if (data && data.length > 0) {
@@ -154,26 +163,66 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         setCandles(generateFallbackCandles(displayedHistory, granularity, currentPrice, symbol));
       });
 
-    return () => { isMounted = false; };
-  }, [symbol, granularity, chartType, displayedHistory, currentPrice]);
+    return () => {
+      isMounted = false;
+    };
+  }, [symbol, granularity, chartType]);
 
-  // Dynamically update the latest open candle in real-time as live ticks arrive
+  // Smoothly update the current candle or append a new one on live price ticks
+  useEffect(() => {
+    if (chartType !== 'candle' || !currentPrice || currentPrice <= 0) return;
+
+    const latestTickTime =
+      priceHistory.length > 0
+        ? new Date(priceHistory[priceHistory.length - 1].tick_time).getTime()
+        : Date.now();
+
+    setCandles((prevCandles) => {
+      if (prevCandles.length === 0) return prevCandles;
+
+      const lastIndex = prevCandles.length - 1;
+      const lastCandle = prevCandles[lastIndex];
+      const lastOpenMs = new Date(lastCandle.open_time).getTime();
+      const intervalMs = granularity * 1000;
+
+      if (isNaN(lastOpenMs)) return prevCandles;
+
+      // Check if incoming tick timestamp falls within the current candle's interval
+      if (latestTickTime < lastOpenMs + intervalMs) {
+        // YES: Update high, low, close of the LAST candle in state without re-creating historical candles
+        const updatedLast: Candle = {
+          ...lastCandle,
+          close: currentPrice,
+          high: Math.max(lastCandle.high, currentPrice),
+          low: Math.min(lastCandle.low, currentPrice),
+        };
+        const nextCandles = [...prevCandles];
+        nextCandles[lastIndex] = updatedLast;
+        return nextCandles;
+      } else {
+        // NO: Append a new candle to the series
+        const newCandleStartMs = Math.floor(latestTickTime / intervalMs) * intervalMs;
+        const newCandle: Candle = {
+          symbol,
+          granularity_seconds: granularity,
+          open_time: new Date(newCandleStartMs).toISOString(),
+          close_time: new Date(newCandleStartMs + intervalMs).toISOString(),
+          open: currentPrice,
+          high: currentPrice,
+          low: currentPrice,
+          close: currentPrice,
+        };
+        return [...prevCandles, newCandle];
+      }
+    });
+  }, [currentPrice, priceHistory, granularity, symbol, chartType]);
+
+  // Active candles for rendering
   const activeCandles = useMemo(() => {
     if (chartType !== 'candle') return [];
-    if (candles.length === 0) {
-      return generateFallbackCandles(displayedHistory, granularity, currentPrice, symbol);
-    }
-    const updated = [...candles];
-    const lastIndex = updated.length - 1;
-    const lastCandle = { ...updated[lastIndex] };
-
-    lastCandle.close = currentPrice;
-    lastCandle.high = Math.max(lastCandle.high, currentPrice);
-    lastCandle.low = Math.min(lastCandle.low, currentPrice);
-
-    updated[lastIndex] = lastCandle;
-    return updated;
-  }, [candles, currentPrice, chartType, displayedHistory, granularity, symbol]);
+    if (candles.length > 0) return candles;
+    return generateFallbackCandles(displayedHistory, granularity, currentPrice, symbol);
+  }, [chartType, candles, displayedHistory, granularity, currentPrice, symbol]);
 
   // Min and Max prices for chart scaling
   const { minPrice, maxPrice, prices } = useMemo(() => {
