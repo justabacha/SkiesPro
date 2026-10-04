@@ -50,7 +50,57 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-lg border border-border-light dark:border-border-dark">
+      <div className="space-y-3 p-3 sm:hidden">
+        {entries.length === 0 && !isLoading ? (
+          <p className="rounded-lg border border-border-light px-4 py-8 text-center text-sm text-text-light-tertiary dark:border-border-dark">
+            No transactions found.
+          </p>
+        ) : (
+          entries.map((entry) => (
+            <article
+              key={entry.id}
+              className="min-w-0 rounded-xl border border-border-light bg-bg-light-primary/60 p-3 dark:border-border-dark dark:bg-bg-dark-primary/40"
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  {getEntryIcon(entry.entry_type)}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold capitalize">
+                      {entry.reference_type.replace('_', ' ')}
+                    </p>
+                    <p className="truncate text-xs text-text-light-tertiary dark:text-text-dark-secondary">
+                      {entry.description}
+                    </p>
+                  </div>
+                </div>
+                <span className={`shrink-0 whitespace-nowrap font-mono text-sm font-bold ${entry.entry_type === 'credit' ? 'text-success' : 'text-danger'}`}>
+                  {entry.entry_type === 'credit' ? '+' : '-'}{formatKES(entry.amount)}
+                </span>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border-light pt-3 dark:border-border-dark">
+                <div className="min-w-0">
+                  <div>{getStatusBadge(entry.entry_type)}</div>
+                  <p className="mt-1 text-[11px] text-text-light-secondary dark:text-text-dark-secondary">
+                    {new Date(entry.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => setSelectedTx(entry)}
+                  aria-label={`View ${entry.reference_type.replace('_', ' ')} transaction details`}
+                >
+                  <Eye className="mr-1.5 h-4 w-4" />
+                  Details
+                </Button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg border border-border-light dark:border-border-dark sm:block">
         <table className="w-full text-left border-collapse">
           <thead className="bg-bg-light-secondary dark:bg-bg-dark-secondary text-xs uppercase text-text-light-tertiary font-bold tracking-wider">
             <tr>
@@ -98,6 +148,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => setSelectedTx(entry)}
+                      aria-label={`View ${entry.reference_type.replace('_', ' ')} transaction details`}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -126,6 +177,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
         isOpen={!!selectedTx}
         onClose={() => setSelectedTx(null)}
         title="Transaction Details"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6"
       >
         {selectedTx && (
           <Stack gap="lg">

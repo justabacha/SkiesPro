@@ -53,52 +53,52 @@ export const WalletPage = () => {
   };
 
   return (
-    <Container className="max-w-6xl py-6">
-      <Stack gap="xl">
+    <Container className="max-w-6xl min-w-0 py-4 sm:py-6">
+      <Stack gap="lg">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Stack gap="xs">
-            <h1 className="text-3xl font-bold tracking-tight text-text-light-primary dark:text-text-dark-primary">
+            <h1 className="text-2xl font-bold tracking-tight text-text-light-primary dark:text-text-dark-primary sm:text-3xl">
               My Wallet
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-text-light-tertiary uppercase font-bold tracking-wider">KYC Status:</span>
               {getKycBadge(user?.kycStatus || 'none')}
             </div>
           </Stack>
-          <Button variant="ghost" size="sm" onClick={handleRefresh} isLoading={isLoading}>
+          <Button variant="ghost" size="sm" onClick={handleRefresh} isLoading={isLoading} className="w-full sm:w-auto">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
         </div>
 
         {/* Balance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6 relative overflow-hidden">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 xl:gap-6">
+          <Card className="relative min-w-0 overflow-hidden p-4 sm:p-6">
             <div className="absolute right-[-10px] bottom-[-10px] text-brand/5 opacity-50 dark:opacity-10">
-              <Wallet className="h-24 w-24" />
+              <Wallet className="h-20 w-20 sm:h-24 sm:w-24" />
             </div>
             <Stack gap="sm">
               <span className="text-xs text-text-light-tertiary uppercase font-bold tracking-wider">Total Balance</span>
-              <div className="text-2xl font-mono font-black text-brand">
+              <div className="break-words text-xl font-mono font-black tracking-tight text-brand sm:text-2xl">
                 {isLoading && !balance ? <Spinner size="sm" /> : formatKES(balance?.balance || '0')}
               </div>
             </Stack>
           </Card>
 
-          <Card className="p-6 border-l-4 border-l-success">
+          <Card className="min-w-0 border-l-4 border-l-success p-4 sm:p-6">
             <Stack gap="sm">
               <span className="text-xs text-text-light-tertiary uppercase font-bold tracking-wider">Available Funds</span>
-              <div className="text-2xl font-mono font-black text-success">
+              <div className="break-words text-xl font-mono font-black tracking-tight text-success sm:text-2xl">
                 {isLoading && !balance ? <Spinner size="sm" /> : formatKES(balance?.available_balance || '0')}
               </div>
             </Stack>
           </Card>
 
-          <Card className="p-6 border-l-4 border-l-warning">
+          <Card className="min-w-0 border-l-4 border-l-warning p-4 sm:p-6 sm:col-span-2 xl:col-span-1">
             <Stack gap="sm">
-              <span className="text-xs text-text-light-tertiary uppercase font-bold tracking-wider">Locked (Active Trades)</span>
-              <div className="text-2xl font-mono font-black text-warning">
+              <span className="text-xs text-text-light-tertiary uppercase font-bold tracking-wider">Locked <span className="normal-case">(Active Trades)</span></span>
+              <div className="break-words text-xl font-mono font-black tracking-tight text-warning sm:text-2xl">
                 {isLoading && !balance ? <Spinner size="sm" /> : formatKES(balance?.locked_balance || '0')}
               </div>
             </Stack>
@@ -106,9 +106,9 @@ export const WalletPage = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <Button
-            className="flex-1 h-14 text-lg font-bold"
+            className="h-12 w-full text-base font-bold sm:h-14 sm:flex-1 sm:text-lg"
             onClick={() => setIsDepositOpen(true)}
           >
             <ArrowDownCircle className="h-5 w-5 mr-2" />
@@ -116,7 +116,7 @@ export const WalletPage = () => {
           </Button>
           <Button
             variant="secondary"
-            className="flex-1 h-14 text-lg font-bold"
+            className="h-12 w-full text-base font-bold sm:h-14 sm:flex-1 sm:text-lg"
             onClick={() => setIsWithdrawOpen(true)}
             disabled={user?.kycStatus !== 'verified'}
           >
@@ -127,7 +127,7 @@ export const WalletPage = () => {
 
         {/* Transaction History Section */}
         <Card className="p-0 overflow-hidden">
-          <div className="p-4 border-b border-border-light dark:border-border-dark flex items-center justify-between">
+          <div className="flex flex-col gap-2 border-b border-border-light p-4 dark:border-border-dark sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-bold">Transaction History</h2>
             <div className="flex items-center gap-2 text-xs text-text-light-tertiary">
               <ShieldCheck className="h-3 w-3" />
@@ -148,6 +148,7 @@ export const WalletPage = () => {
         isOpen={isDepositOpen}
         onClose={() => setIsDepositOpen(false)}
         title="Deposit Funds via M-Pesa"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6"
       >
         <DepositForm onSuccess={() => {
           setIsDepositOpen(false);
@@ -159,6 +160,7 @@ export const WalletPage = () => {
         isOpen={isWithdrawOpen}
         onClose={() => setIsWithdrawOpen(false)}
         title="Withdraw Funds to M-Pesa"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6"
       >
         <WithdrawForm
           availableBalance={balance?.available_balance || '0'}
