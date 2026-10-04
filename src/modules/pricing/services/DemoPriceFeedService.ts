@@ -36,6 +36,7 @@ export class DemoPriceFeedService {
   start(): void {
     if (this.flushTimer || this.retentionTimer) return;
     this.adapter.connect();
+    void this.pruneExpiredTicks();
     this.flushTimer = setInterval(() => {
       void this.flushTicks();
     }, 1000);
@@ -122,8 +123,12 @@ export class DemoPriceFeedService {
 
   private async pruneExpiredTicks(): Promise<void> {
     try {
-      const result = await this.tickRepository.pruneExpiredDemoTicks();
-      logger.info('Pruned expired demo price ticks', { deletedCount: result });
+      const retentionDays = Number(process.env.DEMO_TICK_RETENTION_DAYS || '30');
+      if (!Number.isInteger(retentionDays) || retentionDays < 1) {
+        throw new Error('DEMO_TICK_RETENTION_DAYS must be a positive integer');
+      }
+      const deletedCount = await this.tickRepository.pruneExpiredDemoTicks(retentionDays);
+      logger.info('Pruned expired demo price ticks', { deletedCount, retentionDays });
     } catch (error) {
       logger.error('Failed to prune expired demo price ticks', {
         error: error instanceof Error ? error.message : 'Unknown error',

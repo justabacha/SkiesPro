@@ -6,6 +6,7 @@ import { DemoTradingService } from '../../src/modules/trading/services/demoTradi
 import { DemoWalletService } from '../../src/modules/wallet/services/demoWalletService.js';
 import { WalletService } from '../../src/modules/wallet/services/walletService.js';
 import { SettlementWorker } from '../../src/modules/trading/workers/settlementWorker.js';
+import { TickRepository } from '../../src/modules/pricing/repositories/tickRepository.js';
 
 describe('Demo wallet isolation integration', () => {
   const userId = uuidv4();
@@ -339,5 +340,56 @@ describe('Demo wallet isolation integration', () => {
         'new_users',
       ])
     );
+  });
+
+  it('prunes only demo ticks beyond the configured retention window', async () => {
+    const oldTickTime = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+    const recentTickTime = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000);
+    const inserted = await pgPool.query<{ id: string; source: string }>(
+      `INSERT INTO pricing.price_ticks
+         (symbol, tick_time, bid_price, ask_price, mid_price, volume, source)
+       VALUES
+         ('EUR/USD', $1, '1.10000', '1.10010', '1.10005', '0', 'demo'),
+         ('EUR/USD', $1, '1.10000', '1.10010', '1.10005', '0', 'live'),
+         ('EUR/USD', $2, '1.10000', '1.10010', '1.10005', '0', 'demo')
+       RETURNING id, source`,
+      [oldTickTime, recentTickTime]
+    );
+    const ledgerBefore = await pgPool.query(
+      'SELECT COUNT(*)::int AS count FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)',
+      [userId]
+    );
+    const contractsBefore = await pgPool.query(
+      'SELECT COUNT(*)::int AS count FROM trading.binary_contracts WHERE user_id = $1',
+      [userId]
+    );
+
+    try {
+      const deleted = await new TickRepository().pruneExpiredDemoTicks(30);
+      const remaining = await pgPool.query<{ id: string }>(
+        'SELECT id FROM pricing.price_ticks WHERE id = ANY($1::bigint[])',
+        [inserted.rows.map((row) => row.id)]
+      );
+      const ledgerAfter = await pgPool.query(
+        'SELECT COUNT(*)::int AS count FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)',
+        [userId]
+      );
+      const contractsAfter = await pgPool.query(
+        'SELECT COUNT(*)::int AS count FROM trading.binary_contracts WHERE user_id = $1',
+        [userId]
+      );
+
+      expect(deleted).toBe(1);
+      expect(remaining.rows.map((row) => row.id)).toEqual(
+        expect.arrayContaining(inserted.rows.slice(1).map((row) => row.id))
+      );
+      expect(remaining.rows.map((row) => row.id)).not.toContain(inserted.rows[0].id);
+      expect(ledgerAfter.rows[0].count).toBe(ledgerBefore.rows[0].count);
+      expect(contractsAfter.rows[0].count).toBe(contractsBefore.rows[0].count);
+    } finally {
+      await pgPool.query('DELETE FROM pricing.price_ticks WHERE id = ANY($1::bigint[])', [
+        inserted.rows.map((row) => row.id),
+      ]);
+    }
   });
 });

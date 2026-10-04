@@ -23,4 +23,4 @@
 
 ## Execution Gate
 
-The specification now defines the required isolation and failure behavior, but the design does not grant approval for unconfirmed product decisions. The proposed initial balance, shared-table tick strategy, and retention policy remain explicit owner sign-off items in §2.4. Until the owner records those decisions, migration 033 must not be applied and demo routes/flags must remain disabled. Implementation is complete only after the §6 integration/security/UI tests and §7 done criteria pass against the complete migration chain and staging environment.
+The owner subsequently ratified the KES 100,000 initial demo balance, five successful resets per rolling hour/user, and shared `pricing.price_ticks` storage with `source='demo'`. The owner also set tick retention to 30 days on 2026-10-04, superseding the original 90-day proposal. Migration 033 and the follow-on configurable-retention migration 034 were applied to the confirmed disposable test database; production deployment remains subject to the normal migration and release process.

@@ -13,8 +13,10 @@ services are not used by demo trade or wallet services.
 
 Wallet resets are idempotent and serialized per user. A reset is rejected while
 any demo contract is active or settling, and the durable reset-event table limits
-successful resets to five per rolling hour. Demo ticks older than 90 days may be
-pruned; ledger and audit rows are retained.
+successful resets to five per rolling hour. The scheduled cleanup prunes demo
+ticks older than `DEMO_TICK_RETENTION_DAYS` (30 days by default), while preserving
+ticks needed by active/settling demo contracts. Ledger, contract, and audit rows
+are retained.
 
 Keep the feature disabled until migration 033 has been applied and verified on a
 disposable database. Never use demo endpoints to credit, withdraw, or transfer

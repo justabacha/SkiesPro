@@ -143,7 +143,7 @@ CREATE INDEX IF NOT EXISTS pricing_demo_ticks_retention_idx
   ON pricing.price_ticks(tick_time)
   WHERE source = 'demo';
 
--- Retention is limited to demo ticks older than 90 days. Never delete ledger
+-- Retention is limited to demo ticks older than 30 days. Never delete ledger
 -- or audit events. A symbol with active/settling demo contracts is preserved.
 CREATE OR REPLACE FUNCTION pricing.prune_expired_demo_ticks()
 RETURNS BIGINT AS $$
@@ -152,7 +152,7 @@ DECLARE
 BEGIN
   DELETE FROM pricing.price_ticks tick
    WHERE tick.source = 'demo'
-     AND tick.tick_time < NOW() - INTERVAL '90 days'
+     AND tick.tick_time < NOW() - INTERVAL '30 days'
      AND NOT EXISTS (
        SELECT 1
          FROM trading.binary_contracts contract

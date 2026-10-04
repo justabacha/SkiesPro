@@ -78,9 +78,9 @@
 | Initial demo balance | Proposed **KES 100,000**; owner must explicitly ratify or provide a replacement | Virtual wallet seed + reset value | Yes |
 | Demo balance reset rate limit | **5 successful resets / rolling hour / user** | Anti-abuse; enforced by durable shared storage, fail-closed | Yes |
 | Demo tick storage strategy | Proposed shared table with mandatory `source='demo'`; owner must explicitly approve | Settlement authority isolation | Yes |
-| Demo data retention | Proposed **90 days** for demo ticks; ledger and audit records are retained per accounting policy | Storage cost and retention compliance | Yes |
+| Demo data retention | **30 days** for demo ticks, as directed by the owner on 2026-10-04; ledger and audit records are retained per accounting policy | Storage cost and retention compliance | Ratified |
 
-No proposed value is approval. Record the owner's decision and effective retention policy in the implementation report before implementation or migration execution. Until the initial balance and tick-storage strategy are approved, keep the feature disabled, do not seed demo balances, and do not run migration 033. `VITE_DEMO_ENABLED` defaults to `false`; missing/invalid backend demo configuration disables demo routes rather than supplying a success-shaped default.
+The owner ratified KES 100,000 initial balance, five successful resets per rolling hour/user, and shared `pricing.price_ticks` storage with `source='demo'`. The owner set demo tick retention to 30 days on 2026-10-04. Cleanup must prune only old demo ticks, preserve ticks required by active/settling demo contracts, and never delete ledger or contract records. `VITE_DEMO_ENABLED` defaults to `false`; missing/invalid backend demo configuration disables demo routes rather than supplying a success-shaped default.
 
 **Naming note:** requirement 1 references `useMockPrices`; the codebase implements the mock feed as `MockPriceAdapter` (`PriceFeedIngestionService.currentTier === 'tier3_mock'`). This WP introduces a **dedicated demo mock feed + `useDemoPrices` frontend hook** (see §4.1/§4.5).
 

@@ -93,9 +93,10 @@ export class TickRepository {
     return result.rows[0] || null;
   }
 
-  async pruneExpiredDemoTicks(): Promise<number> {
+  async pruneExpiredDemoTicks(retentionDays: number): Promise<number> {
     const result = await this.client.query<{ deleted_count: string }>(
-      'SELECT pricing.prune_expired_demo_ticks() AS deleted_count'
+      'SELECT pricing.prune_expired_demo_ticks($1) AS deleted_count',
+      [retentionDays]
     );
     return Number(result.rows[0]?.deleted_count || 0);
   }
