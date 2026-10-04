@@ -57,11 +57,59 @@ export class CandleRepository {
     limit: number = 500
   ): Promise<CandleRow[]> {
     const result = await this.client.query<CandleRow>(
-      `SELECT id, symbol, granularity_seconds, open_time, close_time, open_price, high_price, low_price, close_price, volume, created_at
-       FROM pricing.candles
-       WHERE symbol = $1 AND granularity_seconds = $2 AND open_time >= $3 AND open_time <= $4
-       ORDER BY open_time ASC
-       LIMIT $5`,
+      `SELECT * FROM (
+         SELECT id, symbol, granularity_seconds, open_time, close_time, open_price,
+                high_price, low_price, close_price, volume, created_at
+         FROM pricing.candles
+         WHERE symbol = $1 AND granularity_seconds = $2 AND open_time >= $3 AND open_time <= $4
+         ORDER BY open_time DESC
+         LIMIT $5
+       ) recent
+       ORDER BY open_time ASC`,
+      [symbol, granularity, from, to, limit]
+    );
+    return result.rows;
+  }
+
+  async getAggregatedCandles(
+    symbol: string,
+    granularity: number,
+    from: Date,
+    to: Date,
+    limit: number = 500
+  ): Promise<CandleRow[]> {
+    const result = await this.client.query<CandleRow>(
+      `SELECT
+         'bucket_' || extract(epoch from open_time)::bigint AS id,
+         $1 AS symbol,
+         $2::integer AS granularity_seconds,
+         open_time,
+         close_time,
+         open_price,
+         high_price,
+         low_price,
+         close_price,
+         volume,
+         open_time AS created_at
+       FROM (
+         SELECT
+           to_timestamp(floor(extract(epoch from open_time) / $2) * $2) AS open_time,
+           to_timestamp(floor(extract(epoch from open_time) / $2) * $2) + ($2 * interval '1 second') - interval '1 millisecond' AS close_time,
+           (ARRAY_AGG(open_price ORDER BY open_time ASC))[1] AS open_price,
+           MAX(high_price) AS high_price,
+           MIN(low_price) AS low_price,
+           (ARRAY_AGG(close_price ORDER BY open_time DESC))[1] AS close_price,
+           COALESCE(SUM(volume), 0)::text AS volume
+         FROM pricing.candles
+         WHERE symbol = $1
+           AND granularity_seconds = 60
+           AND open_time >= $3
+           AND open_time <= $4
+         GROUP BY floor(extract(epoch from open_time) / $2)
+         ORDER BY open_time DESC
+         LIMIT $5
+       ) recent
+       ORDER BY open_time ASC`,
       [symbol, granularity, from, to, limit]
     );
     return result.rows;

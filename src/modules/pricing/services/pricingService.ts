@@ -46,23 +46,29 @@ export class PricingService {
   async getCandles(query: CandleRequestDto) {
     const normalizedSymbol = normalizeSymbol(query.symbol);
     const granularity = query.granularity || 60;
+    const limit = Math.min(Math.max(query.limit || 500, 1), 1000);
     const to = query.to ? new Date(query.to) : new Date();
-    const from = query.from ? new Date(query.from) : new Date(to.getTime() - 24 * 60 * 60 * 1000);
-    const limit = query.limit || 500;
 
-    const candles = await this.candleRepo.getCandles(
-      normalizedSymbol,
-      granularity,
-      from,
-      to,
-      limit
-    );
+    const bufferFactor = 1.2;
+    const rangeMs = Math.ceil(granularity * limit * 1000 * bufferFactor);
+    const from = query.from ? new Date(query.from) : new Date(to.getTime() - rangeMs);
+
+    const candles =
+      granularity === 60
+        ? await this.candleRepo.getCandles(normalizedSymbol, granularity, from, to, limit)
+        : await this.candleRepo.getAggregatedCandles(
+            normalizedSymbol,
+            granularity,
+            from,
+            to,
+            limit
+          );
 
     return candles.map((c) => ({
       symbol: c.symbol,
       granularity_seconds: c.granularity_seconds,
-      open_time: c.open_time.toISOString(),
-      close_time: c.close_time.toISOString(),
+      open_time: c.open_time instanceof Date ? c.open_time.toISOString() : new Date(c.open_time).toISOString(),
+      close_time: c.close_time instanceof Date ? c.close_time.toISOString() : new Date(c.close_time).toISOString(),
       open: c.open_price,
       high: c.high_price,
       low: c.low_price,

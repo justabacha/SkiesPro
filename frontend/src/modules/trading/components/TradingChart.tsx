@@ -338,6 +338,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     };
     candleSeriesRef.current?.applyOptions({ priceFormat });
     areaSeriesRef.current?.applyOptions({ priceFormat });
+    chartRef.current?.applyOptions({
+      localization: { priceFormatter: (p: number) => p.toFixed(pipPlaces) },
+    });
   }, [symbol, pipDecimalPlaces, currentPrice]);
 
   const activeContractsKey = useMemo(
