@@ -127,28 +127,50 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   const hasLoadedActiveRef = useRef<boolean>(false);
   const hasLoadedHistoryRef = useRef<boolean>(false);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeRequestRef = useRef<AbortController | null>(null);
+  const historyRequestRef = useRef<AbortController | null>(null);
+  const tradeRequestRef = useRef<AbortController | null>(null);
 
-  useEffect(() => registerModeCleanup(() => {
-    setActiveContracts([]);
-    setTradeHistory([]);
-    setSettlementEvents([]);
-    setPendingOrder(null);
-    setIsConfirmModalOpen(false);
-    setIsPlacingTrade(false);
-    setIsLoadingActive(false);
-    setIsLoadingHistory(false);
-    setTradeError(null);
-    setPendingOrderActive(false);
-    previousActiveIdsRef.current.clear();
-    hasLoadedActiveRef.current = false;
-    hasLoadedHistoryRef.current = false;
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  }), [registerModeCleanup, setPendingOrderActive]);
+  useEffect(
+    () =>
+      registerModeCleanup(() => {
+        activeRequestRef.current?.abort();
+        historyRequestRef.current?.abort();
+        tradeRequestRef.current?.abort();
+        activeRequestRef.current = null;
+        historyRequestRef.current = null;
+        tradeRequestRef.current = null;
+        setActiveContracts([]);
+        setTradeHistory([]);
+        setSettlementEvents([]);
+        setPendingOrder(null);
+        setIsConfirmModalOpen(false);
+        setIsPlacingTrade(false);
+        setIsLoadingActive(false);
+        setIsLoadingHistory(false);
+        setTradeError(null);
+        setPendingOrderActive(false);
+        previousActiveIdsRef.current.clear();
+        hasLoadedActiveRef.current = false;
+        hasLoadedHistoryRef.current = false;
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      }),
+    [registerModeCleanup, setPendingOrderActive]
+  );
 
   useEffect(() => () => setPendingOrderActive(false), [setPendingOrderActive]);
+
+  useEffect(
+    () => () => {
+      activeRequestRef.current?.abort();
+      historyRequestRef.current?.abort();
+      tradeRequestRef.current?.abort();
+    },
+    []
+  );
 
   // Load assets on mount
   useEffect(() => {
@@ -192,7 +214,7 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
           symbol,
           name: symbol,
           isActive: true,
-          payoutRate: 0.60,
+          payoutRate: 0.6,
           minStake: 100,
           maxStake: 50000,
           minExpirySeconds: 60,
@@ -205,99 +227,136 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   );
 
   // Fetch active contracts
-  const fetchActiveContracts = useCallback(async (isInitial = false) => {
-    if (!isAuthenticated) return;
-    const requestGeneration = generation;
-    const requestMode = accountMode;
-    const requestUser = userId;
-    if (isInitial || !hasLoadedActiveRef.current) {
-      setIsLoadingActive(true);
-    }
-    try {
-      const active = await tradingService.getActiveContracts(requestMode);
-      if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
-      setActiveContracts(active);
-      hasLoadedActiveRef.current = true;
+  const fetchActiveContracts = useCallback(
+    async (isInitial = false) => {
+      if (!isAuthenticated) return;
+      activeRequestRef.current?.abort();
+      const controller = new AbortController();
+      activeRequestRef.current = controller;
+      const requestGeneration = generation;
+      const requestMode = accountMode;
+      const requestUser = userId;
+      if (isInitial || !hasLoadedActiveRef.current) {
+        setIsLoadingActive(true);
+      }
+      try {
+        const active = await tradingService.getActiveContracts(requestMode, controller.signal);
+        if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
+        setActiveContracts(active);
+        hasLoadedActiveRef.current = true;
 
-      const currentActiveIds = new Set(active.map((c) => c.id));
-      const previousIds = previousActiveIdsRef.current;
+        const currentActiveIds = new Set(active.map((c) => c.id));
+        const previousIds = previousActiveIdsRef.current;
 
-      // Check if any previously active contract has disappeared (settled)
-      if (previousIds.size > 0) {
-        const settledIds = Array.from(previousIds).filter((id) => !currentActiveIds.has(id));
-        if (settledIds.length > 0) {
-          // Refresh trade history and wallet balance
-          void fetchBalance();
-          const history = await tradingService.getContracts({ limit: 10 }, requestMode);
-          if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
-          setTradeHistory(history);
+        // Check if any previously active contract has disappeared (settled)
+        if (previousIds.size > 0) {
+          const settledIds = Array.from(previousIds).filter((id) => !currentActiveIds.has(id));
+          if (settledIds.length > 0) {
+            // Refresh trade history and wallet balance
+            void fetchBalance();
+            historyRequestRef.current?.abort();
+            const historyController = new AbortController();
+            historyRequestRef.current = historyController;
+            const history = await tradingService.getContracts(
+              { limit: 10 },
+              requestMode,
+              historyController.signal
+            );
+            if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
+            setTradeHistory(history);
 
-          // Trigger settlement event animations
-          settledIds.forEach((id) => {
-            const settledContract = history.find((c) => c.id === id);
-            if (settledContract) {
-              const outcome =
-                settledContract.status === 'won'
-                  ? 'won'
-                  : settledContract.status === 'draw'
-                  ? 'draw'
-                  : 'lost';
-              const payoutAmount = Number(settledContract.potential_payout || '0');
+            // Trigger settlement event animations
+            settledIds.forEach((id) => {
+              const settledContract = history.find((c) => c.id === id);
+              if (settledContract) {
+                const outcome =
+                  settledContract.status === 'won'
+                    ? 'won'
+                    : settledContract.status === 'draw'
+                      ? 'draw'
+                      : 'lost';
+                const payoutAmount = Number(settledContract.potential_payout || '0');
 
-              setSettlementEvents((prev) => [
-                ...prev.filter((e) => e.contractId !== id),
-                {
-                  contractId: id,
-                  outcome,
-                  payoutAmount: outcome === 'won' ? payoutAmount : 0,
-                  timestamp: Date.now(),
-                },
-              ]);
-            }
-          });
+                setSettlementEvents((prev) => [
+                  ...prev.filter((e) => e.contractId !== id),
+                  {
+                    contractId: id,
+                    outcome,
+                    payoutAmount: outcome === 'won' ? payoutAmount : 0,
+                    timestamp: Date.now(),
+                  },
+                ]);
+              }
+            });
+          }
+        }
+
+        previousActiveIdsRef.current = currentActiveIds;
+      } catch (err: unknown) {
+        if ((err as Error).name === 'AbortError') return;
+        console.warn('Failed to fetch active contracts:', err);
+        if (isUnauthorizedError(err)) {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+        }
+      } finally {
+        if (
+          activeRequestRef.current === controller &&
+          isCurrentGeneration(requestGeneration, requestMode, requestUser)
+        ) {
+          activeRequestRef.current = null;
+          setIsLoadingActive(false);
         }
       }
-
-      previousActiveIdsRef.current = currentActiveIds;
-    } catch (err: unknown) {
-      console.warn('Failed to fetch active contracts:', err);
-      if (isUnauthorizedError(err)) {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
-      }
-    } finally {
-      if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setIsLoadingActive(false);
-    }
-  }, [accountMode, fetchBalance, generation, isAuthenticated, isCurrentGeneration, userId]);
+    },
+    [accountMode, fetchBalance, generation, isAuthenticated, isCurrentGeneration, userId]
+  );
 
   // Fetch trade history
-  const fetchTradeHistory = useCallback(async (isInitial = false) => {
-    if (!isAuthenticated) return;
-    const requestGeneration = generation;
-    const requestMode = accountMode;
-    const requestUser = userId;
-    if (isInitial || !hasLoadedHistoryRef.current) {
-      setIsLoadingHistory(true);
-    }
-    try {
-      const history = await tradingService.getContracts({ limit: 20 }, requestMode);
-      if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
-      setTradeHistory(history);
-      hasLoadedHistoryRef.current = true;
-    } catch (err: unknown) {
-      console.warn('Failed to fetch trade history:', err);
-      if (isUnauthorizedError(err)) {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
+  const fetchTradeHistory = useCallback(
+    async (isInitial = false) => {
+      if (!isAuthenticated) return;
+      historyRequestRef.current?.abort();
+      const controller = new AbortController();
+      historyRequestRef.current = controller;
+      const requestGeneration = generation;
+      const requestMode = accountMode;
+      const requestUser = userId;
+      if (isInitial || !hasLoadedHistoryRef.current) {
+        setIsLoadingHistory(true);
+      }
+      try {
+        const history = await tradingService.getContracts(
+          { limit: 20 },
+          requestMode,
+          controller.signal
+        );
+        if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
+        setTradeHistory(history);
+        hasLoadedHistoryRef.current = true;
+      } catch (err: unknown) {
+        if ((err as Error).name === 'AbortError') return;
+        console.warn('Failed to fetch trade history:', err);
+        if (isUnauthorizedError(err)) {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+        }
+      } finally {
+        if (
+          historyRequestRef.current === controller &&
+          isCurrentGeneration(requestGeneration, requestMode, requestUser)
+        ) {
+          historyRequestRef.current = null;
+          setIsLoadingHistory(false);
         }
       }
-    } finally {
-      if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setIsLoadingHistory(false);
-    }
-  }, [accountMode, generation, isAuthenticated, isCurrentGeneration, userId]);
+    },
+    [accountMode, generation, isAuthenticated, isCurrentGeneration, userId]
+  );
 
   // Poll active contracts periodically when authenticated
   useEffect(() => {
@@ -354,19 +413,14 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
 
   // Prepare confirmation modal
   const requestTradeConfirmation = useCallback(
-    (
-      contractType: ContractType,
-      stake: string,
-      expirySeconds: number,
-      currentPrice: number
-    ) => {
+    (contractType: ContractType, stake: string, expirySeconds: number, currentPrice: number) => {
       if (!selectedAsset || !Number.isFinite(currentPrice) || currentPrice <= 0) {
         setTradeError('MARKET_DATA_UNAVAILABLE');
         return;
       }
 
       const numericStake = parseFloat(stake);
-      const payoutRate = selectedAsset.payoutRate || 0.60;
+      const payoutRate = selectedAsset.payoutRate || 0.6;
       const potentialPayout = Number((numericStake * (1 + payoutRate)).toFixed(2));
 
       setPendingOrder({
@@ -385,9 +439,7 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   );
 
   // Submit direct or confirmed trade
-  const submitTradeInternal = async (
-    dto: CreateContractDto
-  ): Promise<BinaryContract | null> => {
+  const submitTradeInternal = async (dto: CreateContractDto): Promise<BinaryContract | null> => {
     if (isPlacingTrade) return null;
     const requestGeneration = generation;
     const requestMode = accountMode;
@@ -397,9 +449,17 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
     setTradeError(null);
 
     const idempotencyKey = generateUuidV4();
+    tradeRequestRef.current?.abort();
+    const controller = new AbortController();
+    tradeRequestRef.current = controller;
 
     try {
-      const contract = await tradingService.placeTrade(dto, idempotencyKey, requestMode);
+      const contract = await tradingService.placeTrade(
+        dto,
+        idempotencyKey,
+        requestMode,
+        controller.signal
+      );
       if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return null;
 
       // Refresh wallet and active contracts list
@@ -408,11 +468,18 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
 
       return contract;
     } catch (err: unknown) {
+      if ((err as Error).name === 'AbortError') return null;
       const message = err instanceof Error ? err.message : 'Trade execution failed';
       if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setTradeError(message);
       return null;
     } finally {
-      if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setIsPlacingTrade(false);
+      if (
+        tradeRequestRef.current === controller &&
+        isCurrentGeneration(requestGeneration, requestMode, requestUser)
+      ) {
+        tradeRequestRef.current = null;
+        setIsPlacingTrade(false);
+      }
     }
   };
 

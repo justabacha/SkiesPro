@@ -31,13 +31,8 @@ export const TradingPage: React.FC = () => {
 
   const initialSymbol = useMemo(() => getInitialSymbol(), []);
 
-  const {
-    currentPrice,
-    isPriceAvailable,
-    priceHistory,
-    latencyState,
-    subscribeToSymbol,
-  } = usePriceStream(initialSymbol);
+  const { currentPrice, isPriceAvailable, priceHistory, latencyState, subscribeToSymbol } =
+    usePriceStream(initialSymbol);
 
   const {
     assets,
@@ -87,11 +82,17 @@ export const TradingPage: React.FC = () => {
     return { [selectedAsset.symbol]: currentPrice };
   }, [selectedAsset, currentPrice]);
   const tradingAssets = useMemo(
-    () => accountMode === 'demo' ? assets.map((asset) => ({ ...asset, isOpen: true, isActive: true })) : assets,
+    () =>
+      accountMode === 'demo'
+        ? assets.map((asset) => ({ ...asset, isOpen: true, isActive: true }))
+        : assets,
     [accountMode, assets]
   );
   const tradingAsset = useMemo(
-    () => selectedAsset && accountMode === 'demo' ? { ...selectedAsset, isOpen: true, isActive: true } : selectedAsset,
+    () =>
+      selectedAsset && accountMode === 'demo'
+        ? { ...selectedAsset, isOpen: true, isActive: true }
+        : selectedAsset,
     [accountMode, selectedAsset]
   );
 
@@ -116,11 +117,17 @@ export const TradingPage: React.FC = () => {
               {accountMode === 'demo' ? 'Demo Available Balance' : 'Available Balance'}
             </span>
             <span className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400">
-              KES {numericBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              KES{' '}
+              {numericBalance.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
         </div>
       </div>
+
+      {accountMode === 'demo' && <DemoModeBanner />}
 
       {/* Settlement Flash Banner Event Notifications */}
       {settlementEvents.length > 0 && (
@@ -132,8 +139,8 @@ export const TradingPage: React.FC = () => {
                 event.outcome === 'won'
                   ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
                   : event.outcome === 'draw'
-                  ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40'
-                  : 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40'
+                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40'
+                    : 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40'
               }`}
             >
               <div className="flex items-center space-x-2">
@@ -160,7 +167,6 @@ export const TradingPage: React.FC = () => {
       <div className="flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-3 lg:gap-6">
         {/* Chart Column (2 Spans) */}
         <div className="min-w-0 lg:col-span-2">
-          {accountMode === 'demo' && <div className="mb-3"><DemoModeBanner /></div>}
           <TradingChart
             symbol={selectedAsset?.symbol || 'EUR/USD'}
             priceHistory={priceHistory}

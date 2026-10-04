@@ -23,7 +23,7 @@ interface AccountModeContextValue {
   accountMode: AccountMode;
   isDemoEnabled: boolean;
   generation: number;
-  switchAccountMode: (mode: AccountMode) => boolean;
+  setAccountMode: (mode: AccountMode) => boolean;
   registerModeCleanup: (cleanup: () => void) => () => void;
   setPendingOrderActive: (active: boolean) => void;
   getWalletBalance: (mode: AccountMode) => WalletBalance | null;
@@ -42,7 +42,7 @@ const readInitialMode = (): AccountMode => {
 
 export const AccountModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
-  const [accountMode, setAccountMode] = useState<AccountMode>(readInitialMode);
+  const [accountMode, setAccountModeState] = useState<AccountMode>(readInitialMode);
   const [generation, setGeneration] = useState(0);
   const [walletBalances, setWalletBalances] = useState<Record<string, WalletBalance>>({});
   const modeRef = useRef(accountMode);
@@ -50,7 +50,9 @@ export const AccountModeProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const generationRef = useRef(0);
   const pendingOrderRef = useRef(false);
   const cleanupCallbacks = useRef(new Set<() => void>());
-  const requests = useRef(new Map<string, { controller: AbortController; promise: Promise<WalletBalance | null> }>());
+  const requests = useRef(
+    new Map<string, { controller: AbortController; promise: Promise<WalletBalance | null> }>()
+  );
 
   modeRef.current = accountMode;
   userIdRef.current = user?.id || null;
@@ -69,64 +71,77 @@ export const AccountModeProvider: React.FC<{ children: React.ReactNode }> = ({ c
     pendingOrderRef.current = active;
   }, []);
 
-  const switchAccountMode = useCallback((nextMode: AccountMode) => {
-    if (nextMode === modeRef.current || (nextMode === 'demo' && !isDemoEnabled)) return false;
-    if (pendingOrderRef.current && !window.confirm('You have a pending order. Switching accounts will discard it. Continue?')) {
-      return false;
-    }
-
-    generationRef.current += 1;
-    modeRef.current = nextMode;
-    abortRequests();
-    cleanupCallbacks.current.forEach((cleanup) => cleanup());
-    setGeneration(generationRef.current);
-    setWalletBalances({});
-    setAccountMode(nextMode);
-    if (isDemoEnabled) window.localStorage.setItem(STORAGE_KEY, nextMode);
-    return true;
-  }, [abortRequests]);
-
-  const isCurrentGeneration = useCallback((
-    requestedGeneration: number,
-    requestedMode: AccountMode,
-    requestedUserId: string | null
-  ) => generationRef.current === requestedGeneration
-    && modeRef.current === requestedMode
-    && userIdRef.current === requestedUserId, []);
-
-  const getWalletBalance = useCallback((mode: AccountMode) => {
-    const key = user?.id ? `${user.id}:${mode}` : '';
-    return walletBalances[key] || null;
-  }, [user?.id, walletBalances]);
-
-  const fetchWalletBalance = useCallback((mode: AccountMode): Promise<WalletBalance | null> => {
-    if (!isAuthenticated || !user?.id) return Promise.resolve(null);
-    const generationAtStart = generationRef.current;
-    const userIdAtStart = user.id;
-    const key = `${userIdAtStart}:${mode}`;
-    const activeRequest = requests.current.get(key);
-    if (activeRequest) return activeRequest.promise;
-
-    const controller = new AbortController();
-    const path = mode === 'demo' ? '/api/v1/demo/wallet' : '/api/v1/wallets/balance';
-    const promise = apiClient.get<{ data?: WalletBalance } & Partial<WalletBalance>>(
-      path,
-      { signal: controller.signal }
-    ).then((response) => {
-      const balance = response.data || response as WalletBalance;
-      if (generationRef.current === generationAtStart && userIdRef.current === userIdAtStart) {
-        setWalletBalances((current) => ({ ...current, [key]: balance }));
+  const setAccountMode = useCallback(
+    (nextMode: AccountMode) => {
+      if (nextMode === modeRef.current || (nextMode === 'demo' && !isDemoEnabled)) return false;
+      if (
+        pendingOrderRef.current &&
+        !window.confirm('You have a pending order. Switching accounts will discard it. Continue?')
+      ) {
+        return false;
       }
-      return balance;
-    }).catch((error: unknown) => {
-      if ((error as Error)?.name !== 'AbortError') throw error;
-      return null;
-    }).finally(() => {
-      if (requests.current.get(key)?.promise === promise) requests.current.delete(key);
-    });
-    requests.current.set(key, { controller, promise });
-    return promise;
-  }, [isAuthenticated, user?.id]);
+
+      generationRef.current += 1;
+      modeRef.current = nextMode;
+      abortRequests();
+      cleanupCallbacks.current.forEach((cleanup) => cleanup());
+      setGeneration(generationRef.current);
+      setWalletBalances({});
+      setAccountModeState(nextMode);
+      if (isDemoEnabled) window.localStorage.setItem(STORAGE_KEY, nextMode);
+      return true;
+    },
+    [abortRequests]
+  );
+
+  const isCurrentGeneration = useCallback(
+    (requestedGeneration: number, requestedMode: AccountMode, requestedUserId: string | null) =>
+      generationRef.current === requestedGeneration &&
+      modeRef.current === requestedMode &&
+      userIdRef.current === requestedUserId,
+    []
+  );
+
+  const getWalletBalance = useCallback(
+    (mode: AccountMode) => {
+      const key = user?.id ? `${user.id}:${mode}` : '';
+      return walletBalances[key] || null;
+    },
+    [user?.id, walletBalances]
+  );
+
+  const fetchWalletBalance = useCallback(
+    (mode: AccountMode): Promise<WalletBalance | null> => {
+      if (!isAuthenticated || !user?.id) return Promise.resolve(null);
+      const generationAtStart = generationRef.current;
+      const userIdAtStart = user.id;
+      const key = `${userIdAtStart}:${mode}`;
+      const activeRequest = requests.current.get(key);
+      if (activeRequest) return activeRequest.promise;
+
+      const controller = new AbortController();
+      const path = mode === 'demo' ? '/api/v1/demo/wallet' : '/api/v1/wallets/balance';
+      const promise = apiClient
+        .get<{ data?: WalletBalance } & Partial<WalletBalance>>(path, { signal: controller.signal })
+        .then((response) => {
+          const balance = response.data || (response as WalletBalance);
+          if (generationRef.current === generationAtStart && userIdRef.current === userIdAtStart) {
+            setWalletBalances((current) => ({ ...current, [key]: balance }));
+          }
+          return balance;
+        })
+        .catch((error: unknown) => {
+          if ((error as Error)?.name !== 'AbortError') throw error;
+          return null;
+        })
+        .finally(() => {
+          if (requests.current.get(key)?.promise === promise) requests.current.delete(key);
+        });
+      requests.current.set(key, { controller, promise });
+      return promise;
+    },
+    [isAuthenticated, user?.id]
+  );
 
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
@@ -151,26 +166,29 @@ export const AccountModeProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
   }, [abortRequests]);
 
-  const value = useMemo(() => ({
-    accountMode,
-    isDemoEnabled,
-    generation,
-    switchAccountMode,
-    registerModeCleanup,
-    setPendingOrderActive,
-    getWalletBalance,
-    fetchWalletBalance,
-    isCurrentGeneration,
-  }), [
-    accountMode,
-    generation,
-    switchAccountMode,
-    registerModeCleanup,
-    setPendingOrderActive,
-    getWalletBalance,
-    fetchWalletBalance,
-    isCurrentGeneration,
-  ]);
+  const value = useMemo(
+    () => ({
+      accountMode,
+      isDemoEnabled,
+      generation,
+      setAccountMode,
+      registerModeCleanup,
+      setPendingOrderActive,
+      getWalletBalance,
+      fetchWalletBalance,
+      isCurrentGeneration,
+    }),
+    [
+      accountMode,
+      generation,
+      setAccountMode,
+      registerModeCleanup,
+      setPendingOrderActive,
+      getWalletBalance,
+      fetchWalletBalance,
+      isCurrentGeneration,
+    ]
+  );
 
   return <AccountModeContext.Provider value={value}>{children}</AccountModeContext.Provider>;
 };

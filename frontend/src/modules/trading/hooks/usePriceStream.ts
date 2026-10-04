@@ -82,6 +82,7 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     const requestGeneration = generation;
     const requestMode = accountMode;
     const requestUserId = user?.id || null;
+    const controller = new AbortController();
     activeSymbolRef.current = symbol;
     historyRef.current = [];
     setPriceHistory([]);
@@ -96,7 +97,9 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
           requestMode === 'demo'
             ? `/api/v1/demo/pricing/quote?symbol=${encoded}`
             : `/api/v1/pricing/assets/${encoded}/price`;
-        const response = await apiClient.get<LatestPriceResponse>(path);
+        const response = await apiClient.get<LatestPriceResponse>(path, {
+          signal: controller.signal,
+        });
         const quote = response.data || response;
         const price = Number(quote.mid ?? quote.price);
         const quoteSymbol = quote.symbol || symbol;
@@ -115,6 +118,7 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
           timestamp: Date.now(),
         });
       } catch (error) {
+        if ((error as Error).name === 'AbortError') return;
         console.warn('Price quote is not available; waiting for the price stream.', error);
       }
     };
@@ -122,6 +126,7 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     void fetchLivePrice();
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [accountMode, generation, isCurrentGeneration, symbol, acceptTick, user?.id]);
 
@@ -132,7 +137,13 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
       return;
     }
 
-    websocketService.initialize(user?.id || 'session-token');
+    const accessToken = apiClient.getAccessToken();
+    if (!accessToken) {
+      websocketService.disconnect();
+      setIsConnected(false);
+      return;
+    }
+    websocketService.initialize(accessToken);
   }, [isAuthenticated, user?.id]);
 
   useEffect(() => {

@@ -1,10 +1,5 @@
 import { apiClient } from '@/shared/services/apiClient';
-import {
-  Asset,
-  BinaryContract,
-  CreateContractDto,
-  Candle,
-} from '../types/trading.types';
+import { Asset, BinaryContract, CreateContractDto, Candle } from '../types/trading.types';
 import type { AccountMode } from '@/shared/context/AccountModeContext';
 
 interface ApiResponse<T> {
@@ -19,7 +14,7 @@ const DEFAULT_ASSETS: Asset[] = [
     name: 'Euro / US Dollar',
     assetType: 'forex',
     isActive: true,
-    payoutRate: 0.60,
+    payoutRate: 0.6,
     minStake: 100,
     maxStake: 50000,
     minExpirySeconds: 60,
@@ -32,7 +27,7 @@ const DEFAULT_ASSETS: Asset[] = [
     name: 'British Pound / US Dollar',
     assetType: 'forex',
     isActive: true,
-    payoutRate: 0.60,
+    payoutRate: 0.6,
     minStake: 100,
     maxStake: 50000,
     minExpirySeconds: 60,
@@ -45,7 +40,7 @@ const DEFAULT_ASSETS: Asset[] = [
     name: 'US Dollar / Japanese Yen',
     assetType: 'forex',
     isActive: true,
-    payoutRate: 0.60,
+    payoutRate: 0.6,
     minStake: 100,
     maxStake: 50000,
     minExpirySeconds: 60,
@@ -58,7 +53,7 @@ const DEFAULT_ASSETS: Asset[] = [
     name: 'Gold / US Dollar',
     assetType: 'commodity',
     isActive: true,
-    payoutRate: 0.60,
+    payoutRate: 0.6,
     minStake: 100,
     maxStake: 50000,
     minExpirySeconds: 60,
@@ -74,7 +69,9 @@ class TradingService {
    */
   async getAssets(): Promise<Asset[]> {
     try {
-      const response = await apiClient.get<ApiResponse<Asset[]> | Asset[]>('/api/v1/trading/assets');
+      const response = await apiClient.get<ApiResponse<Asset[]> | Asset[]>(
+        '/api/v1/trading/assets'
+      );
       let rawAssets: Asset[] = [];
 
       if (Array.isArray(response)) {
@@ -94,7 +91,7 @@ class TradingService {
           name: asset.name || asset.symbol,
           assetType: asset.assetType || 'forex',
           isActive: asset.isActive !== false,
-          payoutRate: Number(asset.payoutRate) || 0.60,
+          payoutRate: Number(asset.payoutRate) || 0.6,
           minStake: Number(asset.minStake) || 100,
           maxStake: Number(asset.maxStake) || 50000,
           minExpirySeconds: Number(asset.minExpirySeconds) || 60,
@@ -114,15 +111,17 @@ class TradingService {
   async getAssetDetail(symbol: string): Promise<Asset> {
     try {
       const encoded = encodeURIComponent(symbol);
-      const response = await apiClient.get<ApiResponse<Asset> | Asset>(`/api/v1/trading/assets/${encoded}`);
-      const assetData = ('data' in response && response.data) ? response.data : (response as Asset);
+      const response = await apiClient.get<ApiResponse<Asset> | Asset>(
+        `/api/v1/trading/assets/${encoded}`
+      );
+      const assetData = 'data' in response && response.data ? response.data : (response as Asset);
 
       return {
         symbol: assetData.symbol || symbol,
         name: assetData.name || symbol,
         assetType: assetData.assetType || 'forex',
         isActive: assetData.isActive !== false,
-        payoutRate: Number(assetData.payoutRate) || 0.60,
+        payoutRate: Number(assetData.payoutRate) || 0.6,
         minStake: Number(assetData.minStake) || 100,
         maxStake: Number(assetData.maxStake) || 50000,
         minExpirySeconds: Number(assetData.minExpirySeconds) || 60,
@@ -136,7 +135,7 @@ class TradingService {
         name: symbol,
         assetType: 'forex',
         isActive: true,
-        payoutRate: 0.60,
+        payoutRate: 0.6,
         minStake: 100,
         maxStake: 50000,
         minExpirySeconds: 60,
@@ -151,21 +150,28 @@ class TradingService {
   /**
    * Place a new binary contract with idempotency protection
    */
-  async placeTrade(dto: CreateContractDto, idempotencyKey: string, mode: AccountMode = 'real'): Promise<BinaryContract> {
-    const payload = mode === 'demo'
-      ? dto
-      : {
-          asset_symbol: dto.assetSymbol,
-          direction: dto.contractType === 'higher' ? 'CALL' : 'PUT',
-          amount: dto.stake,
-          strike_price: dto.strikePrice,
-          expiry_seconds: dto.expirySeconds,
-        };
+  async placeTrade(
+    dto: CreateContractDto,
+    idempotencyKey: string,
+    mode: AccountMode = 'real',
+    signal?: AbortSignal
+  ): Promise<BinaryContract> {
+    const payload =
+      mode === 'demo'
+        ? dto
+        : {
+            asset_symbol: dto.assetSymbol,
+            direction: dto.contractType === 'higher' ? 'CALL' : 'PUT',
+            amount: dto.stake,
+            strike_price: dto.strikePrice,
+            expiry_seconds: dto.expirySeconds,
+          };
 
     const response = await apiClient.post<ApiResponse<BinaryContract> | BinaryContract>(
       mode === 'demo' ? '/api/v1/demo/trading/contracts' : '/api/v1/trading/contracts',
       payload,
       {
+        signal,
         headers: {
           'Idempotency-Key': idempotencyKey,
         },
@@ -181,9 +187,15 @@ class TradingService {
   /**
    * Fetch active unsettled trades for current user
    */
-  async getActiveContracts(mode: AccountMode = 'real'): Promise<BinaryContract[]> {
+  async getActiveContracts(
+    mode: AccountMode = 'real',
+    signal?: AbortSignal
+  ): Promise<BinaryContract[]> {
     const response = await apiClient.get<ApiResponse<BinaryContract[]> | BinaryContract[]>(
-      mode === 'demo' ? '/api/v1/demo/trading/contracts/active' : '/api/v1/trading/contracts/active'
+      mode === 'demo'
+        ? '/api/v1/demo/trading/contracts/active'
+        : '/api/v1/trading/contracts/active',
+      { signal }
     );
 
     if (Array.isArray(response)) {
@@ -198,12 +210,16 @@ class TradingService {
   /**
    * Fetch trade history with optional filters
    */
-  async getContracts(params?: {
-    status?: string;
-    asset_symbol?: string;
-    limit?: number;
-    cursor?: string;
-  }, mode: AccountMode = 'real'): Promise<BinaryContract[]> {
+  async getContracts(
+    params?: {
+      status?: string;
+      asset_symbol?: string;
+      limit?: number;
+      cursor?: string;
+    },
+    mode: AccountMode = 'real',
+    signal?: AbortSignal
+  ): Promise<BinaryContract[]> {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.asset_symbol) query.append('asset_symbol', params.asset_symbol);
@@ -212,7 +228,8 @@ class TradingService {
 
     const queryString = query.toString() ? `?${query.toString()}` : '';
     const response = await apiClient.get<ApiResponse<BinaryContract[]> | BinaryContract[]>(
-      `${mode === 'demo' ? '/api/v1/demo/trading/contracts' : '/api/v1/trading/contracts'}${queryString}`
+      `${mode === 'demo' ? '/api/v1/demo/trading/contracts' : '/api/v1/trading/contracts'}${queryString}`,
+      { signal }
     );
 
     if (Array.isArray(response)) {
@@ -241,11 +258,7 @@ class TradingService {
   /**
    * Fetch historical OHLC candles for specified asset symbol
    */
-  async getCandles(
-    symbol: string,
-    granularity = 60,
-    limit = 60
-  ): Promise<Candle[]> {
+  async getCandles(symbol: string, granularity = 60, limit = 60): Promise<Candle[]> {
     try {
       const encodedSymbol = encodeURIComponent(symbol);
       const response = await apiClient.get<ApiResponse<Candle[]> | Candle[]>(
@@ -255,7 +268,12 @@ class TradingService {
       if (Array.isArray(response)) {
         return response;
       }
-      if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+      if (
+        response &&
+        typeof response === 'object' &&
+        'data' in response &&
+        Array.isArray(response.data)
+      ) {
         return response.data;
       }
       return [];

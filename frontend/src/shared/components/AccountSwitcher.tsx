@@ -1,7 +1,7 @@
 import { useAccountMode, type AccountMode } from '@/shared/context/AccountModeContext';
 
 export const AccountSwitcher = () => {
-  const { accountMode, isDemoEnabled, switchAccountMode } = useAccountMode();
+  const { accountMode, isDemoEnabled, setAccountMode } = useAccountMode();
 
   const renderButton = (mode: AccountMode, label: string) => {
     const selected = accountMode === mode;
@@ -14,10 +14,12 @@ export const AccountSwitcher = () => {
         aria-label={unavailable ? 'Demo account unavailable' : `${label} account`}
         title={unavailable ? 'Demo trading is currently unavailable' : undefined}
         disabled={unavailable}
-        onClick={() => switchAccountMode(mode)}
+        onClick={() => setAccountMode(mode)}
         className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${
           selected
-            ? mode === 'demo' ? 'bg-amber-500 text-white' : 'bg-brand text-white'
+            ? mode === 'demo'
+              ? 'bg-amber-500 text-white'
+              : 'bg-brand text-white'
             : 'text-text-light-secondary hover:bg-bg-light-primary dark:text-text-dark-secondary dark:hover:bg-bg-dark-primary'
         } disabled:cursor-not-allowed disabled:opacity-50`}
       >

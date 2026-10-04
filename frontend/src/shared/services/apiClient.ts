@@ -24,6 +24,10 @@ class ApiClient {
     this.accessToken = token;
   }
 
+  getAccessToken(): string | null {
+    return this.accessToken;
+  }
+
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 

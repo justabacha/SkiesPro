@@ -49,7 +49,9 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
               <Menu className="h-6 w-6" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded bg-brand flex items-center justify-center text-white font-bold">S</div>
+              <div className="h-8 w-8 rounded bg-brand flex items-center justify-center text-white font-bold">
+                S
+              </div>
               <span className="text-xl font-bold font-sans tracking-tight lg:block">SKIESPRO</span>
             </div>
           </div>
@@ -59,12 +61,16 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
 
             <div className="hidden sm:flex items-center px-3 py-1 rounded-full bg-bg-light-tertiary dark:bg-bg-dark-tertiary">
               {accountMode === 'demo' && (
-                <span className="mr-2 rounded bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white">DEMO</span>
+                <span className="mr-2 rounded bg-amber-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                  DEMO
+                </span>
               )}
               <span className="text-xs font-medium text-text-light-secondary dark:text-text-dark-secondary mr-2 uppercase">
-                {accountMode === 'demo' ? 'Demo KES' : 'KES Balance'}
+                {accountMode === 'demo' ? 'Demo KES' : 'Real KES'}
               </span>
-              <span className="text-sm font-mono font-bold">{formatKES(balance?.available_balance || '0', false)}</span>
+              <span className="text-sm font-mono font-bold">
+                {formatKES(balance?.available_balance || '0', false)}
+              </span>
             </div>
 
             <div className="flex items-center gap-1">
@@ -83,14 +89,20 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
                   <div className="h-8 w-8 rounded-full bg-brand flex items-center justify-center text-white font-bold text-xs uppercase shadow-sm">
                     {user?.displayName?.[0] || 'A'}
                   </div>
-                  <ChevronDown className={`h-4 w-4 text-text-light-secondary dark:text-text-dark-secondary transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`h-4 w-4 text-text-light-secondary dark:text-text-dark-secondary transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-md border border-border-light bg-bg-light-primary py-1 shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none dark:border-border-dark dark:bg-bg-dark-secondary z-50">
                     <div className="px-4 py-3 border-b border-border-light dark:border-border-dark">
-                      <p className="text-sm font-semibold text-text-light-primary dark:text-text-dark-primary">{user?.displayName || 'User'}</p>
-                      <p className="text-xs text-text-light-tertiary truncate mt-0.5">{user?.email}</p>
+                      <p className="text-sm font-semibold text-text-light-primary dark:text-text-dark-primary">
+                        {user?.displayName || 'User'}
+                      </p>
+                      <p className="text-xs text-text-light-tertiary truncate mt-0.5">
+                        {user?.email}
+                      </p>
                     </div>
                     <div className="py-1">
                       <button className="flex w-full items-center px-4 py-2 text-sm text-text-light-secondary dark:text-text-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary transition-colors">
