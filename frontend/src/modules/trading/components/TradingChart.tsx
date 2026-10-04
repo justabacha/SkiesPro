@@ -68,12 +68,15 @@ const toUnixSeconds = (value: unknown): number | null => {
 };
 
 const normalizeCandles = (
-  candles: Awaited<ReturnType<typeof tradingService.getCandles>>
+  candles: Awaited<ReturnType<typeof tradingService.getCandles>>,
+  currentPrice?: number
 ): Array<{ time: Time; open: number; high: number; low: number; close: number }> => {
   const byTime = new Map<
     number,
     { time: Time; open: number; high: number; low: number; close: number }
   >();
+
+  const rawCandles: Array<{ time: Time; open: number; high: number; low: number; close: number }> = [];
 
   for (const candle of candles) {
     const time = toUnixSeconds(candle.open_time);
@@ -83,14 +86,36 @@ const normalizeCandles = (
       Number(candle.low),
       Number(candle.close),
     ];
-    if (time === null || !values.every(Number.isFinite)) continue;
-    byTime.set(time, {
+    if (time === null || !values.every((v) => Number.isFinite(v) && v > 0)) continue;
+    rawCandles.push({
       time: time as Time,
       open: values[0],
       high: values[1],
       low: values[2],
       close: values[3],
     });
+  }
+
+  if (rawCandles.length === 0) return [];
+
+  // Calculate median close price to establish baseline for filtering corrupt outlier prices
+  const sortedCloses = rawCandles.map((c) => c.close).sort((a, b) => a - b);
+  const medianClose = sortedCloses[Math.floor(sortedCloses.length / 2)];
+  const refPrice = currentPrice && currentPrice > 0 ? currentPrice : medianClose;
+
+  for (const candle of rawCandles) {
+    if (refPrice > 0) {
+      // Filter out stray outliers whose price deviates wildly (>15%) from baseline mean/median
+      const maxDev = 0.15;
+      const prices = [candle.open, candle.high, candle.low, candle.close];
+      if (prices.some((p) => Math.abs(p - refPrice) / refPrice > maxDev)) {
+        continue;
+      }
+    }
+    if (candle.high < candle.low || candle.high < candle.open || candle.high < candle.close) {
+      continue;
+    }
+    byTime.set(Number(candle.time), candle);
   }
 
   return [...byTime.values()].sort((a, b) => Number(a.time) - Number(b.time));
@@ -142,6 +167,21 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         return;
       }
       if (!Number.isFinite(tick.price) || tick.price <= 0) return;
+
+      // Filter out stray ticks or corrupt data points deviating wildly (>15%) from current mean/reference
+      const refPrice =
+        currentPrice > 0
+          ? currentPrice
+          : currentCandleRef.current?.close && currentCandleRef.current.close > 0
+          ? currentCandleRef.current.close
+          : null;
+
+      if (refPrice !== null && refPrice > 0) {
+        if (Math.abs(tick.price - refPrice) / refPrice > 0.15) {
+          return;
+        }
+      }
+
       const seconds = toUnixSeconds(tick.tick_time || tick.timestamp);
       if (seconds === null) return;
       if (
@@ -188,7 +228,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       latestAreaTimeRef.current = seconds;
       lastAppliedTickRef.current = tickKey;
     },
-    [granularity]
+    [currentPrice, granularity]
   );
 
   useEffect(() => {
@@ -218,7 +258,12 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         borderColor: 'rgba(148, 163, 184, 0.2)',
         autoScale: true,
         mode: PriceScaleMode.Normal,
-        scaleMargins: { top: 0.2, bottom: 0.2 },
+        alignLabels: true,
+        borderVisible: false,
+        scaleMargins: {
+          top: 0.2,    // 20% margin top
+          bottom: 0.2, // 20% margin bottom
+        },
       },
       timeScale: {
         borderColor: 'rgba(148, 163, 184, 0.2)',
@@ -228,22 +273,42 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       },
       crosshair: { mode: 1 },
     });
+
+    chart.priceScale('right').applyOptions({
+      autoScale: true,
+      mode: PriceScaleMode.Normal,
+      alignLabels: true,
+      borderVisible: false,
+      scaleMargins: {
+        top: 0.2,
+        bottom: 0.2,
+      },
+    });
+
     const setResponsiveViewport = () => {
-      const mobile = window.innerWidth < 640;
-      const barsToShow = mobile ? 20 : 40;
       chart.applyOptions({
         timeScale: {
-          barSpacing: mobile ? 16 : 10,
+          barSpacing: window.innerWidth < 640 ? 16 : 10,
           rightOffset: 10,
         },
       });
-      if (dataLengthRef.current > 0) {
+      const totalBars = dataLengthRef.current;
+      if (totalBars > 0) {
         chart.timeScale().setVisibleLogicalRange({
-          from: Math.max(0, dataLengthRef.current - barsToShow),
-          to: dataLengthRef.current + 5,
+          from: Math.max(0, totalBars - 50),
+          to: totalBars + 3, // Right-hand margin for incoming ticks
         });
       }
     };
+
+    const initialPipPlaces = getPriceDecimalPlaces(symbol, pipDecimalPlaces, currentPrice);
+    const initialMinMove = Number((10 ** -initialPipPlaces).toFixed(initialPipPlaces));
+    const initialPriceFormat = {
+      type: 'price' as const,
+      precision: initialPipPlaces,
+      minMove: initialMinMove,
+    };
+
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#00E676',
       downColor: '#FF5252',
@@ -251,6 +316,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       wickUpColor: '#00E676',
       wickDownColor: '#FF5252',
       visible: false,
+      priceFormat: initialPriceFormat,
     });
     const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: '#00E676',
@@ -258,6 +324,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       bottomColor: 'rgba(0, 230, 118, 0.0)',
       lineWidth: 2,
       visible: false,
+      priceFormat: initialPriceFormat,
     });
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
@@ -295,6 +362,18 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     candleSeriesRef.current?.applyOptions({ visible: chartType === 'candle' });
     areaSeriesRef.current?.applyOptions({ visible: chartType === 'line' });
   }, [chartType]);
+
+  useEffect(() => {
+    const pipPlaces = getPriceDecimalPlaces(symbol, pipDecimalPlaces, currentPrice);
+    const minMove = Number((10 ** -pipPlaces).toFixed(pipPlaces));
+    const priceFormat = {
+      type: 'price' as const,
+      precision: pipPlaces,
+      minMove,
+    };
+    candleSeriesRef.current?.applyOptions({ priceFormat });
+    areaSeriesRef.current?.applyOptions({ priceFormat });
+  }, [symbol, pipDecimalPlaces, currentPrice]);
 
   const activeContractsKey = useMemo(
     () =>
@@ -363,7 +442,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     void loadHistory
       .then((data) => {
         if (!isCurrent) return;
-        const candles = normalizeCandles(data);
+        const candles = normalizeCandles(data, currentPrice);
         candleSeries.setData(candles);
         areaSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
         dataLengthRef.current = candles.length;
@@ -381,10 +460,13 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         pendingTicksRef.current = [];
         for (const tick of ticks) applyTick(tick);
 
-        chart.timeScale().setVisibleLogicalRange({
-          from: Math.max(0, dataLengthRef.current - (window.innerWidth < 640 ? 20 : 40)),
-          to: dataLengthRef.current + 5,
-        });
+        const totalBars = candles.length;
+        if (totalBars > 0) {
+          chart.timeScale().setVisibleLogicalRange({
+            from: Math.max(0, totalBars - 50),
+            to: totalBars + 3, // Right-hand margin for incoming ticks
+          });
+        }
       })
       .catch((error: unknown) => {
         if (!isCurrent) return;
