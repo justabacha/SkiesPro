@@ -25,16 +25,17 @@ export const WalletPage = () => {
     isLedgerLoading,
     hasMore,
     nextCursor,
+    generation,
     fetchBalance,
     fetchLedger,
-  } = useWallet();
+  } = useWallet({ accountMode: 'real', pollBalance: true });
 
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
   useEffect(() => {
     fetchLedger();
-  }, [fetchLedger]);
+  }, [fetchLedger, generation]);
 
   const handleRefresh = () => {
     fetchBalance();

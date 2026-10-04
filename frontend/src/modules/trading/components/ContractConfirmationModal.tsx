@@ -4,6 +4,7 @@ import { PendingOrder } from '../types/trading.types';
 import { getPriceDecimalPlaces } from '../utils/pricePrecision';
 
 export interface ContractConfirmationModalProps {
+  accountMode?: 'real' | 'demo';
   isOpen: boolean;
   pendingOrder: PendingOrder | null;
   isPlacing: boolean;
@@ -12,6 +13,7 @@ export interface ContractConfirmationModalProps {
 }
 
 export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps> = ({
+  accountMode = 'real',
   isOpen,
   pendingOrder,
   isPlacing,
@@ -34,7 +36,9 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
       <div className="w-full max-w-md rounded-2xl bg-bg-light-primary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark p-6 shadow-2xl text-text-light-primary dark:text-text-dark-primary">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border-light dark:border-border-dark">
-          <h3 className="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">Confirm Contract Order</h3>
+          <h3 className="text-lg font-bold text-text-light-primary dark:text-text-dark-primary">
+            {accountMode === 'demo' ? 'Confirm DEMO Contract' : 'Confirm Contract Order'}
+          </h3>
           <span
             className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold uppercase ${
               isHigher
@@ -90,7 +94,9 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
         <div className="flex items-start space-x-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-300 text-xs mb-6">
           <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>
-            Capital at risk. Payouts are granted only if the asset price strictly adheres to your chosen direction at expiry time.
+            {accountMode === 'demo'
+              ? 'This order uses virtual demo funds only. No real money is at risk.'
+              : 'Capital at risk. Payouts are granted only if the asset price strictly adheres to your chosen direction at expiry time.'}
           </span>
         </div>
 
@@ -116,7 +122,7 @@ export const ContractConfirmationModal: React.FC<ContractConfirmationModalProps>
                 : 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/30'
             } disabled:opacity-50`}
           >
-            {isPlacing ? 'Placing Order...' : 'Confirm Order'}
+            {isPlacing ? 'Placing Order...' : accountMode === 'demo' ? 'Confirm Demo Order' : 'Confirm Order'}
           </button>
         </div>
       </div>

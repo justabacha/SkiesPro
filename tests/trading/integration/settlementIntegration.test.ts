@@ -37,10 +37,19 @@ describe('Trade Settlement Integration', () => {
     walletService = new WalletService();
 
     // Clean up
-    await pgPool.query('DELETE FROM events.event_outbox WHERE aggregate_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
-    await pgPool.query('DELETE FROM trading.contract_events WHERE contract_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
+    await pgPool.query(
+      'DELETE FROM events.event_outbox WHERE aggregate_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)',
+      [testUserId]
+    );
+    await pgPool.query(
+      'DELETE FROM trading.contract_events WHERE contract_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)',
+      [testUserId]
+    );
     await pgPool.query('DELETE FROM trading.binary_contracts WHERE user_id = $1', [testUserId]);
-    await pgPool.query('DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)', [testUserId]);
+    await pgPool.query(
+      'DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)',
+      [testUserId]
+    );
     await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
 
@@ -53,8 +62,15 @@ describe('Trade Settlement Integration', () => {
     );
 
     // Create wallet with balance
-    await walletService.createWallet(testUserId, 'KES');
-    await walletService.credit(testUserId, new Decimal('100000'), 'deposit', undefined, 'Initial balance');
+    await walletService.createWallet(testUserId, 'real', 'KES');
+    await walletService.credit(
+      testUserId,
+      'real',
+      new Decimal('100000'),
+      'deposit',
+      undefined,
+      'Initial balance'
+    );
 
     // Ensure asset config exists
     await pgPool.query(
@@ -66,10 +82,19 @@ describe('Trade Settlement Integration', () => {
   });
 
   afterAll(async () => {
-    await pgPool.query('DELETE FROM events.event_outbox WHERE aggregate_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
-    await pgPool.query('DELETE FROM trading.contract_events WHERE contract_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
+    await pgPool.query(
+      'DELETE FROM events.event_outbox WHERE aggregate_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)',
+      [testUserId]
+    );
+    await pgPool.query(
+      'DELETE FROM trading.contract_events WHERE contract_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)',
+      [testUserId]
+    );
     await pgPool.query('DELETE FROM trading.binary_contracts WHERE user_id = $1', [testUserId]);
-    await pgPool.query('DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)', [testUserId]);
+    await pgPool.query(
+      'DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)',
+      [testUserId]
+    );
     await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
   });
@@ -102,7 +127,7 @@ describe('Trade Settlement Integration', () => {
       assetSymbol: testSymbol,
       contractType,
       stake: '1000',
-      expirySeconds: 60
+      expirySeconds: 60,
     };
 
     return await tradingService.placeTrade(testUserId, tradeRequest);
@@ -119,15 +144,22 @@ describe('Trade Settlement Integration', () => {
 
     await settlementWorker.settle(contract.id!);
 
-    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows: contracts } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(contracts[0].status).toBe('won');
 
-    const wallet = await walletService.getBalance(testUserId);
+    const wallet = await walletService.getBalance(testUserId, 'real');
     expect(new Decimal(wallet.available_balance).toNumber()).toBe(100600);
 
-    const { rows: outbox } = await pgPool.query("SELECT * FROM events.event_outbox WHERE aggregate_id = $1 AND event_type = 'TradeSettled'", [contract.id]);
+    const { rows: outbox } = await pgPool.query(
+      "SELECT * FROM events.event_outbox WHERE aggregate_id = $1 AND event_type = 'TradeSettled'",
+      [contract.id]
+    );
     expect(outbox.length).toBeGreaterThan(0);
-    const payload = typeof outbox[0].payload === 'string' ? JSON.parse(outbox[0].payload) : outbox[0].payload;
+    const payload =
+      typeof outbox[0].payload === 'string' ? JSON.parse(outbox[0].payload) : outbox[0].payload;
     expect(payload.outcome).toBe('won');
   });
 
@@ -140,13 +172,20 @@ describe('Trade Settlement Integration', () => {
       [testSymbol, contract.expiryTime]
     );
 
-    const balanceBefore = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    const balanceBefore = new Decimal(
+      (await walletService.getBalance(testUserId, 'real')).available_balance
+    );
     await settlementWorker.settle(contract.id!);
 
-    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows: contracts } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(contracts[0].status).toBe('lost');
 
-    const balanceAfter = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    const balanceAfter = new Decimal(
+      (await walletService.getBalance(testUserId, 'real')).available_balance
+    );
     expect(balanceAfter.toNumber()).toBe(balanceBefore.toNumber());
   });
 
@@ -159,13 +198,20 @@ describe('Trade Settlement Integration', () => {
       [testSymbol, contract.expiryTime]
     );
 
-    const balanceBefore = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    const balanceBefore = new Decimal(
+      (await walletService.getBalance(testUserId, 'real')).available_balance
+    );
     await settlementWorker.settle(contract.id!);
 
-    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows: contracts } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(contracts[0].status).toBe('draw');
 
-    const balanceAfter = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    const balanceAfter = new Decimal(
+      (await walletService.getBalance(testUserId, 'real')).available_balance
+    );
     expect(balanceAfter.toNumber()).toBe(balanceBefore.plus(1000).toNumber());
   });
 
@@ -179,7 +225,10 @@ describe('Trade Settlement Integration', () => {
     );
 
     await settlementWorker.settle(contract.id!);
-    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows: contracts } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(contracts[0].status).toBe('won');
   });
 
@@ -193,7 +242,10 @@ describe('Trade Settlement Integration', () => {
     );
 
     await settlementWorker.settle(contract.id!);
-    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows: contracts } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(contracts[0].status).toBe('lost');
   });
 
@@ -208,13 +260,20 @@ describe('Trade Settlement Integration', () => {
       [testSymbol, staleTickTime]
     );
 
-    const balanceBefore = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    const balanceBefore = new Decimal(
+      (await walletService.getBalance(testUserId, 'real')).available_balance
+    );
     await settlementWorker.settle(contract.id!);
 
-    const { rows: contracts } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows: contracts } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(contracts[0].status).toBe('cancelled');
 
-    const balanceAfter = new Decimal((await walletService.getBalance(testUserId)).available_balance);
+    const balanceAfter = new Decimal(
+      (await walletService.getBalance(testUserId, 'real')).available_balance
+    );
     expect(balanceAfter.toNumber()).toBe(balanceBefore.plus(1000).toNumber());
   });
 
@@ -228,15 +287,23 @@ describe('Trade Settlement Integration', () => {
     );
 
     // Try to settle the same contract 10 times in parallel
-    const settlePromises = Array.from({ length: 10 }).map(() => settlementWorker.settle(contract.id!));
+    const settlePromises = Array.from({ length: 10 }).map(() =>
+      settlementWorker.settle(contract.id!)
+    );
     await Promise.all(settlePromises);
 
     // Verify it is settled exactly once (won status)
-    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(rows[0].status).toBe('won');
 
     // Verify only one credit entry in ledger
-    const { rows: ledger } = await pgPool.query("SELECT * FROM wallet.ledger_entries WHERE reference_id = $1 AND reference_type = 'trade_win'", [contract.id]);
+    const { rows: ledger } = await pgPool.query(
+      "SELECT * FROM wallet.ledger_entries WHERE reference_id = $1 AND reference_type = 'trade_win'",
+      [contract.id]
+    );
     expect(ledger.length).toBe(1);
   });
 
@@ -252,7 +319,10 @@ describe('Trade Settlement Integration', () => {
     try {
       await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
 
-      const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+      const { rows } = await pgPool.query(
+        'SELECT status FROM trading.binary_contracts WHERE id = $1',
+        [contract.id]
+      );
       expect(rows[0].status).toBe('active');
     } finally {
       tickRepo.getPriceAt = originalGetPriceAt;
@@ -262,15 +332,19 @@ describe('Trade Settlement Integration', () => {
   test('SET-009: should revert to active on unexpected error (Crash Simulation)', async () => {
     const contract = await placeTestTrade('1.10000');
 
-    const originalFindById = (settlementWorker as any).contractRepo.findById;
-    (settlementWorker as any).contractRepo.findById = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
+    const contractRepo = (settlementWorker as any).contractRepo;
+    const originalFindByIdForSettlement = contractRepo.findByIdForSettlement;
+    contractRepo.findByIdForSettlement = jest.fn().mockRejectedValue(new Error('Unexpected Crash'));
 
     await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Unexpected Crash');
 
-    const { rows } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(rows[0].status).toBe('active');
 
-    (settlementWorker as any).contractRepo.findById = originalFindById;
+    contractRepo.findByIdForSettlement = originalFindByIdForSettlement;
     await pgPool.query(
       `INSERT INTO pricing.price_ticks (symbol, bid_price, ask_price, mid_price, tick_time)
        VALUES ($1, '1.10500', '1.10500', '1.10500', $2)`,
@@ -278,7 +352,10 @@ describe('Trade Settlement Integration', () => {
     );
 
     await settlementWorker.settle(contract.id!);
-    const { rows: rowsAfter } = await pgPool.query('SELECT status FROM trading.binary_contracts WHERE id = $1', [contract.id]);
+    const { rows: rowsAfter } = await pgPool.query(
+      'SELECT status FROM trading.binary_contracts WHERE id = $1',
+      [contract.id]
+    );
     expect(rowsAfter[0].status).toBe('won');
   });
 });

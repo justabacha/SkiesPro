@@ -215,6 +215,7 @@ export class PriceFeedIngestionService {
         ask_price: ask,
         mid_price: mid,
         volume: '0',
+        source: 'live',
       });
 
       // 3. Distribute (Cache + Pub/Sub) - REALTIME

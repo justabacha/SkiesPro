@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { ConnectionManager } from './connectionManager.js';
 import { SubscriptionManager } from './subscriptionManager.js';
 import { PriceTickSubscriber } from './priceTickSubscriber.js';
+import { DemoPriceTickSubscriber } from './demoPriceTickSubscriber.js';
 import { webSocketAuthMiddleware } from './authMiddleware.js';
 import { logger } from '../../../shared/middleware/logger.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +12,7 @@ export class PriceGateway {
   private connectionManager: ConnectionManager;
   private subscriptionManager: SubscriptionManager;
   private priceTickSubscriber: PriceTickSubscriber;
+  private demoPriceTickSubscriber: DemoPriceTickSubscriber;
   private readonly MAX_CONNECTIONS_PER_USER = parseInt(
     process.env.WS_MAX_CONNECTIONS_PER_USER || '5',
     10
@@ -24,14 +26,19 @@ export class PriceGateway {
   constructor() {
     this.connectionManager = new ConnectionManager();
     this.priceTickSubscriber = new PriceTickSubscriber(this.connectionManager);
-    this.subscriptionManager = new SubscriptionManager(this.connectionManager, (symbol, action) => {
-      if (action === 'subscribe') {
-        void this.priceTickSubscriber.subscribeToSymbol(symbol);
-        return;
-      }
+    this.demoPriceTickSubscriber = new DemoPriceTickSubscriber(this.connectionManager);
+    this.subscriptionManager = new SubscriptionManager(
+      this.connectionManager,
+      (symbol, action, channel) => {
+        if (channel === 'demo.price') return;
+        if (action === 'subscribe') {
+          void this.priceTickSubscriber.subscribeToSymbol(symbol);
+          return;
+        }
 
-      void this.priceTickSubscriber.unsubscribeFromSymbol(symbol);
-    });
+        void this.priceTickSubscriber.unsubscribeFromSymbol(symbol);
+      }
+    );
   }
 
   attach(server: any, options: { path?: string } = {}): void {
@@ -103,6 +110,16 @@ export class PriceGateway {
         await this.priceTickSubscriber.start();
       } catch (error) {
         logger.error('Failed to start price tick subscriber', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    if (process.env.DEMO_ENABLED === 'true' && !this.demoPriceTickSubscriber.isActive()) {
+      try {
+        await this.demoPriceTickSubscriber.start();
+      } catch (error) {
+        logger.error('Failed to start demo price tick subscriber', {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
@@ -206,6 +223,7 @@ export class PriceGateway {
     logger.info('Shutting down WebSocket gateway');
 
     await this.priceTickSubscriber.stop();
+    await this.demoPriceTickSubscriber.stop();
 
     // Shutdown connection manager
     this.connectionManager.shutdown();

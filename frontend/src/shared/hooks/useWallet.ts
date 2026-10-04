@@ -1,13 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiClient } from '@/shared/services/apiClient';
 import { useAuth } from '@/shared/hooks/useAuth';
-
-interface Balance {
-  balance: string;
-  locked_balance: string;
-  available_balance: string;
-  currency: string;
-}
+import { useAccountMode, type AccountMode } from '@/shared/context/AccountModeContext';
 
 interface LedgerEntry {
   id: number;
@@ -30,9 +24,18 @@ interface LedgerResponse {
   };
 }
 
-export const useWallet = () => {
+export const useWallet = (options: { accountMode?: AccountMode; pollBalance?: boolean } = {}) => {
   const { isAuthenticated } = useAuth();
-  const [balance, setBalance] = useState<Balance | null>(null);
+  const {
+    accountMode,
+    generation,
+    getWalletBalance,
+    fetchWalletBalance,
+    registerModeCleanup,
+  } = useAccountMode();
+  const selectedMode = options.accountMode || accountMode;
+  const pollBalance = options.pollBalance === true;
+  const balance = getWalletBalance(selectedMode);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLedgerLoading, setIsLedgerLoading] = useState(false);
@@ -40,34 +43,49 @@ export const useWallet = () => {
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const requestVersionRef = useRef(0);
+  const ledgerControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => registerModeCleanup(() => {
+    requestVersionRef.current += 1;
+    ledgerControllerRef.current?.abort();
+    ledgerControllerRef.current = null;
+    setLedger([]);
+    setNextCursor(undefined);
+    setHasMore(false);
+    setIsLedgerLoading(false);
+    setError(null);
+  }), [registerModeCleanup]);
 
   const fetchBalance = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) return null;
+    const version = requestVersionRef.current;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<{ data: Balance }>('/api/v1/wallets/balance');
-      setBalance(response.data);
-    } catch (err: any) {
-      setError(err.message);
-      if (err?.status === 401 || err?.message?.includes('Unauthorized')) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      }
+      return await fetchWalletBalance(selectedMode);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to load wallet balance');
+      return null;
     } finally {
-      setIsLoading(false);
+      if (version === requestVersionRef.current) setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [fetchWalletBalance, isAuthenticated, selectedMode]);
 
   const fetchLedger = useCallback(async (cursor?: string) => {
     if (!isAuthenticated) return;
+    const version = requestVersionRef.current;
+    ledgerControllerRef.current?.abort();
+    const controller = new AbortController();
+    ledgerControllerRef.current = controller;
     setIsLedgerLoading(true);
     try {
       const query = cursor ? `?cursor=${cursor}` : '';
-      const response = await apiClient.get<LedgerResponse>(`/api/v1/wallets/ledger${query}`);
+      const path = selectedMode === 'demo'
+        ? `/api/v1/demo/wallet/ledger${query}`
+        : `/api/v1/wallets/ledger${query}`;
+      const response = await apiClient.get<LedgerResponse>(path, { signal: controller.signal });
+      if (version !== requestVersionRef.current) return;
 
       if (cursor) {
         setLedger((prev) => [...prev, ...response.data]);
@@ -78,11 +96,13 @@ export const useWallet = () => {
       setNextCursor(response.meta.next_cursor);
       setHasMore(response.meta.has_more);
     } catch (err) {
-      setError((err as Error).message);
+      if (version === requestVersionRef.current && (err as Error).name !== 'AbortError') {
+        setError((err as Error).message);
+      }
     } finally {
-      setIsLedgerLoading(false);
+      if (version === requestVersionRef.current) setIsLedgerLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, selectedMode]);
 
   const initiateDeposit = async (data: { amount: string; phone: string }) => {
     try {
@@ -124,24 +144,19 @@ export const useWallet = () => {
 
   // Auto-refresh balance on mount and periodically when authenticated
   useEffect(() => {
+    requestVersionRef.current += 1;
+    setLedger([]);
+    setNextCursor(undefined);
+    setHasMore(false);
+    setError(null);
     if (!isAuthenticated) {
-      setBalance(null);
-      setLedger([]);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
       return;
     }
     fetchBalance();
-    intervalRef.current = setInterval(fetchBalance, 30000); // 30s polling
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [fetchBalance, isAuthenticated]);
+    if (!pollBalance) return;
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBalance, generation, isAuthenticated, pollBalance]);
 
   return {
     balance,
@@ -151,6 +166,7 @@ export const useWallet = () => {
     error,
     hasMore,
     nextCursor,
+    generation,
     fetchBalance,
     fetchLedger,
     initiateDeposit,

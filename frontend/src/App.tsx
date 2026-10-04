@@ -1,9 +1,12 @@
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
+import { AccountModeProvider } from '@/shared/context/AccountModeContext';
 
 function App() {
   return (
-    <RouterProvider router={router} />
+    <AccountModeProvider>
+      <RouterProvider router={router} />
+    </AccountModeProvider>
   );
 }
 

@@ -15,7 +15,7 @@ export class WalletController {
   async getBalance(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).user.sub;
-      const wallet = await this.walletService.getBalance(userId);
+      const wallet = await this.walletService.getBalance(userId, 'real');
 
       res.status(200).json({
         data: {
@@ -37,7 +37,7 @@ export class WalletController {
       const userId = (req as any).user.sub;
       const { limit, cursor } = req.query;
 
-      const wallet = await this.walletService.getBalance(userId);
+      const wallet = await this.walletService.getBalance(userId, 'real');
       const entries = await this.ledgerRepo.findByWalletId(
         wallet.id,
         limit ? parseInt(limit as string, 10) : 20,

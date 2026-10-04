@@ -20,7 +20,7 @@ describe('M-Pesa Callback Integration', () => {
       [email]
     );
     testUserId = res.rows[0].id;
-    await walletService.createWallet(testUserId, 'KES');
+    await walletService.createWallet(testUserId, 'real', 'KES');
   });
 
   afterAll(async () => {
@@ -66,7 +66,7 @@ describe('M-Pesa Callback Integration', () => {
     expect(depRes.rows[0].status).toBe('completed');
 
     // 4. Verify wallet balance
-    const wallet = await walletService.getBalance(testUserId);
+    const wallet = await walletService.getBalance(testUserId, 'real');
     expect(new Decimal(wallet.balance).equals(new Decimal(amount))).toBe(true);
   });
 
@@ -105,7 +105,7 @@ describe('M-Pesa Callback Integration', () => {
 
     // Wallet should only be credited once.
     // Previous balance was 1000. New balance should be 2000, NOT 3000.
-    const wallet = await walletService.getBalance(testUserId);
+    const wallet = await walletService.getBalance(testUserId, 'real');
     expect(new Decimal(wallet.balance).equals(new Decimal('2000.0000'))).toBe(true);
 
     // Ledger entries should only show two deposits total

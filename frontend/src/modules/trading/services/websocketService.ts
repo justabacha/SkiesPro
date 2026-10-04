@@ -1,5 +1,6 @@
 import { WebSocketClient, WebSocketMessage, SubscribeChannel } from '@/shared/ws/websocketClient';
 import { PriceTick, LatencyState, LatencyStatus } from '../types/trading.types';
+import type { AccountMode } from '@/shared/context/AccountModeContext';
 
 export type PriceTickCallback = (tick: PriceTick) => void;
 export type LatencyCallback = (state: LatencyState) => void;
@@ -8,6 +9,7 @@ export type ConnectionStateCallback = (isConnected: boolean) => void;
 class WebsocketService {
   private client: WebSocketClient | null = null;
   private currentSymbol: string | null = null;
+  private currentMode: AccountMode = 'real';
   private priceCallbacks: Set<PriceTickCallback> = new Set();
   private latencyCallbacks: Set<LatencyCallback> = new Set();
   private connectionCallbacks: Set<ConnectionStateCallback> = new Set();
@@ -21,9 +23,10 @@ class WebsocketService {
       this.disconnect();
     }
 
-    const defaultWsUrl = typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_URL
-      ? import.meta.env.VITE_WS_URL
-      : 'ws://localhost:3000/ws/v1';
+    const defaultWsUrl =
+      typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_URL
+        ? import.meta.env.VITE_WS_URL
+        : 'ws://localhost:3000/ws/v1';
 
     const url = wsUrl || defaultWsUrl;
 
@@ -36,7 +39,7 @@ class WebsocketService {
         this.startPingInterval();
 
         if (this.currentSymbol) {
-          this.subscribeSymbol(this.currentSymbol);
+          this.subscribeSymbol(this.currentSymbol, this.currentMode);
         }
       },
       onMessage: (msg: WebSocketMessage) => {
@@ -60,30 +63,32 @@ class WebsocketService {
     this.client.connect();
   }
 
-  public subscribeSymbol(symbol: string): void {
+  public subscribeSymbol(symbol: string, mode: AccountMode = 'real'): void {
     const previousSymbol = this.currentSymbol;
+    const previousMode = this.currentMode;
     this.currentSymbol = symbol;
+    this.currentMode = mode;
 
     if (!this.client || !this.client.isConnected()) {
       return;
     }
 
-    if (previousSymbol && previousSymbol !== symbol) {
-      const unsubChannel: SubscribeChannel = { channel: 'price', symbol: previousSymbol };
+    if (previousSymbol && (previousSymbol !== symbol || previousMode !== mode)) {
+      const unsubChannel = this.toChannel(previousSymbol, previousMode);
       this.client.unsubscribe([unsubChannel]);
     }
 
-    const subChannel: SubscribeChannel = { channel: 'price', symbol };
+    const subChannel = this.toChannel(symbol, mode);
     this.client.subscribe([subChannel]);
   }
 
-  public unsubscribeSymbol(symbol: string): void {
-    if (this.currentSymbol === symbol) {
+  public unsubscribeSymbol(symbol: string, mode: AccountMode = this.currentMode): void {
+    if (this.currentSymbol === symbol && this.currentMode === mode) {
       this.currentSymbol = null;
     }
 
-    if (this.client && this.client.isConnected()) {
-      const unsubChannel: SubscribeChannel = { channel: 'price', symbol };
+    if (this.client) {
+      const unsubChannel = this.toChannel(symbol, mode);
       this.client.unsubscribe([unsubChannel]);
     }
   }
@@ -139,12 +144,17 @@ class WebsocketService {
     }
     this.isConnected = false;
     this.currentSymbol = null;
+    this.currentMode = 'real';
   }
 
   private handleMessage(msg: WebSocketMessage): void {
     if (msg.type === 'price') {
+      if (this.currentMode === 'demo' && msg.source !== 'demo') return;
+      if (this.currentMode === 'real' && msg.source !== 'live') return;
+
       const rawPrice = msg.price !== undefined ? msg.price : msg.mid;
-      const numericPrice = typeof rawPrice === 'number' ? rawPrice : parseFloat(String(rawPrice || '0'));
+      const numericPrice =
+        typeof rawPrice === 'number' ? rawPrice : parseFloat(String(rawPrice || '0'));
 
       const tick: PriceTick = {
         symbol: String(msg.symbol || this.currentSymbol || 'EUR/USD'),
@@ -161,7 +171,7 @@ class WebsocketService {
         if (!isNaN(tickTs) && tickTs > 0) {
           const delta = Math.abs(Date.now() - tickTs);
           if (delta > 0 && delta < 5000) {
-            this.latencyMs = Math.round((this.latencyMs * 0.7) + (delta * 0.3));
+            this.latencyMs = Math.round(this.latencyMs * 0.7 + delta * 0.3);
             this.notifyLatency(this.getLatencyState());
           }
         }
@@ -192,6 +202,10 @@ class WebsocketService {
       clearInterval(this.pingIntervalId);
       this.pingIntervalId = null;
     }
+  }
+
+  private toChannel(symbol: string, mode: AccountMode): SubscribeChannel {
+    return { channel: mode === 'demo' ? 'demo.price' : 'price', symbol };
   }
 
   private notifyLatency(state: LatencyState): void {

@@ -1,4 +1,4 @@
-import { ContractRepository } from '../repositories/contractRepository.js';
+import { ContractRepository, BinaryContract } from '../repositories/contractRepository.js';
 import { TickRepository } from '../../pricing/repositories/tickRepository.js';
 import { PriceFeedIngestionService } from '../../pricing/services/PriceFeedIngestionService.js';
 import { WalletService } from '../../wallet/services/walletService.js';
@@ -10,6 +10,7 @@ import { PayoutService } from '../services/payoutService.js';
 import { SettlementRepository } from '../repositories/settlementRepository.js';
 import { IdempotencyService } from '../../../shared/services/idempotencyService.js';
 import { OutboxRepository } from '../../auth/repositories/outboxRepository.js';
+import { AccountType } from '../../wallet/repositories/walletRepository.js';
 
 export class SettlementWorker {
   private contractRepo: ContractRepository;
@@ -65,9 +66,23 @@ export class SettlementWorker {
   async settle(contractId: string): Promise<void> {
     logger.info('Settling contract', { contractId });
 
+    const contract = await this.contractRepo.findByIdForSettlement(contractId);
+    if (!contract) {
+      throw new Error(`Contract ${contractId} not found`);
+    }
+    if (contract.accountType !== 'real' && contract.accountType !== 'demo') {
+      throw new Error(`Contract ${contractId} has an invalid account type`);
+    }
+    const accountType: AccountType = contract.accountType;
+
     // 1. Atomic CAS: Update status to 'settling' to prevent double settlement
     // This is the Database-level protection (ADR-010)
-    const updated = await this.contractRepo.updateStatusCAS(contractId, 'active', 'settling');
+    const updated = await this.contractRepo.updateStatusCAS(
+      contractId,
+      accountType,
+      'active',
+      'settling'
+    );
     if (!updated) {
       logger.info('Contract already settling or processed', { contractId });
       return;
@@ -75,13 +90,9 @@ export class SettlementWorker {
 
     try {
       // 2. Fetch contract details
-      const contract = await this.contractRepo.findById(contractId);
-      if (!contract) {
-        throw new Error('Contract not found');
-      }
-
       // 2b. Check Tier 3 (Mock) Price Feed Disruption Protection (>30s grace window)
       if (
+        accountType === 'real' &&
         PriceFeedIngestionService.currentTier === 'tier3_mock' &&
         PriceFeedIngestionService.tier3StartedAt !== null
       ) {
@@ -103,7 +114,8 @@ export class SettlementWorker {
       // 3. Fetch settlement price (tick at or just before expiry)
       const settlementTick = await this.tickRepo.getPriceAt(
         contract.assetSymbol,
-        contract.expiryTime
+        contract.expiryTime,
+        accountType === 'real' ? 'live' : 'demo'
       );
 
       if (!settlementTick) {
@@ -150,15 +162,21 @@ export class SettlementWorker {
           const txType = result.outcome === 'won' ? 'trade_win' : 'trade_draw';
           await txWalletService.credit(
             contract.userId,
+            accountType,
             result.payoutAmount,
-            txType,
+            accountType === 'demo' ? 'demo_trade_payout' : txType,
             contractId,
             result.description
           );
         }
 
         // B. Update Contract to Terminal Status
-        await txContractRepo.updateStatus(contractId, result.outcome, settlementPrice.toString());
+        await txContractRepo.updateStatus(
+          contractId,
+          accountType,
+          result.outcome,
+          settlementPrice.toString()
+        );
 
         // C. Record Settlement Audit Event
         await txSettlementRepo.recordSettlementEvent(
@@ -176,6 +194,7 @@ export class SettlementWorker {
           payload: {
             userId: contract.userId,
             contractId,
+            accountType,
             assetSymbol: contract.assetSymbol,
             outcome: result.outcome,
             payoutAmount: result.payoutAmount.toString(),
@@ -199,7 +218,7 @@ export class SettlementWorker {
     } catch (error: any) {
       // Revert status to active so it can be retried
       // IMPORTANT: Only revert if it was 'settling'
-      await this.contractRepo.updateStatusCAS(contractId, 'settling', 'active');
+      await this.contractRepo.updateStatusCAS(contractId, accountType, 'settling', 'active');
       throw error;
     }
   }
@@ -207,8 +226,12 @@ export class SettlementWorker {
   /**
    * Internal helper to cancel a trade and refund the stake.
    */
-  private async cancelAndRefund(contract: any, reason: string): Promise<void> {
+  private async cancelAndRefund(contract: BinaryContract, reason: string): Promise<void> {
     const contractId = contract.id;
+    const accountType = contract.accountType;
+    if (!contractId || (accountType !== 'real' && accountType !== 'demo')) {
+      throw new Error('Cannot refund contract with invalid account type');
+    }
     const result = this.payoutService.getCancelResult(contract, reason);
 
     const client = await pgPool.connect();
@@ -222,14 +245,15 @@ export class SettlementWorker {
       // Refund Stake
       await txWalletService.credit(
         contract.userId,
+        accountType,
         result.payoutAmount,
-        'trade_draw',
+        accountType === 'demo' ? 'demo_trade_payout' : 'trade_draw',
         contractId,
         result.description
       );
 
       // Update terminal status
-      await txContractRepo.updateStatus(contractId, 'cancelled');
+      await txContractRepo.updateStatus(contractId, accountType, 'cancelled');
 
       // Record Audit
       await txSettlementRepo.recordCancellationEvent(contractId, reason);
@@ -242,6 +266,7 @@ export class SettlementWorker {
         payload: {
           userId: contract.userId,
           contractId,
+          accountType,
           assetSymbol: contract.assetSymbol,
           outcome: 'cancelled',
           payoutAmount: result.payoutAmount.toString(),
@@ -254,7 +279,7 @@ export class SettlementWorker {
     } catch (error) {
       await client.query('ROLLBACK');
       // Revert CAS lock
-      await this.contractRepo.updateStatusCAS(contractId, 'settling', 'active');
+      await this.contractRepo.updateStatusCAS(contractId, accountType, 'settling', 'active');
       throw error;
     } finally {
       client.release();

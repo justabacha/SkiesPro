@@ -60,17 +60,11 @@ export class TradingService {
       throw new Error(`User is self-excluded until ${user.self_excluded_until.toISOString()}`);
     }
 
-    // 2b. Circuit Breaker Check (Block real-money trades during Tier 3 Mock price feed)
+    // This service is real-money only; demo mode has its own service and quote source.
     if (PriceFeedIngestionService.currentTier === 'tier3_mock') {
-      const isDemo =
-        (user as any).is_demo === true ||
-        (request as any).is_demo === true ||
-        (user as any).account_type === 'demo';
-      if (!isDemo) {
-        throw new Error(
-          'Trading is temporarily suspended due to live price feed degradation. Please try again shortly.'
-        );
-      }
+      throw new Error(
+        'Trading is temporarily suspended due to live price feed degradation. Please try again shortly.'
+      );
     }
 
     // 3. Market Hours Check
@@ -98,14 +92,14 @@ export class TradingService {
     }
 
     // 6. Balance Check (pre-transaction check for performance)
-    const wallet = await this.walletService.getBalance(userId);
+    const wallet = await this.walletService.getBalance(userId, 'real');
     const stakeAmount = new Decimal(request.stake);
     if (new Decimal(wallet.available_balance).lt(stakeAmount)) {
       throw new Error('Insufficient available balance');
     }
 
     // 7. Exposure Limit Check
-    const currentExposure = await this.contractRepo.getActiveExposure(assetSymbol);
+    const currentExposure = await this.contractRepo.getActiveExposure(assetSymbol, 'real');
     const maxExposure = config.maxExposure
       ? new Decimal(config.maxExposure)
       : new Decimal('1000000000'); // Default to very high if null
@@ -178,17 +172,23 @@ export class TradingService {
       ]);
 
       // 7. Atomic Exposure Limit Check (Inside Transaction)
-      const currentExposure = await txContractRepo.getActiveExposure(assetSymbol);
+      const currentExposure = await txContractRepo.getActiveExposure(assetSymbol, 'real');
       if (new Decimal(currentExposure).plus(stakeAmount).gt(maxExposure)) {
         throw new Error(`Maximum platform exposure reached for ${assetSymbol}`);
       }
 
       // 9. Wallet Lock (Explicit for visibility and compliance with Blueprint §4.1)
-      await client.query('SELECT 1 FROM wallet.wallets WHERE user_id = $1 FOR UPDATE', [userId]);
+      await client.query(
+        `SELECT 1 FROM wallet.wallets
+         WHERE user_id = $1 AND account_type = 'real'
+         FOR UPDATE`,
+        [userId]
+      );
 
       // 10. Wallet Debit (Stake)
       await txWalletService.debit(
         userId,
+        'real',
         stakeAmount,
         'trade_stake',
         undefined,
@@ -201,6 +201,7 @@ export class TradingService {
 
       const contract: BinaryContract = {
         userId,
+        accountType: 'real',
         assetSymbol,
         stake: stakeAmount.toString(),
         contractType: request.contractType,
@@ -260,15 +261,15 @@ export class TradingService {
   }
 
   async getTradeHistory(userId: string, filters: any): Promise<BinaryContract[]> {
-    return this.contractRepo.listByUser(userId, filters);
+    return this.contractRepo.listByUser(userId, 'real', filters);
   }
 
   async getActiveTrades(userId: string): Promise<BinaryContract[]> {
-    return this.contractRepo.getActiveByUser(userId);
+    return this.contractRepo.getActiveByUser(userId, 'real');
   }
 
   async getTradeById(id: string, userId: string): Promise<BinaryContract> {
-    const contract = await this.contractRepo.findById(id);
+    const contract = await this.contractRepo.findById(id, 'real');
     if (!contract || contract.userId !== userId) {
       throw new Error('Trade not found');
     }

@@ -1,9 +1,27 @@
 import { PoolClient } from 'pg';
 import { pgPool } from '../../../config/database.js';
-import { WalletRepository, WalletRow } from '../repositories/walletRepository.js';
+import { AccountType, WalletRepository, WalletRow } from '../repositories/walletRepository.js';
 import { LedgerService } from './ledgerService.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
+
+export type LedgerReferenceType =
+  | 'deposit'
+  | 'withdrawal'
+  | 'trade_stake'
+  | 'trade_payout'
+  | 'referral_commission'
+  | 'admin_adjustment'
+  | 'trade_win'
+  | 'trade_loss'
+  | 'trade_draw'
+  | 'fee'
+  | 'referral_bonus'
+  | 'platform_revenue'
+  | 'demo_funding'
+  | 'demo_reset'
+  | 'demo_trade_stake'
+  | 'demo_trade_payout';
 
 export class WalletService {
   private walletRepo: WalletRepository;
@@ -14,14 +32,24 @@ export class WalletService {
     this.walletRepo = new WalletRepository(client);
   }
 
-  async createWallet(userId: string, currency: string = 'KES'): Promise<WalletRow> {
-    const existing = await this.walletRepo.findByUserId(userId);
+  async createWallet(
+    userId: string,
+    accountType: AccountType,
+    currency: string = 'KES'
+  ): Promise<WalletRow> {
+    const existing = await this.walletRepo.findByUserId(userId, accountType);
     if (existing) return existing;
-    return this.walletRepo.create(userId, currency);
+    try {
+      return await this.walletRepo.create(userId, currency, accountType);
+    } catch (error) {
+      const concurrentlyCreated = await this.walletRepo.findByUserId(userId, accountType);
+      if (concurrentlyCreated) return concurrentlyCreated;
+      throw error;
+    }
   }
 
-  async getBalance(userId: string): Promise<WalletRow> {
-    const wallet = await this.walletRepo.findByUserId(userId);
+  async getBalance(userId: string, accountType: AccountType): Promise<WalletRow> {
+    const wallet = await this.walletRepo.findByUserId(userId, accountType);
     if (!wallet) throw new Error('Wallet not found');
     return wallet;
   }
@@ -46,8 +74,9 @@ export class WalletService {
 
   async credit(
     userId: string,
+    accountType: AccountType,
     amount: Decimal,
-    referenceType: string,
+    referenceType: LedgerReferenceType,
     referenceId?: string,
     description?: string
   ): Promise<WalletRow> {
@@ -55,7 +84,7 @@ export class WalletService {
       const walletRepo = new WalletRepository(client);
       const ledgerService = new LedgerService(client);
 
-      const wallet = await walletRepo.findByUserIdForUpdate(userId);
+      const wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
       if (!wallet) throw new Error('Wallet not found');
 
       const balanceBefore = new Decimal(wallet.balance);
@@ -63,6 +92,8 @@ export class WalletService {
       const transactionId = uuidv4();
 
       const updatedWallet = await walletRepo.updateBalance(
+        userId,
+        accountType,
         wallet.id,
         balanceAfter,
         new Decimal(wallet.locked_balance),
@@ -87,8 +118,9 @@ export class WalletService {
 
   async debit(
     userId: string,
+    accountType: AccountType,
     amount: Decimal,
-    referenceType: string,
+    referenceType: LedgerReferenceType,
     referenceId?: string,
     description?: string
   ): Promise<WalletRow> {
@@ -96,7 +128,7 @@ export class WalletService {
       const walletRepo = new WalletRepository(client);
       const ledgerService = new LedgerService(client);
 
-      const wallet = await walletRepo.findByUserIdForUpdate(userId);
+      const wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
       if (!wallet) throw new Error('Wallet not found');
 
       const availableBefore = new Decimal(wallet.available_balance);
@@ -109,6 +141,8 @@ export class WalletService {
       const transactionId = uuidv4();
 
       const updatedWallet = await walletRepo.updateBalance(
+        userId,
+        accountType,
         wallet.id,
         balanceAfter,
         new Decimal(wallet.locked_balance),
@@ -133,14 +167,15 @@ export class WalletService {
 
   async lockFunds(
     userId: string,
+    accountType: AccountType,
     amount: Decimal,
-    _referenceType: string,
+    _referenceType: LedgerReferenceType,
     _referenceId?: string,
     _description?: string
   ): Promise<WalletRow> {
     return this.withTransaction(async (client) => {
       const walletRepo = new WalletRepository(client);
-      const wallet = await walletRepo.findByUserIdForUpdate(userId);
+      const wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
       if (!wallet) throw new Error('Wallet not found');
 
       if (new Decimal(wallet.available_balance).lessThan(amount)) {
@@ -151,6 +186,8 @@ export class WalletService {
       const lockedAfter = lockedBefore.plus(amount);
 
       return walletRepo.updateBalance(
+        userId,
+        accountType,
         wallet.id,
         new Decimal(wallet.balance),
         lockedAfter,
@@ -159,10 +196,10 @@ export class WalletService {
     });
   }
 
-  async unlockFunds(userId: string, amount: Decimal): Promise<WalletRow> {
+  async unlockFunds(userId: string, accountType: AccountType, amount: Decimal): Promise<WalletRow> {
     return this.withTransaction(async (client) => {
       const walletRepo = new WalletRepository(client);
-      const wallet = await walletRepo.findByUserIdForUpdate(userId);
+      const wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
       if (!wallet) throw new Error('Wallet not found');
 
       const lockedBefore = new Decimal(wallet.locked_balance);
@@ -173,6 +210,8 @@ export class WalletService {
       const lockedAfter = lockedBefore.minus(amount);
 
       return walletRepo.updateBalance(
+        userId,
+        accountType,
         wallet.id,
         new Decimal(wallet.balance),
         lockedAfter,

@@ -2,8 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Lock, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { Asset, ContractType } from '../types/trading.types';
 import { getPriceDecimalPlaces } from '../utils/pricePrecision';
+import { DemoModeBanner } from './DemoModeBanner';
 
 export interface OrderFormProps {
+  accountMode?: 'real' | 'demo';
   asset: Asset | null;
   selectedSymbol?: string;
   currentPrice: number;
@@ -29,6 +31,7 @@ const DURATION_OPTIONS = [
 ];
 
 export const OrderForm: React.FC<OrderFormProps> = ({
+  accountMode = 'real',
   asset,
   selectedSymbol,
   currentPrice,
@@ -56,7 +59,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   }, [expirySeconds]);
 
   const activeSymbol = selectedSymbol || asset?.symbol || 'EUR/USD';
-  const payoutRate = asset?.payoutRate || 0.60;
+  const payoutRate = asset?.payoutRate || 0.6;
   const minStake = asset?.minStake || 100;
   const maxStake = asset?.maxStake || 50000;
   const isMarketOpen = asset?.isOpen !== false && asset?.isActive !== false;
@@ -79,7 +82,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     return null;
   }, [stake, numericStake, minStake, maxStake, userBalance]);
 
-  const isDisabled = !isMarketOpen || !isPriceAvailable || isPlacingTrade || Boolean(validationError);
+  const isDisabled =
+    !isMarketOpen || !isPriceAvailable || isPlacingTrade || Boolean(validationError);
 
   const handleHigher = () => {
     if (isDisabled) return;
@@ -100,17 +104,22 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border-light dark:border-border-dark">
           <div>
-            <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark-primary">Place Binary Contract</h3>
+            <h3 className="text-base font-bold text-text-light-primary dark:text-text-dark-primary">
+              Place Binary Contract
+            </h3>
             {isPriceAvailable && currentPrice > 0 && (
               <span className="text-xs font-mono text-text-light-secondary dark:text-text-dark-secondary">
                 Spot: {currentPrice.toFixed(pipPlaces)}
               </span>
             )}
           </div>
+
           <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
             Payout +{(payoutRate * 100).toFixed(0)}%
           </span>
         </div>
+
+        {accountMode === 'demo' && <DemoModeBanner compact />}
 
         {/* Market Closed Badge Tooltip */}
         {!isMarketOpen && (
@@ -126,7 +135,10 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         {!isPriceAvailable && isMarketOpen && (
           <div className="flex items-center space-x-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-700 dark:text-amber-300 text-xs font-medium">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>Waiting for a live market quote. Orders are temporarily disabled.</span>
+            <span>
+              Waiting for a {accountMode === 'demo' ? 'demo' : 'live'} market quote. Orders are
+              temporarily disabled.
+            </span>
           </div>
         )}
 
@@ -217,13 +229,17 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
           {/* Stake Validation Error */}
           {validationError && (
-            <p className="mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-medium">{validationError}</p>
+            <p className="mt-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-medium">
+              {validationError}
+            </p>
           )}
         </div>
 
         {/* Expected Payout Display (UI-TRADE-003) */}
         <div className="p-3.5 bg-bg-light-tertiary/70 dark:bg-bg-dark-tertiary/70 rounded-xl border border-border-light dark:border-border-dark flex items-center justify-between">
-          <span className="text-xs text-text-light-secondary dark:text-text-dark-secondary font-medium">Expected Payout:</span>
+          <span className="text-xs text-text-light-secondary dark:text-text-dark-secondary font-medium">
+            Expected Payout:
+          </span>
           <div className="text-right">
             <span
               data-testid="payout-amount"
@@ -249,7 +265,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         >
           <div className="flex items-center space-x-1 text-xs sm:text-sm uppercase tracking-wide">
             <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:-translate-y-0.5" />
-            <span>Higher</span>
+            <span>{accountMode === 'demo' ? 'DEMO Higher' : 'Higher'}</span>
           </div>
           <span className="text-[10px] sm:text-[11px] font-mono font-medium opacity-90 mt-0.5">
             Buy @ {isPriceAvailable ? currentPrice.toFixed(pipPlaces) : 'Spot'}
@@ -265,7 +281,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         >
           <div className="flex items-center space-x-1 text-xs sm:text-sm uppercase tracking-wide">
             <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-y-0.5" />
-            <span>Lower</span>
+            <span>{accountMode === 'demo' ? 'DEMO Lower' : 'Lower'}</span>
           </div>
           <span className="text-[10px] sm:text-[11px] font-mono font-medium opacity-90 mt-0.5">
             Sell @ {isPriceAvailable ? currentPrice.toFixed(pipPlaces) : 'Spot'}

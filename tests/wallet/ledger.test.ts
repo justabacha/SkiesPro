@@ -25,14 +25,14 @@ describe('Wallet & Ledger Service', () => {
   });
 
   it('should create a wallet for a new user', async () => {
-    const wallet = await walletService.createWallet(testUserId, 'KES');
+    const wallet = await walletService.createWallet(testUserId, 'real', 'KES');
     expect(wallet.user_id).toBe(testUserId);
     expect(new Decimal(wallet.balance).isZero()).toBe(true);
   });
 
   it('should credit a wallet and record a ledger entry', async () => {
     const amount = new Decimal('1000.5000');
-    const wallet = await walletService.credit(testUserId, amount, 'deposit', uuidv4(), 'Test deposit');
+    const wallet = await walletService.credit(testUserId, 'real', amount, 'deposit', uuidv4(), 'Test deposit');
 
     expect(new Decimal(wallet.balance).equals(amount)).toBe(true);
 
@@ -44,7 +44,7 @@ describe('Wallet & Ledger Service', () => {
 
   it('should debit a wallet and record a ledger entry', async () => {
     const debitAmount = new Decimal('500.2500');
-    const wallet = await walletService.debit(testUserId, debitAmount, 'withdrawal', uuidv4(), 'Test withdrawal');
+    const wallet = await walletService.debit(testUserId, 'real', debitAmount, 'withdrawal', uuidv4(), 'Test withdrawal');
 
     expect(new Decimal(wallet.balance).equals(new Decimal('500.2500'))).toBe(true);
 
@@ -54,17 +54,17 @@ describe('Wallet & Ledger Service', () => {
 
   it('should fail to debit more than available balance', async () => {
     const excessiveAmount = new Decimal('1000000');
-    await expect(walletService.debit(testUserId, excessiveAmount, 'withdrawal')).rejects.toThrow('Insufficient funds');
+    await expect(walletService.debit(testUserId, 'real', excessiveAmount, 'withdrawal')).rejects.toThrow('Insufficient funds');
   });
 
   it('should lock and unlock funds correctly', async () => {
     const lockAmount = new Decimal('100.0000');
-    let wallet = await walletService.lockFunds(testUserId, lockAmount, 'trade_stake');
+    let wallet = await walletService.lockFunds(testUserId, 'real', lockAmount, 'trade_stake');
 
     expect(new Decimal(wallet.locked_balance).equals(lockAmount)).toBe(true);
     expect(new Decimal(wallet.available_balance).equals(new Decimal('400.2500'))).toBe(true);
 
-    wallet = await walletService.unlockFunds(testUserId, lockAmount);
+    wallet = await walletService.unlockFunds(testUserId, 'real', lockAmount);
     expect(new Decimal(wallet.locked_balance).isZero()).toBe(true);
     expect(new Decimal(wallet.available_balance).equals(new Decimal('500.2500'))).toBe(true);
   });

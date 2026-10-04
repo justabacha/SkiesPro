@@ -3,6 +3,7 @@ import { useAuth } from '@/shared/hooks/useAuth';
 import { apiClient } from '@/shared/services/apiClient';
 import { websocketService } from '../services/websocketService';
 import { PriceTick, LatencyState } from '../types/trading.types';
+import { useAccountMode } from '@/shared/context/AccountModeContext';
 
 const MAX_QUOTE_AGE_MS = 10_000;
 const normalizeSymbol = (value: string) => value.replace(/[^a-z0-9]/gi, '').toUpperCase();
@@ -13,11 +14,13 @@ interface LatestPriceResponse {
     mid?: number | string;
     price?: number | string;
     tick_time?: string;
+    time?: string;
   };
   symbol?: string;
   mid?: number | string;
   price?: number | string;
   tick_time?: string;
+  time?: string;
 }
 
 export interface UsePriceStreamReturn {
@@ -31,6 +34,7 @@ export interface UsePriceStreamReturn {
 
 export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStreamReturn => {
   const { isAuthenticated, user } = useAuth();
+  const { accountMode, generation, isCurrentGeneration, registerModeCleanup } = useAccountMode();
   const [symbol, setSymbol] = useState<string>(initialSymbol);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [isPriceAvailable, setIsPriceAvailable] = useState(false);
@@ -57,7 +61,11 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
 
     const timestamp = new Date(tick.tick_time).getTime();
     const now = Date.now();
-    if (!Number.isFinite(timestamp) || timestamp > now + 1000 || now - timestamp > MAX_QUOTE_AGE_MS) {
+    if (
+      !Number.isFinite(timestamp) ||
+      timestamp > now + 1000 ||
+      now - timestamp > MAX_QUOTE_AGE_MS
+    ) {
       return;
     }
 
@@ -71,6 +79,9 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
 
   useEffect(() => {
     let isMounted = true;
+    const requestGeneration = generation;
+    const requestMode = accountMode;
+    const requestUserId = user?.id || null;
     activeSymbolRef.current = symbol;
     historyRef.current = [];
     setPriceHistory([]);
@@ -81,22 +92,30 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     const fetchLivePrice = async () => {
       try {
         const encoded = encodeURIComponent(symbol);
-        const response = await apiClient.get<LatestPriceResponse>(
-          `/api/v1/pricing/assets/${encoded}/price`
-        );
+        const path =
+          requestMode === 'demo'
+            ? `/api/v1/demo/pricing/quote?symbol=${encoded}`
+            : `/api/v1/pricing/assets/${encoded}/price`;
+        const response = await apiClient.get<LatestPriceResponse>(path);
         const quote = response.data || response;
         const price = Number(quote.mid ?? quote.price);
         const quoteSymbol = quote.symbol || symbol;
-        if (!isMounted || !Number.isFinite(price) || price <= 0) return;
+        if (
+          !isMounted ||
+          !isCurrentGeneration(requestGeneration, requestMode, requestUserId) ||
+          !Number.isFinite(price) ||
+          price <= 0
+        )
+          return;
 
         acceptTick({
           symbol: quoteSymbol,
           price,
-          tick_time: quote.tick_time || new Date().toISOString(),
+          tick_time: quote.tick_time || quote.time || new Date().toISOString(),
           timestamp: Date.now(),
         });
       } catch (error) {
-        console.warn('Live price is not available; waiting for the price stream.', error);
+        console.warn('Price quote is not available; waiting for the price stream.', error);
       }
     };
 
@@ -104,7 +123,17 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     return () => {
       isMounted = false;
     };
-  }, [symbol, acceptTick]);
+  }, [accountMode, generation, isCurrentGeneration, symbol, acceptTick, user?.id]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      websocketService.disconnect();
+      setIsConnected(false);
+      return;
+    }
+
+    websocketService.initialize(user?.id || 'session-token');
+  }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -112,18 +141,35 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
       return;
     }
 
-    websocketService.initialize(user?.id || 'session-token');
+    const subscribedSymbol = symbol;
+    const subscribedMode = accountMode;
     const unsubscribePrice = websocketService.onPriceTick(acceptTick);
     const unsubscribeLatency = websocketService.onLatencyChange(setLatencyState);
     const unsubscribeConn = websocketService.onConnectionStateChange(setIsConnected);
-    websocketService.subscribeSymbol(symbol);
+    websocketService.subscribeSymbol(subscribedSymbol, subscribedMode);
+    const unregisterTransitionCleanup = registerModeCleanup(() => {
+      websocketService.unsubscribeSymbol(subscribedSymbol, subscribedMode);
+      unsubscribePrice();
+      unsubscribeLatency();
+      unsubscribeConn();
+      activeSymbolRef.current = '';
+      historyRef.current = [];
+      setCurrentPrice(0);
+      setIsPriceAvailable(false);
+      setQuoteUpdatedAt(0);
+      setPriceHistory([]);
+      setLatencyState({ latencyMs: 0, status: 'disconnected', isConnected: false });
+      setIsConnected(false);
+    });
 
     return () => {
+      unregisterTransitionCleanup();
+      websocketService.unsubscribeSymbol(subscribedSymbol, subscribedMode);
       unsubscribePrice();
       unsubscribeLatency();
       unsubscribeConn();
     };
-  }, [acceptTick, isAuthenticated, user?.id, symbol]);
+  }, [acceptTick, accountMode, generation, isAuthenticated, registerModeCleanup, symbol, user?.id]);
 
   useEffect(() => {
     if (!isPriceAvailable || quoteUpdatedAt === 0) return;
@@ -144,8 +190,12 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     setIsPriceAvailable(false);
     setQuoteUpdatedAt(0);
     setPriceHistory([]);
-    websocketService.subscribeSymbol(newSymbol);
   }, []);
+
+  useEffect(() => {
+    setLatencyState({ latencyMs: 0, status: 'disconnected', isConnected: false });
+    setIsConnected(false);
+  }, [accountMode, generation]);
 
   return {
     currentPrice,

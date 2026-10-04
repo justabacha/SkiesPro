@@ -10,6 +10,8 @@ import { OpenPositions } from '@/modules/trading/components/OpenPositions';
 import { TradeHistory } from '@/modules/trading/components/TradeHistory';
 import { ContractConfirmationModal } from '@/modules/trading/components/ContractConfirmationModal';
 import { CheckCircle2, Wallet, Layers, History } from 'lucide-react';
+import { useAccountMode } from '@/shared/context/AccountModeContext';
+import { DemoModeBanner } from '@/modules/trading/components/DemoModeBanner';
 
 const getInitialSymbol = (): string => {
   if (typeof window !== 'undefined') {
@@ -24,6 +26,7 @@ const getInitialSymbol = (): string => {
 
 export const TradingPage: React.FC = () => {
   const { balance } = useWallet();
+  const { accountMode } = useAccountMode();
   const [activeBottomTab, setActiveBottomTab] = useState<'positions' | 'history'>('positions');
 
   const initialSymbol = useMemo(() => getInitialSymbol(), []);
@@ -51,7 +54,7 @@ export const TradingPage: React.FC = () => {
     isConfirmModalOpen,
     confirmPendingOrder,
     cancelPendingOrder,
-    executeDirectTrade,
+    requestTradeConfirmation,
     settlementEvents,
     dismissSettlementEvent,
   } = useTrading(initialSymbol);
@@ -83,6 +86,14 @@ export const TradingPage: React.FC = () => {
     if (!selectedAsset) return {};
     return { [selectedAsset.symbol]: currentPrice };
   }, [selectedAsset, currentPrice]);
+  const tradingAssets = useMemo(
+    () => accountMode === 'demo' ? assets.map((asset) => ({ ...asset, isOpen: true, isActive: true })) : assets,
+    [accountMode, assets]
+  );
+  const tradingAsset = useMemo(
+    () => selectedAsset && accountMode === 'demo' ? { ...selectedAsset, isOpen: true, isActive: true } : selectedAsset,
+    [accountMode, selectedAsset]
+  );
 
   return (
     <div className="min-h-screen w-full min-w-0 bg-bg-light-primary dark:bg-bg-dark-primary text-text-light-primary dark:text-text-dark-primary p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6 transition-colors duration-200">
@@ -90,8 +101,8 @@ export const TradingPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border-light dark:border-border-dark">
         <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
           <AssetSelector
-            assets={assets}
-            selectedAsset={selectedAsset}
+            assets={tradingAssets}
+            selectedAsset={tradingAsset}
             onSelectAsset={handleSelectAsset}
             currentPrice={currentPrice}
           />
@@ -102,7 +113,7 @@ export const TradingPage: React.FC = () => {
           <Wallet className="h-5 w-5 text-brand" />
           <div>
             <span className="text-[11px] text-text-light-secondary dark:text-text-dark-secondary uppercase font-semibold block">
-              Available Balance
+              {accountMode === 'demo' ? 'Demo Available Balance' : 'Available Balance'}
             </span>
             <span className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400">
               KES {numericBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -149,6 +160,7 @@ export const TradingPage: React.FC = () => {
       <div className="flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-3 lg:gap-6">
         {/* Chart Column (2 Spans) */}
         <div className="min-w-0 lg:col-span-2">
+          {accountMode === 'demo' && <div className="mb-3"><DemoModeBanner /></div>}
           <TradingChart
             symbol={selectedAsset?.symbol || 'EUR/USD'}
             priceHistory={priceHistory}
@@ -161,14 +173,15 @@ export const TradingPage: React.FC = () => {
         {/* Order Placement Form Column (1 Span) */}
         <div className="min-w-0 lg:col-span-1">
           <OrderForm
-            asset={selectedAsset}
+            accountMode={accountMode}
+            asset={tradingAsset}
             selectedSymbol={selectedAsset?.symbol || initialSymbol}
             currentPrice={currentPrice}
             isPriceAvailable={isPriceAvailable}
             userBalance={numericBalance}
             isPlacingTrade={isPlacingTrade}
-            onPlaceTrade={(contractType, stake, expirySeconds, symbol, strikePrice) => {
-              executeDirectTrade(contractType, stake, expirySeconds, symbol, strikePrice);
+            onPlaceTrade={(contractType, stake, expirySeconds, _symbol, strikePrice) => {
+              requestTradeConfirmation(contractType, stake, expirySeconds, strikePrice);
             }}
             tradeError={tradeError}
             onClearError={clearTradeError}
@@ -219,6 +232,7 @@ export const TradingPage: React.FC = () => {
 
       {/* Trade Order Confirmation Modal */}
       <ContractConfirmationModal
+        accountMode={accountMode}
         isOpen={isConfirmModalOpen}
         pendingOrder={pendingOrder}
         isPlacing={isPlacingTrade}

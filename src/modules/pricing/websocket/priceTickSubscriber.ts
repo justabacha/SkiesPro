@@ -107,6 +107,7 @@ export class PriceTickSubscriber {
       // Convert to ADS price message format
       const priceMessage = {
         type: 'price',
+        source: 'live',
         symbol: symbol,
         price: tick.mid,
         bid: tick.bid,

@@ -12,6 +12,7 @@ describe('PayoutService (SET-UNIT-001 to 003)', () => {
   const baseContract: BinaryContract = {
     id: 'contract-123',
     userId: 'user-123',
+    accountType: 'real',
     assetSymbol: 'EUR/USD',
     contractType: 'higher',
     stake: '1000',
@@ -20,7 +21,7 @@ describe('PayoutService (SET-UNIT-001 to 003)', () => {
     status: 'active',
     strikePrice: '1.10000',
     purchaseTime: new Date(),
-    expiryTime: new Date()
+    expiryTime: new Date(),
   };
 
   test('SET-UNIT-001: should return won outcome when price is higher for higher contract', () => {

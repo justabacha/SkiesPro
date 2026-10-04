@@ -122,6 +122,7 @@ export class PaymentService {
 
         await walletServiceTx.credit(
           deposit.user_id,
+          'real',
           new Decimal(deposit.net_amount),
           'deposit',
           deposit.id,
@@ -190,6 +191,7 @@ export class PaymentService {
 
       await walletServiceTx.lockFunds(
         userId,
+        'real',
         amount,
         'withdrawal',
         undefined,

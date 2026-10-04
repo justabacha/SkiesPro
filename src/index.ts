@@ -92,6 +92,14 @@ if (config.enablePriceFeed) {
     });
 }
 
+if (process.env.DEMO_ENABLED === 'true') {
+  import('./modules/pricing/services/DemoPriceFeedService.js')
+    .then(({ demoPriceFeedService }) => demoPriceFeedService.start())
+    .catch((err) => {
+      logger.error('Failed to start isolated demo price feed', { error: err.message });
+    });
+}
+
 // Automatically start settlement worker if enabled
 if (config.enableSettlementWorker) {
   import('./modules/trading/workers/settlementWorker.js')

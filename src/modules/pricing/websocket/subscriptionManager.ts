@@ -23,14 +23,22 @@ export class SubscriptionManager {
     process.env.WS_MAX_SUBSCRIPTIONS_PER_CONNECTION || '8',
     10
   );
-  private readonly VALID_CHANNELS = ['price', 'trades', 'notifications', 'wallet'];
-  private readonly AVAILABLE_CHANNELS = ['price']; // Only price is available in WP-09
+  private readonly VALID_CHANNELS = ['price', 'demo.price', 'trades', 'notifications', 'wallet'];
+  private readonly AVAILABLE_CHANNELS = ['price', 'demo.price'];
   private readonly MAX_MESSAGE_BYTES = 65536;
-  private readonly onSymbolMutation?: (symbol: string, action: 'subscribe' | 'unsubscribe') => void;
+  private readonly onSymbolMutation?: (
+    symbol: string,
+    action: 'subscribe' | 'unsubscribe',
+    channel: 'price' | 'demo.price'
+  ) => void;
 
   constructor(
     connectionManager: ConnectionManager,
-    onSymbolMutation?: (symbol: string, action: 'subscribe' | 'unsubscribe') => void
+    onSymbolMutation?: (
+      symbol: string,
+      action: 'subscribe' | 'unsubscribe',
+      channel: 'price' | 'demo.price'
+    ) => void
   ) {
     this.connectionManager = connectionManager;
     this.onSymbolMutation = onSymbolMutation;
@@ -130,7 +138,12 @@ export class SubscriptionManager {
         continue;
       }
 
-      if (normalizedChannel === 'price') {
+      if (normalizedChannel === 'demo.price' && process.env.DEMO_ENABLED !== 'true') {
+        errors.push('Demo price channel is unavailable');
+        continue;
+      }
+
+      if (normalizedChannel === 'price' || normalizedChannel === 'demo.price') {
         if (!normalizedSymbol) {
           errors.push('Symbol required for price channel');
           continue;
@@ -151,8 +164,16 @@ export class SubscriptionManager {
           channel: normalizedChannel,
           symbol: normalizedSymbol || undefined,
         });
-        if (normalizedChannel === 'price' && normalizedSymbol && this.onSymbolMutation) {
-          this.onSymbolMutation(normalizedSymbol, 'subscribe');
+        if (
+          (normalizedChannel === 'price' || normalizedChannel === 'demo.price') &&
+          normalizedSymbol &&
+          this.onSymbolMutation
+        ) {
+          this.onSymbolMutation(
+            normalizedSymbol,
+            'subscribe',
+            normalizedChannel as 'price' | 'demo.price'
+          );
         }
       } else {
         errors.push(`Failed to subscribe to ${channelKey}`);
@@ -212,8 +233,16 @@ export class SubscriptionManager {
           channel: normalizedChannel,
           symbol: normalizedSymbol || undefined,
         });
-        if (normalizedChannel === 'price' && normalizedSymbol && this.onSymbolMutation) {
-          this.onSymbolMutation(normalizedSymbol, 'unsubscribe');
+        if (
+          (normalizedChannel === 'price' || normalizedChannel === 'demo.price') &&
+          normalizedSymbol &&
+          this.onSymbolMutation
+        ) {
+          this.onSymbolMutation(
+            normalizedSymbol,
+            'unsubscribe',
+            normalizedChannel as 'price' | 'demo.price'
+          );
         }
       }
     }

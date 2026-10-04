@@ -30,7 +30,7 @@ interface DepositFormProps {
 }
 
 export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
-  const { initiateDeposit } = useWallet();
+  const { initiateDeposit } = useWallet({ accountMode: 'real' });
   const [status, setState] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [errorMsg, setError] = useState<string | null>(null);
 

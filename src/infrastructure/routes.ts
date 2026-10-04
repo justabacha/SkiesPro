@@ -7,6 +7,7 @@ import walletRoutes from '../modules/wallet/wallet.routes.js';
 import paymentRoutes from '../modules/payments/payment.routes.js';
 import pricingRoutes from '../modules/pricing/pricing.routes.js';
 import tradingRoutes from '../modules/trading/trading.routes.js';
+import demoRoutes from '../modules/demo/demo.routes.js';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/api/v1/wallets', walletRoutes);
 router.use('/api/v1/payments', paymentRoutes);
 router.use('/api/v1/pricing', pricingRoutes);
 router.use('/api/v1/trading', tradingRoutes);
+router.use('/api/v1/demo', demoRoutes);
 
 export default router;

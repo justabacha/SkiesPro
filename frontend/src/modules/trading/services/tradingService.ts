@@ -5,6 +5,7 @@ import {
   CreateContractDto,
   Candle,
 } from '../types/trading.types';
+import type { AccountMode } from '@/shared/context/AccountModeContext';
 
 interface ApiResponse<T> {
   status: string;
@@ -150,17 +151,19 @@ class TradingService {
   /**
    * Place a new binary contract with idempotency protection
    */
-  async placeTrade(dto: CreateContractDto, idempotencyKey: string): Promise<BinaryContract> {
-    const payload = {
-      asset_symbol: dto.assetSymbol,
-      direction: dto.contractType === 'higher' ? 'CALL' : 'PUT',
-      amount: dto.stake,
-      strike_price: dto.strikePrice,
-      expiry_seconds: dto.expirySeconds,
-    };
+  async placeTrade(dto: CreateContractDto, idempotencyKey: string, mode: AccountMode = 'real'): Promise<BinaryContract> {
+    const payload = mode === 'demo'
+      ? dto
+      : {
+          asset_symbol: dto.assetSymbol,
+          direction: dto.contractType === 'higher' ? 'CALL' : 'PUT',
+          amount: dto.stake,
+          strike_price: dto.strikePrice,
+          expiry_seconds: dto.expirySeconds,
+        };
 
     const response = await apiClient.post<ApiResponse<BinaryContract> | BinaryContract>(
-      '/api/v1/trading/contracts',
+      mode === 'demo' ? '/api/v1/demo/trading/contracts' : '/api/v1/trading/contracts',
       payload,
       {
         headers: {
@@ -178,9 +181,9 @@ class TradingService {
   /**
    * Fetch active unsettled trades for current user
    */
-  async getActiveContracts(): Promise<BinaryContract[]> {
+  async getActiveContracts(mode: AccountMode = 'real'): Promise<BinaryContract[]> {
     const response = await apiClient.get<ApiResponse<BinaryContract[]> | BinaryContract[]>(
-      '/api/v1/trading/contracts/active'
+      mode === 'demo' ? '/api/v1/demo/trading/contracts/active' : '/api/v1/trading/contracts/active'
     );
 
     if (Array.isArray(response)) {
@@ -200,7 +203,7 @@ class TradingService {
     asset_symbol?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<BinaryContract[]> {
+  }, mode: AccountMode = 'real'): Promise<BinaryContract[]> {
     const query = new URLSearchParams();
     if (params?.status) query.append('status', params.status);
     if (params?.asset_symbol) query.append('asset_symbol', params.asset_symbol);
@@ -209,7 +212,7 @@ class TradingService {
 
     const queryString = query.toString() ? `?${query.toString()}` : '';
     const response = await apiClient.get<ApiResponse<BinaryContract[]> | BinaryContract[]>(
-      `/api/v1/trading/contracts${queryString}`
+      `${mode === 'demo' ? '/api/v1/demo/trading/contracts' : '/api/v1/trading/contracts'}${queryString}`
     );
 
     if (Array.isArray(response)) {

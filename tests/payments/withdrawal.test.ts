@@ -22,9 +22,9 @@ describe('Payment Service - Withdrawals', () => {
     );
     testUserId = res.rows[0].id;
 
-    await walletService.createWallet(testUserId, 'KES');
+    await walletService.createWallet(testUserId, 'real', 'KES');
     // Fund the wallet
-    await walletService.credit(testUserId, new Decimal('5000'), 'admin_adjustment', uuidv4(), 'Funding for tests');
+    await walletService.credit(testUserId, 'real', new Decimal('5000'), 'admin_adjustment', uuidv4(), 'Funding for tests');
   });
 
   afterAll(async () => {
@@ -81,7 +81,7 @@ describe('Payment Service - Withdrawals', () => {
     expect(new Decimal(result.fee).equals(new Decimal('40'))).toBe(true);
     expect(new Decimal(result.net_amount).equals(new Decimal('1960'))).toBe(true);
 
-    const wallet = await walletService.getBalance(testUserId);
+    const wallet = await walletService.getBalance(testUserId, 'real');
     expect(new Decimal(wallet.locked_balance).equals(new Decimal(amount))).toBe(true);
     expect(new Decimal(wallet.available_balance).equals(new Decimal('3000'))).toBe(true);
   });

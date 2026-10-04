@@ -1,9 +1,11 @@
 import { PoolClient } from 'pg';
 import { pgPool } from '../../../config/database.js';
+import { AccountType } from '../../wallet/repositories/walletRepository.js';
 
 export interface BinaryContract {
   id?: string;
   userId: string;
+  accountType: AccountType;
   assetSymbol: string;
   stake: string;
   contractType: 'higher' | 'lower';
@@ -36,9 +38,10 @@ export class ContractRepository {
     const query = `
       INSERT INTO trading.binary_contracts (
         user_id, asset_symbol, stake, contract_type, strike_price,
-        payout_rate, potential_payout, purchase_time, expiry_time, status, lock_tx_id
+        payout_rate, potential_payout, purchase_time, expiry_time, status, lock_tx_id,
+        account_type
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
     const values = [
@@ -53,33 +56,66 @@ export class ContractRepository {
       contract.expiryTime,
       contract.status,
       contract.lockTxId,
+      contract.accountType,
     ];
     const { rows } = await this.query(query, values);
     return this.mapToCamelCase(rows[0]);
   }
 
-  async findById(id: string): Promise<BinaryContract | null> {
-    const { rows } = await this.query('SELECT * FROM trading.binary_contracts WHERE id = $1', [id]);
+  async findById(id: string, accountType: AccountType): Promise<BinaryContract | null> {
+    const { rows } = await this.query(
+      'SELECT * FROM trading.binary_contracts WHERE id = $1 AND account_type = $2',
+      [id, accountType]
+    );
     return rows[0] ? this.mapToCamelCase(rows[0]) : null;
   }
 
-  async getActiveExposure(symbol: string): Promise<string> {
-    const query = `
+  async findByIdForSettlement(id: string): Promise<BinaryContract | null> {
+    const { rows } = await this.query('SELECT * FROM trading.binary_contracts WHERE id = $1', [id]);
+    const contract = rows[0] ? this.mapToCamelCase(rows[0]) : null;
+    if (contract && contract.accountType !== 'real' && contract.accountType !== 'demo') {
+      throw new Error(`Invalid account type for contract ${id}`);
+    }
+    return contract;
+  }
+
+  async getActiveExposure(
+    symbol: string,
+    accountType: AccountType,
+    userId?: string
+  ): Promise<string> {
+    if (accountType === 'demo' && !userId) {
+      throw new Error('A user ID is required to calculate demo exposure');
+    }
+    const query =
+      accountType === 'demo'
+        ? `
       SELECT SUM(stake) as total_exposure
       FROM trading.binary_contracts
-      WHERE asset_symbol = $1 AND status = 'active'
+      WHERE asset_symbol = $1 AND status IN ('active', 'settling')
+        AND account_type = $2 AND user_id = $3
+    `
+        : `
+      SELECT SUM(stake) as total_exposure
+      FROM trading.binary_contracts
+      WHERE asset_symbol = $1 AND status IN ('active', 'settling')
+        AND account_type = $2
     `;
-    const { rows } = await this.query(query, [symbol]);
+    const { rows } = await this.query(
+      query,
+      accountType === 'demo' ? [symbol, accountType, userId] : [symbol, accountType]
+    );
     return rows[0].total_exposure || '0';
   }
 
   async listByUser(
     userId: string,
+    accountType: AccountType,
     filters: { status?: string; assetSymbol?: string; limit?: number; cursor?: string }
   ): Promise<BinaryContract[]> {
-    let query = 'SELECT * FROM trading.binary_contracts WHERE user_id = $1';
-    const values: any[] = [userId];
-    let idx = 2;
+    let query = 'SELECT * FROM trading.binary_contracts WHERE user_id = $1 AND account_type = $2';
+    const values: any[] = [userId, accountType];
+    let idx = 3;
 
     if (filters.status) {
       query += ` AND status = $${idx++}`;
@@ -101,33 +137,43 @@ export class ContractRepository {
     return rows.map(this.mapToCamelCase);
   }
 
-  async getActiveByUser(userId: string): Promise<BinaryContract[]> {
+  async getActiveByUser(userId: string, accountType: AccountType): Promise<BinaryContract[]> {
     const query = `
       SELECT * FROM trading.binary_contracts
-      WHERE user_id = $1 AND status = 'active'
+      WHERE user_id = $1 AND account_type = $2 AND status = 'active'
       ORDER BY purchase_time DESC
     `;
-    const { rows } = await this.query(query, [userId]);
+    const { rows } = await this.query(query, [userId, accountType]);
     return rows.map(this.mapToCamelCase);
   }
 
-  async updateStatus(id: string, status: string, expiryPrice?: string): Promise<boolean> {
+  async updateStatus(
+    id: string,
+    accountType: AccountType,
+    status: string,
+    expiryPrice?: string
+  ): Promise<boolean> {
     const query = `
       UPDATE trading.binary_contracts
       SET status = $1, expiry_price = COALESCE($2, expiry_price)
-      WHERE id = $3
+      WHERE id = $3 AND account_type = $4
     `;
-    const result = await this.query(query, [status, expiryPrice, id]);
+    const result = await this.query(query, [status, expiryPrice, id, accountType]);
     return (result.rowCount ?? 0) > 0;
   }
 
-  async updateStatusCAS(id: string, expectedStatus: string, newStatus: string): Promise<boolean> {
+  async updateStatusCAS(
+    id: string,
+    accountType: AccountType,
+    expectedStatus: string,
+    newStatus: string
+  ): Promise<boolean> {
     const query = `
       UPDATE trading.binary_contracts
       SET status = $1
-      WHERE id = $2 AND status = $3
+      WHERE id = $2 AND account_type = $3 AND status = $4
     `;
-    const result = await this.query(query, [newStatus, id, expectedStatus]);
+    const result = await this.query(query, [newStatus, id, accountType, expectedStatus]);
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -135,6 +181,7 @@ export class ContractRepository {
     return {
       id: row.id,
       userId: row.user_id,
+      accountType: row.account_type,
       assetSymbol: row.asset_symbol,
       stake: row.stake, // Keep as string for precision
       contractType: row.contract_type,

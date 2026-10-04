@@ -31,7 +31,7 @@ interface WithdrawFormProps {
 }
 
 export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, onSuccess }) => {
-  const { requestWithdrawal } = useWallet();
+  const { requestWithdrawal } = useWallet({ accountMode: 'real' });
   const [status, setState] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setError] = useState<string | null>(null);
 

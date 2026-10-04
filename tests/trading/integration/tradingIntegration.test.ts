@@ -45,8 +45,8 @@ describe('Trading Engine Integration', () => {
     );
 
     // Create wallet with balance
-    await walletService.createWallet(testUserId, 'KES');
-    await walletService.credit(testUserId, new Decimal('10000'), 'deposit', undefined, 'Initial balance');
+    await walletService.createWallet(testUserId, 'real', 'KES');
+    await walletService.credit(testUserId, 'real', new Decimal('10000'), 'deposit', undefined, 'Initial balance');
 
     // Ensure asset config exists
     await pgPool.query(
@@ -105,7 +105,7 @@ describe('Trading Engine Integration', () => {
     expect(new Decimal(contract.payoutRate).toNumber()).toBe(0.60);
 
     // Verify wallet balance
-    const wallet = await walletService.getBalance(testUserId);
+    const wallet = await walletService.getBalance(testUserId, 'real');
     expect(new Decimal(wallet.available_balance).toNumber()).toBe(9500);
     expect(new Decimal(wallet.balance).toNumber()).toBe(9500);
     expect(new Decimal(wallet.locked_balance).toNumber()).toBe(0);

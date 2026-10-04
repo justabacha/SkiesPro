@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@/shared/hooks/useWallet';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { tradingService } from '../services/tradingService';
+import { useAccountMode } from '@/shared/context/AccountModeContext';
 import {
   Asset,
   BinaryContract,
@@ -94,7 +95,15 @@ const getInitialSymbol = (): string => {
 export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   const activeSymbol = initialSymbol || getInitialSymbol();
   const { fetchBalance } = useWallet();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const {
+    accountMode,
+    generation,
+    isCurrentGeneration,
+    registerModeCleanup,
+    setPendingOrderActive,
+  } = useAccountMode();
+  const userId = user?.id || null;
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -118,6 +127,28 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   const hasLoadedActiveRef = useRef<boolean>(false);
   const hasLoadedHistoryRef = useRef<boolean>(false);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => registerModeCleanup(() => {
+    setActiveContracts([]);
+    setTradeHistory([]);
+    setSettlementEvents([]);
+    setPendingOrder(null);
+    setIsConfirmModalOpen(false);
+    setIsPlacingTrade(false);
+    setIsLoadingActive(false);
+    setIsLoadingHistory(false);
+    setTradeError(null);
+    setPendingOrderActive(false);
+    previousActiveIdsRef.current.clear();
+    hasLoadedActiveRef.current = false;
+    hasLoadedHistoryRef.current = false;
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }), [registerModeCleanup, setPendingOrderActive]);
+
+  useEffect(() => () => setPendingOrderActive(false), [setPendingOrderActive]);
 
   // Load assets on mount
   useEffect(() => {
@@ -176,11 +207,15 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   // Fetch active contracts
   const fetchActiveContracts = useCallback(async (isInitial = false) => {
     if (!isAuthenticated) return;
+    const requestGeneration = generation;
+    const requestMode = accountMode;
+    const requestUser = userId;
     if (isInitial || !hasLoadedActiveRef.current) {
       setIsLoadingActive(true);
     }
     try {
-      const active = await tradingService.getActiveContracts();
+      const active = await tradingService.getActiveContracts(requestMode);
+      if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
       setActiveContracts(active);
       hasLoadedActiveRef.current = true;
 
@@ -192,8 +227,9 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
         const settledIds = Array.from(previousIds).filter((id) => !currentActiveIds.has(id));
         if (settledIds.length > 0) {
           // Refresh trade history and wallet balance
-          fetchBalance();
-          const history = await tradingService.getContracts({ limit: 10 });
+          void fetchBalance();
+          const history = await tradingService.getContracts({ limit: 10 }, requestMode);
+          if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
           setTradeHistory(history);
 
           // Trigger settlement event animations
@@ -232,18 +268,22 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
         }
       }
     } finally {
-      setIsLoadingActive(false);
+      if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setIsLoadingActive(false);
     }
-  }, [fetchBalance, isAuthenticated]);
+  }, [accountMode, fetchBalance, generation, isAuthenticated, isCurrentGeneration, userId]);
 
   // Fetch trade history
   const fetchTradeHistory = useCallback(async (isInitial = false) => {
     if (!isAuthenticated) return;
+    const requestGeneration = generation;
+    const requestMode = accountMode;
+    const requestUser = userId;
     if (isInitial || !hasLoadedHistoryRef.current) {
       setIsLoadingHistory(true);
     }
     try {
-      const history = await tradingService.getContracts({ limit: 20 });
+      const history = await tradingService.getContracts({ limit: 20 }, requestMode);
+      if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return;
       setTradeHistory(history);
       hasLoadedHistoryRef.current = true;
     } catch (err: unknown) {
@@ -255,12 +295,25 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
         }
       }
     } finally {
-      setIsLoadingHistory(false);
+      if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setIsLoadingHistory(false);
     }
-  }, [isAuthenticated]);
+  }, [accountMode, generation, isAuthenticated, isCurrentGeneration, userId]);
 
   // Poll active contracts periodically when authenticated
   useEffect(() => {
+    setActiveContracts([]);
+    setTradeHistory([]);
+    setSettlementEvents([]);
+    setPendingOrder(null);
+    setIsConfirmModalOpen(false);
+    setPendingOrderActive(false);
+    setIsPlacingTrade(false);
+    setIsLoadingActive(false);
+    setIsLoadingHistory(false);
+    setTradeError(null);
+    previousActiveIdsRef.current.clear();
+    hasLoadedActiveRef.current = false;
+    hasLoadedHistoryRef.current = false;
     if (!isAuthenticated) {
       setActiveContracts([]);
       setTradeHistory([]);
@@ -285,7 +338,15 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
         pollingIntervalRef.current = null;
       }
     };
-  }, [fetchActiveContracts, fetchTradeHistory, isAuthenticated]);
+  }, [
+    accountMode,
+    fetchActiveContracts,
+    fetchTradeHistory,
+    generation,
+    isAuthenticated,
+    setPendingOrderActive,
+    userId,
+  ]);
 
   const clearTradeError = useCallback(() => {
     setTradeError(null);
@@ -318,8 +379,9 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
         potentialPayout,
       });
       setIsConfirmModalOpen(true);
+      setPendingOrderActive(true);
     },
-    [selectedAsset]
+    [selectedAsset, setPendingOrderActive]
   );
 
   // Submit direct or confirmed trade
@@ -327,6 +389,9 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
     dto: CreateContractDto
   ): Promise<BinaryContract | null> => {
     if (isPlacingTrade) return null;
+    const requestGeneration = generation;
+    const requestMode = accountMode;
+    const requestUser = userId;
 
     setIsPlacingTrade(true);
     setTradeError(null);
@@ -334,19 +399,20 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
     const idempotencyKey = generateUuidV4();
 
     try {
-      const contract = await tradingService.placeTrade(dto, idempotencyKey);
+      const contract = await tradingService.placeTrade(dto, idempotencyKey, requestMode);
+      if (!isCurrentGeneration(requestGeneration, requestMode, requestUser)) return null;
 
       // Refresh wallet and active contracts list
-      fetchBalance();
+      void fetchBalance();
       await fetchActiveContracts();
 
       return contract;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Trade execution failed';
-      setTradeError(message);
+      if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setTradeError(message);
       return null;
     } finally {
-      setIsPlacingTrade(false);
+      if (isCurrentGeneration(requestGeneration, requestMode, requestUser)) setIsPlacingTrade(false);
     }
   };
 
@@ -363,6 +429,7 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
     };
 
     setIsConfirmModalOpen(false);
+    setPendingOrderActive(false);
     const result = await submitTradeInternal(dto);
     setPendingOrder(null);
     return result;
@@ -371,7 +438,8 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   const cancelPendingOrder = useCallback(() => {
     setIsConfirmModalOpen(false);
     setPendingOrder(null);
-  }, []);
+    setPendingOrderActive(false);
+  }, [setPendingOrderActive]);
 
   // Direct trade without confirmation modal
   const executeDirectTrade = async (

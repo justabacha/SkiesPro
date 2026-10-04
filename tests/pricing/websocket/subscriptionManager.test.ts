@@ -137,6 +137,56 @@ describe('SubscriptionManager', () => {
   });
 
   describe('handleSubscribe validation', () => {
+    it('rejects demo price subscriptions while demo mode is disabled', () => {
+      const previousDemoEnabled = process.env.DEMO_ENABLED;
+      delete process.env.DEMO_ENABLED;
+      mockConnectionManager.getConnection.mockReturnValue({
+        subscriptions: new Set(),
+      } as any);
+
+      const result = subscriptionManager.handleMessage(
+        'conn123',
+        JSON.stringify({
+          type: 'subscribe',
+          channels: [{ channel: 'demo.price', symbol: 'EUR/USD' }],
+        })
+      );
+
+      if (previousDemoEnabled === undefined) {
+        delete process.env.DEMO_ENABLED;
+      } else {
+        process.env.DEMO_ENABLED = previousDemoEnabled;
+      }
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Demo price channel is unavailable');
+    });
+
+    it('routes demo price subscriptions to the isolated symbol channel when enabled', () => {
+      const previousDemoEnabled = process.env.DEMO_ENABLED;
+      process.env.DEMO_ENABLED = 'true';
+      mockConnectionManager.getConnection.mockReturnValue({
+        subscriptions: new Set(),
+        userId: 'user-1',
+      } as any);
+      mockConnectionManager.subscribe.mockReturnValue(true);
+
+      const result = subscriptionManager.handleMessage(
+        'conn123',
+        JSON.stringify({
+          type: 'subscribe',
+          channels: [{ channel: 'demo.price', symbol: 'EUR/USD' }],
+        })
+      );
+
+      if (previousDemoEnabled === undefined) {
+        delete process.env.DEMO_ENABLED;
+      } else {
+        process.env.DEMO_ENABLED = previousDemoEnabled;
+      }
+      expect(result.success).toBe(true);
+      expect(mockConnectionManager.subscribe).toHaveBeenCalledWith('conn123', 'demo.price.EUR/USD');
+    });
+
     it('should reject invalid channel', () => {
       mockConnectionManager.getConnection.mockReturnValue({
         subscriptions: new Set(),
