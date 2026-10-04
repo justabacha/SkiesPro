@@ -75,7 +75,11 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
       return;
     }
 
-    const liveTick = { ...tick, timestamp };
+    const liveTick = {
+      ...tick,
+      timestamp,
+      source: accountModeRef.current === 'demo' ? ('demo' as const) : ('live' as const),
+    };
     setCurrentPrice(liveTick.price);
     setIsPriceAvailable(true);
     setQuoteUpdatedAt(now);

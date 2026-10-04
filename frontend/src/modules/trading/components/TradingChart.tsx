@@ -13,6 +13,7 @@ import {
 import { PriceTick, BinaryContract } from '../types/trading.types';
 import { tradingService } from '../services/tradingService';
 import { getPipSize, getPriceDecimalPlaces } from '../utils/pricePrecision';
+import { useAccountMode } from '@/shared/context/AccountModeContext';
 
 export interface TradingChartProps {
   symbol: string;
@@ -47,7 +48,53 @@ const contractSymbol = (contract: BinaryContract) => {
   };
   return payload.asset_symbol || payload.assetSymbol || payload.symbol || payload.pair || 'EUR/USD';
 };
-const toTime = (time: string): Time => Math.floor(new Date(time).getTime() / 1000) as Time;
+const toUnixSeconds = (value: unknown): number | null => {
+  let timestamp: number;
+  if (value instanceof Date) {
+    timestamp = value.getTime();
+  } else if (typeof value === 'number') {
+    timestamp = value;
+  } else if (typeof value === 'string') {
+    const numericValue = Number(value);
+    timestamp = Number.isFinite(numericValue) ? numericValue : Date.parse(value);
+  } else {
+    return null;
+  }
+
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
+  const seconds =
+    timestamp > 1_000_000_000_000 ? Math.floor(timestamp / 1000) : Math.floor(timestamp);
+  return Number.isSafeInteger(seconds) ? seconds : null;
+};
+
+const normalizeCandles = (
+  candles: Awaited<ReturnType<typeof tradingService.getCandles>>
+): Array<{ time: Time; open: number; high: number; low: number; close: number }> => {
+  const byTime = new Map<
+    number,
+    { time: Time; open: number; high: number; low: number; close: number }
+  >();
+
+  for (const candle of candles) {
+    const time = toUnixSeconds(candle.open_time);
+    const values = [
+      Number(candle.open),
+      Number(candle.high),
+      Number(candle.low),
+      Number(candle.close),
+    ];
+    if (time === null || !values.every(Number.isFinite)) continue;
+    byTime.set(time, {
+      time: time as Time,
+      open: values[0],
+      high: values[1],
+      low: values[2],
+      close: values[3],
+    });
+  }
+
+  return [...byTime.values()].sort((a, b) => Number(a.time) - Number(b.time));
+};
 export const TradingChart: React.FC<TradingChartProps> = ({
   symbol,
   priceHistory,
@@ -55,6 +102,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   activeContracts = [],
   pipDecimalPlaces,
 }) => {
+  const { accountMode } = useAccountMode();
   const displaySymbol = typeof symbol === 'string' && symbol.trim() ? symbol : 'EUR/USD';
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(() => {
     return localStorage.getItem('skies_timeframe') || '1m';
@@ -76,14 +124,72 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   } | null>(null);
   const dataLengthRef = useRef(0);
   const lastAppliedTickRef = useRef<string>('');
+  const latestCandleTimeRef = useRef<number | null>(null);
+  const latestAreaTimeRef = useRef<number | null>(null);
+  const candleHistoryReadyRef = useRef(false);
+  const pendingTicksRef = useRef<PriceTick[]>([]);
   const priceLinesRef = useRef<Array<{ series: PriceLineSeries; line: IPriceLine }>>([]);
-  const priceHistoryRef = useRef(priceHistory);
   const activeContractsRef = useRef(activeContracts);
   const symbolRef = useRef(symbol);
-  priceHistoryRef.current = priceHistory;
   activeContractsRef.current = activeContracts;
   symbolRef.current = symbol;
   const granularity = TIMEFRAMES[selectedTimeframe] || TIMEFRAMES['1m'];
+
+  const applyTick = React.useCallback(
+    (tick: PriceTick) => {
+      if (!candleHistoryReadyRef.current) {
+        pendingTicksRef.current.push(tick);
+        return;
+      }
+      if (!Number.isFinite(tick.price) || tick.price <= 0) return;
+      const seconds = toUnixSeconds(tick.tick_time || tick.timestamp);
+      if (seconds === null) return;
+      if (
+        (latestCandleTimeRef.current !== null && seconds <= latestCandleTimeRef.current) ||
+        (latestAreaTimeRef.current !== null && seconds <= latestAreaTimeRef.current)
+      ) {
+        return;
+      }
+
+      const candleSeries = candleSeriesRef.current;
+      const areaSeries = areaSeriesRef.current;
+      if (!candleSeries || !areaSeries) return;
+
+      const time = seconds as Time;
+      const tickKey = `${seconds}:${tick.price}`;
+      if (lastAppliedTickRef.current === tickKey) return;
+
+      const candleStart = (Math.floor(seconds / granularity) * granularity) as Time;
+      const current = currentCandleRef.current;
+      if (current && Number(candleStart) < Number(current.time)) return;
+
+      if (current && candleStart === current.time) {
+        current.high = Math.max(current.high, tick.price);
+        current.low = Math.min(current.low, tick.price);
+        current.close = tick.price;
+        candleSeries.update({ ...current, time: Number(current.time) as Time });
+      } else {
+        const next = {
+          time: Number(candleStart) as Time,
+          open: tick.price,
+          high: tick.price,
+          low: tick.price,
+          close: tick.price,
+        };
+        currentCandleRef.current = next;
+        candleSeries.update(next);
+        dataLengthRef.current = Math.max(1, dataLengthRef.current + (current ? 1 : 0));
+      }
+      areaSeries.update({ time: Number(time) as Time, value: tick.price });
+      latestCandleTimeRef.current = Math.max(
+        latestCandleTimeRef.current ?? Number(candleStart),
+        Number(candleStart)
+      );
+      latestAreaTimeRef.current = seconds;
+      lastAppliedTickRef.current = tickKey;
+    },
+    [granularity]
+  );
 
   useEffect(() => {
     localStorage.setItem('skies_timeframe', selectedTimeframe);
@@ -178,6 +284,10 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       currentCandleRef.current = null;
       dataLengthRef.current = 0;
       lastAppliedTickRef.current = '';
+      latestCandleTimeRef.current = null;
+      latestAreaTimeRef.current = null;
+      candleHistoryReadyRef.current = false;
+      pendingTicksRef.current = [];
     };
   }, []);
 
@@ -234,123 +344,86 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     if (!candleSeries || !areaSeries || !chart) return;
 
     let isCurrent = true;
+    candleHistoryReadyRef.current = false;
     currentCandleRef.current = null;
     dataLengthRef.current = 0;
     lastAppliedTickRef.current = '';
+    latestCandleTimeRef.current = null;
+    latestAreaTimeRef.current = null;
+    pendingTicksRef.current = [];
+    priceLinesRef.current.forEach(({ series, line }) => series.removePriceLine(line));
+    priceLinesRef.current = [];
     candleSeries.setData([]);
     areaSeries.setData([]);
 
-    const applyTick = (price: number, timestamp: number) => {
-      if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(timestamp)) return;
-      const time = Math.floor(timestamp / 1000) as Time;
-      const tickKey = `${time}:${price}`;
-      if (lastAppliedTickRef.current === tickKey) return;
-      lastAppliedTickRef.current = tickKey;
+    const loadHistory =
+      accountMode === 'demo'
+        ? Promise.resolve([])
+        : tradingService.getCandles(symbol, granularity, 200);
+    void loadHistory
+      .then((data) => {
+        if (!isCurrent) return;
+        const candles = normalizeCandles(data);
+        candleSeries.setData(candles);
+        areaSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
+        dataLengthRef.current = candles.length;
+        const last = candles[candles.length - 1];
+        currentCandleRef.current = last ? { ...last } : null;
+        latestCandleTimeRef.current = last ? Number(last.time) : null;
+        latestAreaTimeRef.current = latestCandleTimeRef.current;
+        candleHistoryReadyRef.current = true;
 
-      const candleStart = (Math.floor(Number(time) / granularity) * granularity) as Time;
-      const current = currentCandleRef.current;
-      if (current && Number(candleStart) < Number(current.time)) return;
+        const ticks = [...pendingTicksRef.current].sort(
+          (a, b) =>
+            (toUnixSeconds(a.tick_time || a.timestamp) ?? 0) -
+            (toUnixSeconds(b.tick_time || b.timestamp) ?? 0)
+        );
+        pendingTicksRef.current = [];
+        for (const tick of ticks) applyTick(tick);
 
-      if (current && candleStart === current.time) {
-        current.high = Math.max(current.high, price);
-        current.low = Math.min(current.low, price);
-        current.close = price;
-        candleSeries.update({ ...current });
-      } else {
-        const next = { time: candleStart, open: price, high: price, low: price, close: price };
-        currentCandleRef.current = next;
-        candleSeries.update(next);
-        dataLengthRef.current = Math.max(1, dataLengthRef.current + (current ? 1 : 0));
-      }
-      areaSeries.update({ time, value: price });
-    };
-
-    tradingService.getCandles(symbol, granularity, 200).then((data) => {
-      if (!isCurrent) return;
-      const candles = data
-        .map((candle) => ({
-          time: toTime(candle.open_time),
-          open: Number(candle.open),
-          high: Number(candle.high),
-          low: Number(candle.low),
-          close: Number(candle.close),
-        }))
-        .filter(
-          (candle) =>
-            Number.isFinite(Number(candle.time)) &&
-            [candle.open, candle.high, candle.low, candle.close].every(Number.isFinite)
-        )
-        .sort((a, b) => Number(a.time) - Number(b.time));
-
-      lastAppliedTickRef.current = '';
-      candleSeries.setData(candles);
-      areaSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
-      dataLengthRef.current = candles.length;
-      const last = candles[candles.length - 1];
-      currentCandleRef.current = last ? { ...last } : null;
-
-      const lastTick = [...priceHistoryRef.current]
-        .reverse()
-        .find((tick) => cacheSymbol(tick.symbol) === cacheSymbol(symbol));
-      if (lastTick) {
-        const timestamp = new Date(lastTick.tick_time).getTime();
-        applyTick(lastTick.price, timestamp);
-      }
-      chart.timeScale().setVisibleLogicalRange({
-        from: Math.max(0, dataLengthRef.current - (window.innerWidth < 640 ? 20 : 40)),
-        to: dataLengthRef.current + 5,
+        chart.timeScale().setVisibleLogicalRange({
+          from: Math.max(0, dataLengthRef.current - (window.innerWidth < 640 ? 20 : 40)),
+          to: dataLengthRef.current + 5,
+        });
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent) return;
+        console.error('Failed to load chart candle history', error);
+        candleSeries.setData([]);
+        areaSeries.setData([]);
+        currentCandleRef.current = null;
+        dataLengthRef.current = 0;
+        latestCandleTimeRef.current = null;
+        latestAreaTimeRef.current = null;
+        candleHistoryReadyRef.current = true;
+        const pendingTicks = [...pendingTicksRef.current];
+        pendingTicksRef.current = [];
+        for (const tick of pendingTicks) applyTick(tick);
       });
-    });
 
     return () => {
       isCurrent = false;
     };
-  }, [symbol, granularity]);
+  }, [accountMode, symbol, granularity, applyTick]);
 
   useEffect(() => {
-    const lastTick = [...priceHistory]
-      .reverse()
-      .find((tick) => cacheSymbol(tick.symbol) === cacheSymbol(symbol));
-    if (!lastTick) return;
-    const timestamp = new Date(lastTick.tick_time).getTime();
-    if (!Number.isFinite(timestamp)) return;
+    const matchingTicks = priceHistory
+      .filter((tick) => tick.source === (accountMode === 'demo' ? 'demo' : 'live'))
+      .filter((tick) => cacheSymbol(tick.symbol) === cacheSymbol(symbol))
+      .filter((tick) => toUnixSeconds(tick.tick_time || tick.timestamp) !== null)
+      .sort(
+        (a, b) =>
+          (toUnixSeconds(a.tick_time || a.timestamp) ?? 0) -
+          (toUnixSeconds(b.tick_time || b.timestamp) ?? 0)
+      );
 
-    const candleSeries = candleSeriesRef.current;
-    const areaSeries = areaSeriesRef.current;
-    if (
-      !candleSeries ||
-      !areaSeries ||
-      lastAppliedTickRef.current === `${Math.floor(timestamp / 1000)}:${lastTick.price}`
-    ) {
+    if (!candleHistoryReadyRef.current) {
+      pendingTicksRef.current = matchingTicks;
       return;
     }
 
-    const time = Math.floor(timestamp / 1000) as Time;
-    const tickKey = `${time}:${lastTick.price}`;
-    lastAppliedTickRef.current = tickKey;
-    const candleStart = (Math.floor(Number(time) / granularity) * granularity) as Time;
-    const current = currentCandleRef.current;
-    if (current && Number(candleStart) < Number(current.time)) return;
-
-    if (current && candleStart === current.time) {
-      current.high = Math.max(current.high, lastTick.price);
-      current.low = Math.min(current.low, lastTick.price);
-      current.close = lastTick.price;
-      candleSeries.update({ ...current });
-    } else {
-      const next = {
-        time: candleStart,
-        open: lastTick.price,
-        high: lastTick.price,
-        low: lastTick.price,
-        close: lastTick.price,
-      };
-      currentCandleRef.current = next;
-      candleSeries.update(next);
-      dataLengthRef.current = Math.max(1, dataLengthRef.current + (current ? 1 : 0));
-    }
-    areaSeries.update({ time, value: lastTick.price });
-  }, [priceHistory, symbol, granularity]);
+    for (const tick of matchingTicks) applyTick(tick);
+  }, [accountMode, priceHistory, symbol, granularity, applyTick]);
 
   useEffect(() => {
     const series: PriceLineSeries | null =

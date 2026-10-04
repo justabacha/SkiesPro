@@ -1,12 +1,5 @@
 export type ContractStatus =
-  | 'draft'
-  | 'active'
-  | 'settling'
-  | 'won'
-  | 'lost'
-  | 'draw'
-  | 'cancelled'
-  | 'archived';
+  'draft' | 'active' | 'settling' | 'won' | 'lost' | 'draw' | 'cancelled' | 'archived';
 
 export type ContractType = 'higher' | 'lower';
 
@@ -65,6 +58,7 @@ export interface PriceTick {
   ask?: number;
   tick_time: string;
   timestamp: number;
+  source?: 'live' | 'demo';
 }
 
 export interface Candle {
