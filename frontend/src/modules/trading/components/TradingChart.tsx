@@ -68,15 +68,12 @@ const toUnixSeconds = (value: unknown): number | null => {
 };
 
 const normalizeCandles = (
-  candles: Awaited<ReturnType<typeof tradingService.getCandles>>,
-  currentPrice?: number
+  candles: Awaited<ReturnType<typeof tradingService.getCandles>>
 ): Array<{ time: Time; open: number; high: number; low: number; close: number }> => {
   const byTime = new Map<
     number,
     { time: Time; open: number; high: number; low: number; close: number }
   >();
-
-  const rawCandles: Array<{ time: Time; open: number; high: number; low: number; close: number }> = [];
 
   for (const candle of candles) {
     const time = toUnixSeconds(candle.open_time);
@@ -87,7 +84,8 @@ const normalizeCandles = (
       Number(candle.close),
     ];
     if (time === null || !values.every((v) => Number.isFinite(v) && v > 0)) continue;
-    rawCandles.push({
+    if (values[1] < values[2] || values[1] < values[0] || values[1] < values[3]) continue;
+    byTime.set(time, {
       time: time as Time,
       open: values[0],
       high: values[1],
@@ -96,30 +94,9 @@ const normalizeCandles = (
     });
   }
 
-  if (rawCandles.length === 0) return [];
-
-  // Calculate median close price to establish baseline for filtering corrupt outlier prices
-  const sortedCloses = rawCandles.map((c) => c.close).sort((a, b) => a - b);
-  const medianClose = sortedCloses[Math.floor(sortedCloses.length / 2)];
-  const refPrice = currentPrice && currentPrice > 0 ? currentPrice : medianClose;
-
-  for (const candle of rawCandles) {
-    if (refPrice > 0) {
-      // Filter out stray outliers whose price deviates wildly (>15%) from baseline mean/median
-      const maxDev = 0.15;
-      const prices = [candle.open, candle.high, candle.low, candle.close];
-      if (prices.some((p) => Math.abs(p - refPrice) / refPrice > maxDev)) {
-        continue;
-      }
-    }
-    if (candle.high < candle.low || candle.high < candle.open || candle.high < candle.close) {
-      continue;
-    }
-    byTime.set(Number(candle.time), candle);
-  }
-
   return [...byTime.values()].sort((a, b) => Number(a.time) - Number(b.time));
 };
+
 export const TradingChart: React.FC<TradingChartProps> = ({
   symbol,
   priceHistory,
@@ -156,6 +133,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   const priceLinesRef = useRef<Array<{ series: PriceLineSeries; line: IPriceLine }>>([]);
   const activeContractsRef = useRef(activeContracts);
   const symbolRef = useRef(symbol);
+  const lastAppliedPipPlacesRef = useRef<number | null>(null);
+
   activeContractsRef.current = activeContracts;
   symbolRef.current = symbol;
   const granularity = TIMEFRAMES[selectedTimeframe] || TIMEFRAMES['1m'];
@@ -167,20 +146,6 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         return;
       }
       if (!Number.isFinite(tick.price) || tick.price <= 0) return;
-
-      // Filter out stray ticks or corrupt data points deviating wildly (>15%) from current mean/reference
-      const refPrice =
-        currentPrice > 0
-          ? currentPrice
-          : currentCandleRef.current?.close && currentCandleRef.current.close > 0
-          ? currentCandleRef.current.close
-          : null;
-
-      if (refPrice !== null && refPrice > 0) {
-        if (Math.abs(tick.price - refPrice) / refPrice > 0.15) {
-          return;
-        }
-      }
 
       const seconds = toUnixSeconds(tick.tick_time || tick.timestamp);
       if (seconds === null) return;
@@ -228,8 +193,11 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       latestAreaTimeRef.current = seconds;
       lastAppliedTickRef.current = tickKey;
     },
-    [currentPrice, granularity]
+    [granularity]
   );
+
+  const applyTickRef = useRef(applyTick);
+  applyTickRef.current = applyTick;
 
   useEffect(() => {
     localStorage.setItem('skies_timeframe', selectedTimeframe);
@@ -292,13 +260,6 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           rightOffset: 10,
         },
       });
-      const totalBars = dataLengthRef.current;
-      if (totalBars > 0) {
-        chart.timeScale().setVisibleLogicalRange({
-          from: Math.max(0, totalBars - 50),
-          to: totalBars + 3, // Right-hand margin for incoming ticks
-        });
-      }
     };
 
     const initialPipPlaces = getPriceDecimalPlaces(symbol, pipDecimalPlaces, currentPrice);
@@ -355,6 +316,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       latestAreaTimeRef.current = null;
       candleHistoryReadyRef.current = false;
       pendingTicksRef.current = [];
+      lastAppliedPipPlacesRef.current = null;
     };
   }, []);
 
@@ -365,6 +327,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
   useEffect(() => {
     const pipPlaces = getPriceDecimalPlaces(symbol, pipDecimalPlaces, currentPrice);
+    if (lastAppliedPipPlacesRef.current === pipPlaces) return;
+    lastAppliedPipPlacesRef.current = pipPlaces;
+
     const minMove = Number((10 ** -pipPlaces).toFixed(pipPlaces));
     const priceFormat = {
       type: 'price' as const,
@@ -442,7 +407,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     void loadHistory
       .then((data) => {
         if (!isCurrent) return;
-        const candles = normalizeCandles(data, currentPrice);
+        const candles = normalizeCandles(data);
         candleSeries.setData(candles);
         areaSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
         dataLengthRef.current = candles.length;
@@ -458,7 +423,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
             (toUnixSeconds(b.tick_time || b.timestamp) ?? 0)
         );
         pendingTicksRef.current = [];
-        for (const tick of ticks) applyTick(tick);
+        for (const tick of ticks) applyTickRef.current(tick);
 
         const totalBars = candles.length;
         if (totalBars > 0) {
@@ -480,13 +445,13 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         candleHistoryReadyRef.current = true;
         const pendingTicks = [...pendingTicksRef.current];
         pendingTicksRef.current = [];
-        for (const tick of pendingTicks) applyTick(tick);
+        for (const tick of pendingTicks) applyTickRef.current(tick);
       });
 
     return () => {
       isCurrent = false;
     };
-  }, [accountMode, symbol, granularity, applyTick]);
+  }, [accountMode, symbol, granularity]);
 
   useEffect(() => {
     const matchingTicks = priceHistory
@@ -504,8 +469,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       return;
     }
 
-    for (const tick of matchingTicks) applyTick(tick);
-  }, [accountMode, priceHistory, symbol, granularity, applyTick]);
+    for (const tick of matchingTicks) applyTickRef.current(tick);
+  }, [accountMode, priceHistory, symbol]);
 
   useEffect(() => {
     const series: PriceLineSeries | null =
