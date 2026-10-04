@@ -34,7 +34,19 @@ const TIMEFRAMES: Record<string, number> = {
   '1D': 86400,
 };
 
-const cacheSymbol = (symbol: string) => symbol.replace(/[^a-z0-9]/gi, '').toUpperCase();
+const cacheSymbol = (symbol: string | null | undefined) =>
+  (symbol ?? '')
+    .replace(/^DEMO[-_]?/i, '')
+    .replace(/[^a-z0-9]/gi, '')
+    .toUpperCase();
+const contractSymbol = (contract: BinaryContract) => {
+  const payload = contract as BinaryContract & {
+    assetSymbol?: string;
+    symbol?: string;
+    pair?: string;
+  };
+  return payload.asset_symbol || payload.assetSymbol || payload.symbol || payload.pair || 'EUR/USD';
+};
 const toTime = (time: string): Time => Math.floor(new Date(time).getTime() / 1000) as Time;
 export const TradingChart: React.FC<TradingChartProps> = ({
   symbol,
@@ -43,6 +55,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   activeContracts = [],
   pipDecimalPlaces,
 }) => {
+  const displaySymbol = typeof symbol === 'string' && symbol.trim() ? symbol : 'EUR/USD';
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(() => {
     return localStorage.getItem('skies_timeframe') || '1m';
   });
@@ -54,7 +67,13 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const areaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
-  const currentCandleRef = useRef<{ time: Time; open: number; high: number; low: number; close: number } | null>(null);
+  const currentCandleRef = useRef<{
+    time: Time;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+  } | null>(null);
   const dataLengthRef = useRef(0);
   const lastAppliedTickRef = useRef<string>('');
   const priceLinesRef = useRef<Array<{ series: PriceLineSeries; line: IPriceLine }>>([]);
@@ -170,7 +189,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   const activeContractsKey = useMemo(
     () =>
       activeContracts
-        .filter((contract) => cacheSymbol(contract.asset_symbol) === cacheSymbol(symbol))
+        .filter((contract) => cacheSymbol(contractSymbol(contract)) === cacheSymbol(symbol))
         .map((contract) =>
           [
             contract.id,
@@ -188,7 +207,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     () => {
       if (!activeContractsKey) return [];
       return activeContractsRef.current.filter(
-        (contract) => cacheSymbol(contract.asset_symbol) === cacheSymbol(symbolRef.current)
+        (contract) => cacheSymbol(contractSymbol(contract)) === cacheSymbol(symbolRef.current)
       );
     },
     // The key intentionally keeps the same result reference during identical polling responses.
@@ -204,7 +223,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     currentPrice > 0 &&
     latestContract !== undefined &&
     (isHigher ? currentPrice > strike : currentPrice < strike);
-  const pipDelta = latestContract && Number.isFinite(strike) ? (currentPrice - strike) / pipSize : 0;
+  const pipDelta =
+    latestContract && Number.isFinite(strike) ? (currentPrice - strike) / pipSize : 0;
   const payout = latestContract ? Number(latestContract.potential_payout || 0) : 0;
 
   useEffect(() => {
@@ -297,7 +317,11 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
     const candleSeries = candleSeriesRef.current;
     const areaSeries = areaSeriesRef.current;
-    if (!candleSeries || !areaSeries || lastAppliedTickRef.current === `${Math.floor(timestamp / 1000)}:${lastTick.price}`) {
+    if (
+      !candleSeries ||
+      !areaSeries ||
+      lastAppliedTickRef.current === `${Math.floor(timestamp / 1000)}:${lastTick.price}`
+    ) {
       return;
     }
 
@@ -347,7 +371,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `${higher ? 'CALL' : 'PUT'} ${contract.asset_symbol}`,
+          title: `${higher ? 'CALL' : 'PUT'} ${contractSymbol(contract)}`,
         });
         return { series, line };
       })
@@ -361,14 +385,19 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     >
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2 z-10 pb-2 border-b border-border-light dark:border-border-dark/50">
         <div className="flex items-center space-x-2 sm:space-x-3">
-          <span className="font-bold text-sm sm:text-base text-text-light-primary dark:text-text-dark-primary font-mono">{symbol}</span>
+          <span className="font-bold text-sm sm:text-base text-text-light-primary dark:text-text-dark-primary font-mono">
+            {displaySymbol}
+          </span>
           <span className="font-mono text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">
             {currentPrice > 0 ? currentPrice.toFixed(pipPlaces) : '--'}
           </span>
         </div>
 
         <div className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto pb-1 sm:space-x-3 sm:overflow-visible sm:pb-0">
-          <div data-testid="chart-type-toggle" className="flex shrink-0 items-center space-x-0.5 sm:space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark">
+          <div
+            data-testid="chart-type-toggle"
+            className="flex shrink-0 items-center space-x-0.5 sm:space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark"
+          >
             {(['line', 'candle'] as const).map((type) => (
               <button
                 key={type}
@@ -386,7 +415,10 @@ export const TradingChart: React.FC<TradingChartProps> = ({
             ))}
           </div>
 
-          <div data-testid="timeframe-selector" className="flex shrink-0 items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark">
+          <div
+            data-testid="timeframe-selector"
+            className="flex shrink-0 items-center space-x-1 bg-bg-light-tertiary dark:bg-bg-dark-tertiary p-0.5 sm:p-1 rounded-lg border border-border-light dark:border-border-dark"
+          >
             {Object.keys(TIMEFRAMES).map((timeframe) => (
               <button
                 key={timeframe}
@@ -415,10 +447,15 @@ export const TradingChart: React.FC<TradingChartProps> = ({
                 isWinning ? 'bg-emerald-600/95' : 'bg-rose-600/95'
               }`}
             >
-              <span>{pipDelta >= 0 ? '+' : ''}{pipDelta.toFixed(1)} Pips</span>
+              <span>
+                {pipDelta >= 0 ? '+' : ''}
+                {pipDelta.toFixed(1)} Pips
+              </span>
               <span>({isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})</span>
             </div>
-          ) : <div />}
+          ) : (
+            <div />
+          )}
           <div className="pointer-events-auto bg-bg-light-primary/95 dark:bg-bg-dark-tertiary/95 border border-border-light dark:border-border-dark px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-mono flex items-center space-x-1.5 backdrop-blur-sm shadow-md">
             <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-ping" />
             <span className="text-text-light-primary dark:text-text-dark-primary font-bold">

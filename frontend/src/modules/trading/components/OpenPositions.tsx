@@ -97,7 +97,9 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
       >
         <div className="flex flex-col items-center justify-center space-y-2 py-4">
           <ShieldAlert className="h-8 w-8 text-text-light-secondary/50 dark:text-text-dark-secondary/50" />
-          <p className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">No Active Positions</p>
+          <p className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
+            No Active Positions
+          </p>
           <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
             Select an asset and place a contract to start trading.
           </p>
@@ -122,19 +124,41 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
 
       <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
         {contracts.map((contract) => {
+          const position = contract as typeof contract & {
+            assetSymbol?: string;
+            symbol?: string;
+            pair?: string;
+          };
+          const positionSymbol =
+            position?.asset_symbol ||
+            position?.assetSymbol ||
+            position?.symbol ||
+            position?.pair ||
+            'EUR/USD';
           const isHigher = contract.contract_type === 'higher';
           const strike = parseFloat(contract.strike_price);
-          const spot = currentPrices[contract.asset_symbol];
+          const normalizedPositionSymbol = positionSymbol
+            .replace(/^DEMO[-_]?/i, '')
+            .replace(/[^a-z0-9]/gi, '')
+            .toUpperCase();
+          const spot =
+            currentPrices[positionSymbol] ??
+            Object.entries(currentPrices).find(
+              ([key]) =>
+                key
+                  .replace(/^DEMO[-_]?/i, '')
+                  .replace(/[^a-z0-9]/gi, '')
+                  .toUpperCase() === normalizedPositionSymbol
+            )?.[1];
           const liveSpot =
             typeof spot === 'number' && Number.isFinite(spot) && spot > 0 ? spot : null;
           const priceAvailable = liveSpot !== null;
-          const pipPlaces = getPriceDecimalPlaces(contract.asset_symbol, undefined, liveSpot || 0);
-          const isWinning =
-            liveSpot !== null && (isHigher ? liveSpot > strike : liveSpot < strike);
+          const pipPlaces = getPriceDecimalPlaces(positionSymbol, undefined, liveSpot || 0);
+          const isWinning = liveSpot !== null && (isHigher ? liveSpot > strike : liveSpot < strike);
           const pipDelta =
             liveSpot === null
               ? 0
-              : (liveSpot - strike) / getPipSize(contract.asset_symbol, pipPlaces, liveSpot);
+              : (liveSpot - strike) / getPipSize(positionSymbol, pipPlaces, liveSpot);
           const payout = parseFloat(contract.potential_payout || '0');
 
           return (
@@ -151,11 +175,17 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
                       : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
                   }`}
                 >
-                  {isHigher ? <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" /> : <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5" />}
+                  {isHigher ? (
+                    <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                  ) : (
+                    <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold font-mono text-text-light-primary dark:text-text-dark-primary">{contract.asset_symbol}</span>
+                    <span className="font-bold font-mono text-text-light-primary dark:text-text-dark-primary">
+                      {positionSymbol}
+                    </span>
                     <span className="text-[10px] font-bold uppercase text-text-light-secondary dark:text-text-dark-secondary bg-bg-light-primary dark:bg-bg-dark-primary px-1.5 py-0.5 rounded">
                       {contract.contract_type}
                     </span>
@@ -169,10 +199,16 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
               {/* Price Details */}
               <div className="text-right">
                 <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                  Strike: <span className="font-mono font-semibold text-text-light-primary dark:text-text-dark-primary">{strike.toFixed(pipPlaces)}</span>
+                  Strike:{' '}
+                  <span className="font-mono font-semibold text-text-light-primary dark:text-text-dark-primary">
+                    {strike.toFixed(pipPlaces)}
+                  </span>
                 </div>
                 <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
-                  Spot: <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{liveSpot === null ? '--' : liveSpot.toFixed(pipPlaces)}</span>
+                  Spot:{' '}
+                  <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                    {liveSpot === null ? '--' : liveSpot.toFixed(pipPlaces)}
+                  </span>
                 </div>
               </div>
 
@@ -185,8 +221,8 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
                     !priceAvailable
                       ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
                       : isWinning
-                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                      : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                        : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
                   }`}
                 >
                   {priceAvailable

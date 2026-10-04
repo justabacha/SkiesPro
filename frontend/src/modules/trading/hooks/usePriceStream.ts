@@ -6,7 +6,11 @@ import { PriceTick, LatencyState } from '../types/trading.types';
 import { useAccountMode } from '@/shared/context/AccountModeContext';
 
 const MAX_QUOTE_AGE_MS = 10_000;
-const normalizeSymbol = (value: string) => value.replace(/[^a-z0-9]/gi, '').toUpperCase();
+const normalizeSymbol = (value: string | null | undefined) =>
+  (value ?? '')
+    .replace(/^DEMO[-_]?/i, '')
+    .replace(/[^a-z0-9]/gi, '')
+    .toUpperCase();
 
 interface LatestPriceResponse {
   data?: {
@@ -35,6 +39,8 @@ export interface UsePriceStreamReturn {
 export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStreamReturn => {
   const { isAuthenticated, user } = useAuth();
   const { accountMode, generation, isCurrentGeneration, registerModeCleanup } = useAccountMode();
+  const accountModeRef = useRef(accountMode);
+  accountModeRef.current = accountMode;
   const [symbol, setSymbol] = useState<string>(initialSymbol);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [isPriceAvailable, setIsPriceAvailable] = useState(false);
@@ -73,6 +79,10 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     setCurrentPrice(liveTick.price);
     setIsPriceAvailable(true);
     setQuoteUpdatedAt(now);
+    if (accountModeRef.current === 'demo') {
+      setIsConnected(true);
+      setLatencyState({ latencyMs: 0, status: 'good', isConnected: true });
+    }
     historyRef.current = [...historyRef.current.slice(-119), liveTick];
     setPriceHistory([...historyRef.current]);
   }, []);
@@ -188,6 +198,10 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
       if (Date.now() - quoteUpdatedAt > MAX_QUOTE_AGE_MS) {
         setIsPriceAvailable(false);
         setCurrentPrice(0);
+        if (accountModeRef.current === 'demo') {
+          setIsConnected(false);
+          setLatencyState({ latencyMs: 0, status: 'disconnected', isConnected: false });
+        }
       }
     }, 1000);
     return () => clearInterval(interval);

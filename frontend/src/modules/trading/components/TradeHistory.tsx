@@ -1,5 +1,12 @@
 import React from 'react';
-import { CheckCircle2, XCircle, MinusCircle, History, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import {
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
+  History,
+  ArrowUpRight,
+  ArrowDownRight,
+} from 'lucide-react';
 import { BinaryContract } from '../types/trading.types';
 
 export interface TradeHistoryProps {
@@ -27,7 +34,9 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ contracts, isLoading
       >
         <div className="flex flex-col items-center justify-center space-y-2 py-4">
           <History className="h-8 w-8 text-text-light-secondary/50 dark:text-text-dark-secondary/50" />
-          <p className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">No Settled Trades</p>
+          <p className="text-sm font-medium text-text-light-primary dark:text-text-dark-primary">
+            No Settled Trades
+          </p>
           <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary">
             Settled trading history will appear here.
           </p>
@@ -49,6 +58,17 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ contracts, isLoading
 
       <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
         {contracts.map((contract) => {
+          const position = contract as typeof contract & {
+            assetSymbol?: string;
+            symbol?: string;
+            pair?: string;
+          };
+          const positionSymbol =
+            position?.asset_symbol ||
+            position?.assetSymbol ||
+            position?.symbol ||
+            position?.pair ||
+            'EUR/USD';
           const isWon = contract.status === 'won';
           const isDraw = contract.status === 'draw';
           const isHigher = contract.contract_type === 'higher';
@@ -67,8 +87,8 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ contracts, isLoading
                 isWon
                   ? 'bg-emerald-500/5 border-emerald-500/20'
                   : isDraw
-                  ? 'bg-amber-500/5 border-amber-500/20'
-                  : 'bg-rose-500/5 border-rose-500/20'
+                    ? 'bg-amber-500/5 border-amber-500/20'
+                    : 'bg-rose-500/5 border-rose-500/20'
               }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
@@ -76,14 +96,22 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ contracts, isLoading
                 <div className="flex items-center space-x-3">
                   <div
                     className={`p-1.5 rounded-md ${
-                      isHigher ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                      isHigher
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                     }`}
                   >
-                    {isHigher ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                    {isHigher ? (
+                      <ArrowUpRight className="h-4 w-4" />
+                    ) : (
+                      <ArrowDownRight className="h-4 w-4" />
+                    )}
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold font-mono text-text-light-primary dark:text-text-dark-primary">{contract.asset_symbol}</span>
+                      <span className="font-bold font-mono text-text-light-primary dark:text-text-dark-primary">
+                        {positionSymbol}
+                      </span>
                       <span className="text-[10px] font-bold uppercase text-text-light-secondary dark:text-text-dark-secondary bg-bg-light-primary dark:bg-bg-dark-primary px-1.5 py-0.5 rounded">
                         {contract.contract_type}
                       </span>
@@ -97,11 +125,17 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ contracts, isLoading
                 {/* Strike & Expiry Prices */}
                 <div className="text-right text-xs">
                   <div>
-                    Strike: <span className="font-mono font-semibold text-text-light-primary dark:text-text-dark-primary">{strike.toFixed(pipPlaces)}</span>
+                    Strike:{' '}
+                    <span className="font-mono font-semibold text-text-light-primary dark:text-text-dark-primary">
+                      {strike.toFixed(pipPlaces)}
+                    </span>
                   </div>
                   {expiry !== null && (
                     <div>
-                      Expiry: <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{expiry.toFixed(pipPlaces)}</span>
+                      Expiry:{' '}
+                      <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                        {expiry.toFixed(pipPlaces)}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -109,13 +143,23 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ contracts, isLoading
                 {/* Outcome Badge & Return */}
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <div className="text-right">
-                    <span className="text-xs text-text-light-secondary dark:text-text-dark-secondary block">Stake: KES {stakeNum}</span>
+                    <span className="text-xs text-text-light-secondary dark:text-text-dark-secondary block">
+                      Stake: KES {stakeNum}
+                    </span>
                     <span
                       className={`text-xs sm:text-sm font-bold font-mono ${
-                        isWon ? 'text-emerald-600 dark:text-emerald-400' : isDraw ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                        isWon
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : isDraw
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-rose-600 dark:text-rose-400'
                       }`}
                     >
-                      {isWon ? `+KES ${returnAmount.toFixed(2)}` : isDraw ? `KES ${returnAmount.toFixed(2)}` : 'KES 0.00'}
+                      {isWon
+                        ? `+KES ${returnAmount.toFixed(2)}`
+                        : isDraw
+                          ? `KES ${returnAmount.toFixed(2)}`
+                          : 'KES 0.00'}
                     </span>
                   </div>
 
@@ -125,8 +169,8 @@ export const TradeHistory: React.FC<TradeHistoryProps> = ({ contracts, isLoading
                       isWon
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                         : isDraw
-                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                        : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                          : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                     }`}
                   >
                     {isWon ? (

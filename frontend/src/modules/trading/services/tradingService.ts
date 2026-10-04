@@ -8,6 +8,55 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+type ContractPayload = Record<string, unknown>;
+
+const readContractString = (payload: ContractPayload, keys: string[], fallback = ''): string => {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === 'string' && value.length > 0) return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return fallback;
+};
+
+const normalizeContract = (value: unknown): BinaryContract => {
+  const payload = typeof value === 'object' && value !== null ? (value as ContractPayload) : {};
+  const direction = readContractString(payload, ['contract_type', 'contractType', 'direction']);
+  const rawStatus = readContractString(payload, ['status'], 'active');
+  const statuses: BinaryContract['status'][] = [
+    'draft',
+    'active',
+    'settling',
+    'won',
+    'lost',
+    'draw',
+    'cancelled',
+    'archived',
+  ];
+  const status = statuses.find((candidate) => candidate === rawStatus) || 'active';
+
+  return {
+    id: readContractString(payload, ['id']),
+    user_id: readContractString(payload, ['user_id', 'userId']),
+    asset_symbol: readContractString(
+      payload,
+      ['asset_symbol', 'assetSymbol', 'symbol', 'pair'],
+      'EUR/USD'
+    ),
+    contract_type:
+      direction.toLowerCase() === 'lower' || direction.toUpperCase() === 'PUT' ? 'lower' : 'higher',
+    stake: readContractString(payload, ['stake', 'amount'], '0'),
+    strike_price: readContractString(payload, ['strike_price', 'strikePrice'], '0'),
+    expiry_price: readContractString(payload, ['expiry_price', 'expiryPrice']) || undefined,
+    payout_rate: readContractString(payload, ['payout_rate', 'payoutRate'], '0'),
+    potential_payout: readContractString(payload, ['potential_payout', 'potentialPayout'], '0'),
+    purchase_time: readContractString(payload, ['purchase_time', 'purchaseTime']),
+    expiry_time: readContractString(payload, ['expiry_time', 'expiryTime']),
+    status,
+    settled_at: readContractString(payload, ['settled_at', 'settledAt']) || undefined,
+  };
+};
+
 const DEFAULT_ASSETS: Asset[] = [
   {
     symbol: 'EUR/USD',
@@ -179,9 +228,9 @@ class TradingService {
     );
 
     if (response && typeof response === 'object' && 'data' in response && response.data) {
-      return response.data;
+      return normalizeContract(response.data);
     }
-    return response as BinaryContract;
+    return normalizeContract(response);
   }
 
   /**
@@ -199,10 +248,10 @@ class TradingService {
     );
 
     if (Array.isArray(response)) {
-      return response;
+      return response.map(normalizeContract);
     }
     if (response && response.data && Array.isArray(response.data)) {
-      return response.data;
+      return response.data.map(normalizeContract);
     }
     return [];
   }
@@ -233,10 +282,10 @@ class TradingService {
     );
 
     if (Array.isArray(response)) {
-      return response;
+      return response.map(normalizeContract);
     }
     if (response && response.data && Array.isArray(response.data)) {
-      return response.data;
+      return response.data.map(normalizeContract);
     }
     return [];
   }
@@ -250,9 +299,9 @@ class TradingService {
     );
 
     if (response && typeof response === 'object' && 'data' in response && response.data) {
-      return response.data;
+      return normalizeContract(response.data);
     }
-    return response as BinaryContract;
+    return normalizeContract(response);
   }
 
   /**
