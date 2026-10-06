@@ -19,7 +19,7 @@ export function useAdminAudit() {
       setError(null);
       try {
         const res = await adminApiClient.getAuditLogs(params || { limit: 50 }, totp_code);
-        setLogs(res.logs || []);
+        setLogs(res.rows || []);
         setTotal(res.total || 0);
       } catch (err) {
         setError((err as Error).message);

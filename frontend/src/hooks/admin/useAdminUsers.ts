@@ -20,7 +20,7 @@ export function useAdminUsers() {
         status: statusFilter || undefined,
         role: roleFilter || undefined,
       });
-      setUsers(data.users || []);
+      setUsers(data.rows || []);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -53,7 +53,8 @@ export function useAdminUsers() {
         const res = await adminApiClient.updateUserStatus(id, { status, reason, totp_code });
         await fetchUsers();
         if (selectedUser && selectedUser.id === id) {
-          setSelectedUser((prev) => (prev ? { ...prev, status: res.user.status } : null));
+          const newStatus = (res?.status || status) as UserSummary['status'];
+          setSelectedUser((prev) => (prev ? { ...prev, status: newStatus } : null));
         }
         return res;
       } catch (err) {

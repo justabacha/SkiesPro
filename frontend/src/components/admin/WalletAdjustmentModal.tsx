@@ -16,7 +16,7 @@ interface WalletAdjustmentModalProps {
     reason: string;
     idempotency_key?: string;
     totp_code?: string;
-  }) => Promise<{ pending_four_eyes?: boolean }>;
+  }) => Promise<{ status?: string; pending_four_eyes?: boolean }>;
 }
 
 export const WalletAdjustmentModal: React.FC<WalletAdjustmentModalProps> = ({
@@ -71,7 +71,7 @@ export const WalletAdjustmentModal: React.FC<WalletAdjustmentModalProps> = ({
       totp_code: totpCode,
     });
 
-    if (res?.pending_four_eyes) {
+    if (res?.status === 'pending_second_approval' || res?.pending_four_eyes) {
       setSuccessMessage('Adjustment exceeds threshold ($500 USD) and has been routed to 4-Eyes Super Admin Approval Queue.');
     } else {
       setSuccessMessage('Wallet adjustment executed successfully.');

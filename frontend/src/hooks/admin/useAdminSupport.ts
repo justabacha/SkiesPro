@@ -59,7 +59,10 @@ export function useAdminSupport() {
         const res = await adminApiClient.updateTicket(id, payload);
         await fetchTickets(payload.totp_code);
         if (selectedTicket && selectedTicket.id === id) {
-          setSelectedTicket(res.ticket);
+          const updatedTicket = res && typeof res === 'object' && 'ticket' in res
+            ? (res as { ticket: SupportTicket }).ticket
+            : (res as SupportTicket);
+          if (updatedTicket) setSelectedTicket(updatedTicket);
         }
         return res;
       } catch (err) {
