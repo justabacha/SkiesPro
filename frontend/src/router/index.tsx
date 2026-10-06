@@ -12,6 +12,10 @@ import { Placeholder } from '@/shared/components/Placeholder';
 import { ProtectedRoute, PublicRoute } from '@/shared/components';
 import DesignSystemPage from '@/pages/DesignSystem';
 
+import { AdminLayout } from '@/pages/admin/AdminLayout';
+import { AdminProtectedRoute } from '@/components/admin/AdminProtectedRoute';
+import { adminRoutes } from '@/routes/adminRoutes';
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -33,6 +37,15 @@ export const router = createBrowserRouter([
       { path: 'design-system', element: <DesignSystemPage /> },
       { path: 'menu', element: <Placeholder title="Mobile Menu" /> },
     ],
+  },
+  {
+    path: '/admin',
+    element: (
+      <AdminProtectedRoute>
+        <AdminLayout />
+      </AdminProtectedRoute>
+    ),
+    children: adminRoutes,
   },
   {
     path: '/login',

@@ -318,6 +318,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       pendingTicksRef.current = [];
       lastAppliedPipPlacesRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
