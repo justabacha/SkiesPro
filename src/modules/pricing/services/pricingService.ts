@@ -67,8 +67,14 @@ export class PricingService {
     return candles.map((c) => ({
       symbol: c.symbol,
       granularity_seconds: c.granularity_seconds,
-      open_time: c.open_time instanceof Date ? c.open_time.toISOString() : new Date(c.open_time).toISOString(),
-      close_time: c.close_time instanceof Date ? c.close_time.toISOString() : new Date(c.close_time).toISOString(),
+      open_time:
+        c.open_time instanceof Date
+          ? c.open_time.toISOString()
+          : new Date(c.open_time).toISOString(),
+      close_time:
+        c.close_time instanceof Date
+          ? c.close_time.toISOString()
+          : new Date(c.close_time).toISOString(),
       open: c.open_price,
       high: c.high_price,
       low: c.low_price,

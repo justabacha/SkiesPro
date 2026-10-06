@@ -16,6 +16,7 @@ export class DemoPriceFeedService {
   private flushTimer: NodeJS.Timeout | null = null;
   private retentionTimer: NodeJS.Timeout | null = null;
   private readonly bufferLimit = 50;
+  private readonly flushIntervalMs = 5000;
 
   constructor(
     tickRepository = new TickRepository(),
@@ -39,7 +40,7 @@ export class DemoPriceFeedService {
     void this.pruneExpiredTicks();
     this.flushTimer = setInterval(() => {
       void this.flushTicks();
-    }, 1000);
+    }, this.flushIntervalMs);
     this.flushTimer.unref?.();
 
     this.retentionTimer = setInterval(

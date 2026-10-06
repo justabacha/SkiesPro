@@ -31,7 +31,7 @@ export const supabaseAdmin = createClient(
 // PostgreSQL pool for raw SQL (migrations, complex queries)
 export const pgPool = new Pool({
   connectionString: databaseConfig.url,
-  max: 20,
+  max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: process.env.NODE_ENV === 'test' ? 30000 : 10000,
 });
@@ -39,9 +39,7 @@ export const pgPool = new Pool({
 // Health check function
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    const client = await pgPool.connect();
-    await client.query('SELECT 1');
-    client.release();
+    await pgPool.query('SELECT 1');
     return true;
   } catch (error) {
     console.error('Database connection failed:', error);

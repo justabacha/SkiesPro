@@ -16,27 +16,58 @@ export interface SystemHealth {
 export class HealthChecker {
   private startTime: Date;
   private version: string;
+  private readonly postgresqlCacheTtlMs = 5000;
+  private postgresqlCache: { result: HealthCheckResult; checkedAt: number } | null = null;
+  private postgresqlCheckInFlight: Promise<HealthCheckResult> | null = null;
 
-  constructor(version: string = '1.0.0') {
+  constructor(
+    version: string = '1.0.0',
+    private readonly postgresProbe: () => Promise<void> = async () => {
+      await pgPool.query('SELECT 1');
+    }
+  ) {
     this.startTime = new Date();
     this.version = version;
   }
 
   async checkPostgreSQL(): Promise<HealthCheckResult> {
-    const startTime = Date.now();
+    if (
+      this.postgresqlCache &&
+      Date.now() - this.postgresqlCache.checkedAt < this.postgresqlCacheTtlMs
+    ) {
+      return this.postgresqlCache.result;
+    }
+    if (this.postgresqlCheckInFlight) return this.postgresqlCheckInFlight;
+
+    const check = this.runPostgreSQLCheck();
+    this.postgresqlCheckInFlight = check;
     try {
-      await pgPool.query('SELECT 1');
+      return await check;
+    } finally {
+      if (this.postgresqlCheckInFlight === check) {
+        this.postgresqlCheckInFlight = null;
+      }
+    }
+  }
+
+  private async runPostgreSQLCheck(): Promise<HealthCheckResult> {
+    const startTime = Date.now();
+    let result: HealthCheckResult;
+    try {
+      await this.postgresProbe();
       const latency = Date.now() - startTime;
-      return {
+      result = {
         status: 'healthy',
         latency_ms: latency,
       };
     } catch (error) {
-      return {
+      result = {
         status: 'unhealthy',
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+    this.postgresqlCache = { result, checkedAt: Date.now() };
+    return result;
   }
 
   async checkMessageBroker(url?: string): Promise<HealthCheckResult> {

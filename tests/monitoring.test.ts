@@ -91,6 +91,10 @@ describe('HealthChecker', () => {
     checker = new HealthChecker('1.0.0');
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('checkPostgreSQL', () => {
     it('should return healthy status when database is accessible', async () => {
       if (skipDatabaseTests) return;
@@ -98,6 +102,27 @@ describe('HealthChecker', () => {
       expect(result.status).toBe('healthy');
       expect(result.latency_ms).toBeDefined();
       expect(result.latency_ms).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should share and cache database probes across repeated checks', async () => {
+      const probe = jest.fn(async () => {
+        throw new Error('offline');
+      });
+      checker = new HealthChecker('1.0.0', probe);
+
+      const results = await Promise.all([
+        checker.checkPostgreSQL(),
+        checker.checkPostgreSQL(),
+        checker.checkPostgreSQL(),
+      ]);
+      await checker.checkPostgreSQL();
+
+      expect(results.map((result) => result.status)).toEqual([
+        'unhealthy',
+        'unhealthy',
+        'unhealthy',
+      ]);
+      expect(probe).toHaveBeenCalledTimes(1);
     });
   });
 

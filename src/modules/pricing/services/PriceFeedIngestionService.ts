@@ -23,9 +23,11 @@ export class PriceFeedIngestionService {
   private lastTier2TickTime: number = 0;
 
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private tickFlushInterval: NodeJS.Timeout | null = null;
+  private candleFlushInterval: NodeJS.Timeout | null = null;
   private tickBuffer: Omit<TickRow, 'id' | 'created_at'>[] = [];
   private readonly batchSize = 50;
-  private readonly flushInterval = 1000; // 1 second
+  private readonly flushInterval = 5000;
 
   constructor(
     private validationService: PriceValidationService,
@@ -58,6 +60,8 @@ export class PriceFeedIngestionService {
   }
 
   start() {
+    if (this.heartbeatInterval || this.tickFlushInterval || this.candleFlushInterval) return;
+
     if (this.useMockFallback) {
       this.mockAdapter.connect();
     } else {
@@ -71,27 +75,33 @@ export class PriceFeedIngestionService {
     }, 1000);
     this.heartbeatInterval.unref?.();
 
-    // Periodically flush ticks buffer to DB
-    const flushTicksTimer = setInterval(() => {
+    this.tickFlushInterval = setInterval(() => {
       this.flushTicks().catch((err) => {
         logger.error('Error flushing ticks', { error: err.message });
       });
     }, this.flushInterval);
-    flushTicksTimer.unref?.();
+    this.tickFlushInterval.unref?.();
 
-    // Periodically flush candles
-    const flushCandlesTimer = setInterval(() => {
+    this.candleFlushInterval = setInterval(() => {
       this.ohlcService.flush().catch((err) => {
         logger.error('Error flushing candles', { error: err.message });
       });
     }, 10000);
-    flushCandlesTimer.unref?.();
+    this.candleFlushInterval.unref?.();
   }
 
   stop() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
+    }
+    if (this.tickFlushInterval) {
+      clearInterval(this.tickFlushInterval);
+      this.tickFlushInterval = null;
+    }
+    if (this.candleFlushInterval) {
+      clearInterval(this.candleFlushInterval);
+      this.candleFlushInterval = null;
     }
     this.krakenAdapter.disconnect();
     this.coinbaseAdapter.disconnect();

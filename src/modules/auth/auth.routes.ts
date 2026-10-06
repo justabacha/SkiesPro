@@ -34,7 +34,10 @@ router.get(
 router.post(
   '/login',
   rateLimit('login'),
-  [body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }), body('password').notEmpty()],
+  [
+    body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
+    body('password').notEmpty(),
+  ],
   (req: Request, res: Response) => controller.login(req, res)
 );
 
