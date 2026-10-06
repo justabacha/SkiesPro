@@ -5,6 +5,7 @@ interface MfaStepUpModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (totpCode: string) => Promise<void>;
+  closeOnSuccess?: boolean;
   title?: string;
   description?: string;
 }
@@ -13,6 +14,7 @@ export const MfaStepUpModal: React.FC<MfaStepUpModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
+  closeOnSuccess = true,
   title = 'MFA Verification Required',
   description = 'Please enter your 6-digit TOTP code to execute this protected administrative action.',
 }) => {
@@ -31,12 +33,23 @@ export const MfaStepUpModal: React.FC<MfaStepUpModalProps> = ({
 
     setIsSubmitting(true);
     setError(null);
+    console.info('[MFA_TRACE] Step-Up Attempt:', { codeLength: code.length });
     try {
       await onConfirm(code);
+      console.info('[MFA_TRACE] Step-Up verification completed');
       setCode('');
-      onClose();
+      if (closeOnSuccess) onClose();
     } catch (err) {
-      setError((err as Error).message || 'Invalid MFA code. Please try again.');
+      const error = err as Error & { status?: number; code?: string };
+      const reason = error.status
+        ? `Step-Up verification returned ${error.status}: ${error.message}`
+        : error.message || 'Invalid MFA code. Please try again.';
+      console.error('[MFA_TRACE] Step-Up verification failed:', {
+        status: error.status,
+        code: error.code,
+        reason,
+      });
+      setError(reason);
     } finally {
       setIsSubmitting(false);
     }

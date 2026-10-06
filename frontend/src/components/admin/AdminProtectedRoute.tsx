@@ -1,9 +1,10 @@
 import React from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { AccessDenied } from './AccessDenied';
 import { MfaStepUpModal } from './MfaStepUpModal';
 import { apiClient } from '@/shared/services/apiClient';
+import { AlertCircle } from 'lucide-react';
 
 const ALL_ADMIN_ROLES = [
   'support',
@@ -28,6 +29,46 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const [adminMfaToken, setAdminMfaToken] = React.useState(() => apiClient.getAdminMfaToken());
+  const storedStepUpToken =
+    typeof window !== 'undefined'
+      ? window.sessionStorage.getItem('x_admin_mfa_token') ||
+        window.sessionStorage.getItem('admin_mfa_token')
+      : null;
+
+  const normalizedRoles = (user?.roles || (user?.role ? [user.role] : []))
+    .map((role) => role.trim().toLowerCase().replace(/[\s-]+/g, '_'));
+  const isStaff = normalizedRoles.some((role) => ALL_ADMIN_ROLES.includes(role));
+  const roleMissing = !user?.role && normalizedRoles.length === 0;
+  const allowedRoleSet = new Set(allowedRoles.map((role) => role.toLowerCase()));
+  const isAllowed = normalizedRoles.some(
+    (role) =>
+      allowedRoleSet.has(role) ||
+      (role === 'risk' && allowedRoleSet.has('risk_manager')) ||
+      (role === 'risk_manager' && allowedRoleSet.has('risk'))
+  );
+  const guardDecision = isLoading
+    ? 'waiting_for_auth'
+    : !isAuthenticated || !user
+      ? 'redirect_to_login'
+      : roleMissing
+        ? 'blocked_missing_role'
+        : !isStaff
+          ? 'blocked_non_staff'
+          : !isAllowed
+            ? 'blocked_insufficient_role'
+            : !adminMfaToken
+              ? 'open_step_up_modal'
+              : 'mount_admin_ui';
+
+  console.info('[GUARD_TRACE] Route Guard Evaluation:', {
+    targetPath: location.pathname,
+    userId: user?.id,
+    extractedRole: user?.role,
+    roles: user?.roles,
+    mfa_enabled: user?.mfaEnabled,
+    stepUpTokenInStorage: !!storedStepUpToken,
+    decision: guardDecision,
+  });
 
   React.useEffect(() => {
     if (!adminMfaToken) return;
@@ -58,21 +99,22 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const userRoles = new Set((user.roles || [user.role]).map((role) => role.toLowerCase()));
-  const isStaff = [...userRoles].some((role) => ALL_ADMIN_ROLES.includes(role));
-  if (!isStaff) {
-    return <Navigate to="/" replace />;
+  if (roleMissing) {
+    return (
+      <DiagnosticBlock reason="Missing staff role in auth state; expected one of SUPER_ADMIN, ADMIN, COMPLIANCE, FINANCE, RISK, or SUPPORT." />
+    );
   }
 
-  const allowedRoleSet = new Set(allowedRoles.map((role) => role.toLowerCase()));
-  const isAllowed = [...userRoles].some(
-    (role) =>
-      allowedRoleSet.has(role) ||
-      (role === 'risk' && allowedRoleSet.has('risk_manager')) ||
-      (role === 'risk_manager' && allowedRoleSet.has('risk'))
-  );
+  if (!isStaff) {
+    return <DiagnosticBlock reason={`Admin access denied for role: ${user.role}.`} />;
+  }
 
   if (!isAllowed) {
+    console.warn('[GUARD_TRACE] Staff role lacks this route permission', {
+      targetPath: location.pathname,
+      roles: [...normalizedRoles],
+      allowedRoles,
+    });
     return <AccessDenied requiredRoles={allowedRoles} />;
   }
 
@@ -81,16 +123,52 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
       <>
         <MfaStepUpModal
           isOpen
+          closeOnSuccess={false}
           onClose={() => {
             apiClient.setAdminMfaToken(null);
             navigate('/', { replace: true });
           }}
           onConfirm={async (totpCode) => {
-            const response = await apiClient.post<{
-              data: { admin_mfa_token: string };
-            }>('/api/v1/auth/admin-mfa/step-up', { totp_code: totpCode });
-            apiClient.setAdminMfaToken(response.data.admin_mfa_token);
-            setAdminMfaToken(response.data.admin_mfa_token);
+            try {
+              const response = await apiClient.post<{
+                data?: { admin_mfa_token?: string; stepUpToken?: string };
+                stepUpToken?: string;
+              }>('/api/v1/auth/admin-mfa/step-up', { totp_code: totpCode });
+              const stepUpToken = response.data?.stepUpToken ||
+                response.data?.admin_mfa_token ||
+                response.stepUpToken;
+              console.info('[MFA_TRACE] Step-Up Response:', {
+                status: 200,
+                tokenReceived: !!stepUpToken,
+                rawResponseBody: {
+                  ...response,
+                  data: response.data
+                    ? {
+                        ...response.data,
+                        admin_mfa_token: response.data.admin_mfa_token ? '[REDACTED]' : undefined,
+                        stepUpToken: response.data.stepUpToken ? '[REDACTED]' : undefined,
+                      }
+                    : undefined,
+                  stepUpToken: response.stepUpToken ? '[REDACTED]' : undefined,
+                },
+              });
+              if (!stepUpToken) {
+                throw new Error('Step-Up verification succeeded but returned no step-up token.');
+              }
+              apiClient.setAdminMfaToken(stepUpToken);
+              if (!apiClient.getAdminMfaToken()) {
+                throw new Error('Step-Up token was not accepted or has expired.');
+              }
+              setAdminMfaToken(stepUpToken);
+            } catch (requestError) {
+              const error = requestError as Error & { status?: number; code?: string };
+              console.error('[MFA_TRACE] Step-Up Request Failed:', {
+                status: error.status,
+                code: error.code,
+                reason: error.message,
+              });
+              throw requestError;
+            }
           }}
           title="Administrator verification"
           description="Enter your authenticator code to unlock the admin console for five minutes."
@@ -101,3 +179,24 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
 
   return <>{children}</>;
 };
+
+const DiagnosticBlock: React.FC<{ reason: string }> = ({ reason }) => (
+  <main className="min-h-screen bg-slate-950 p-6 text-slate-100">
+    <div
+      role="alert"
+      className="mx-auto mt-16 flex max-w-2xl items-start gap-3 rounded-lg border border-rose-500/40 bg-rose-500/10 p-5 text-rose-200"
+    >
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+      <div>
+        <h1 className="font-semibold">Admin route blocked</h1>
+        <p className="mt-1 text-sm">REASON: {reason}</p>
+        <Link
+          to="/dashboard"
+          className="mt-4 inline-block rounded bg-slate-800 px-3 py-2 text-sm text-slate-100"
+        >
+          Go to dashboard
+        </Link>
+      </div>
+    </div>
+  </main>
+);

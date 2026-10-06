@@ -27,6 +27,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Placeholder title="Dashboard" /> },
+      { path: 'dashboard', element: <Placeholder title="Dashboard" /> },
       { path: 'trading', element: <TradingPage /> },
       { path: 'trade', element: <TradingPage /> },
       { path: 'wallet', element: <WalletPage /> },

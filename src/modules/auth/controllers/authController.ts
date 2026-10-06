@@ -41,6 +41,22 @@ export class AuthController {
         req.ip || null,
         req.get('user-agent') || null
       );
+      const loginResult = result as {
+        user?: { id: string; email: string; role: string; roles?: string[]; mfa_enabled?: boolean };
+        mfa_setup_required?: boolean;
+        requires_mfa?: boolean;
+        access_token?: string;
+      };
+      logger.info('[AUTH_TRACE] Login response issued', {
+        userId: loginResult.user?.id,
+        email: loginResult.user?.email,
+        role: loginResult.user?.role,
+        roles: loginResult.user?.roles,
+        mfaEnabled: loginResult.user?.mfa_enabled,
+        mfaSetupRequired: loginResult.mfa_setup_required,
+        requiresMfa: loginResult.requires_mfa,
+        hasAccessToken: !!loginResult.access_token,
+      });
 
       const authResult = result as any;
       if (authResult.refresh_token) {
@@ -126,6 +142,12 @@ export class AuthController {
     const authReq = req as AuthenticatedRequest;
     try {
       const user = await this.authService.getMe(authReq.user.sub);
+      logger.info('[AUTH_TRACE] Session restore profile issued', {
+        userId: user.id,
+        role: user.role,
+        roles: user.roles,
+        mfaEnabled: user.mfa_enabled,
+      });
       res.status(200).json({ data: user, meta: { request_id: req.correlationId } });
     } catch (error) {
       res.status(404).json({ error: (error as Error).message });
@@ -209,10 +231,21 @@ export class AuthController {
         authReq.user.role,
         req.body.totp_code
       );
+      logger.info('[MFA_TRACE] Admin step-up verified', {
+        userId: authReq.user.sub,
+        role: authReq.user.role,
+        tokenIssued: true,
+      });
       res.status(200).json({ data: { admin_mfa_token: adminMfaToken, expires_in: 300 } });
     } catch (error) {
       const code = (error as Error).message;
       const status = code === 'FORBIDDEN_NOT_ADMIN' ? 403 : 401;
+      logger.warn('[MFA_TRACE] Admin step-up rejected', {
+        userId: authReq.user.sub,
+        role: authReq.user.role,
+        status,
+        reason: code,
+      });
       res.status(status).json({ error: code, code });
     }
   }

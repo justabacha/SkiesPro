@@ -13,6 +13,7 @@ export interface ApiError {
 }
 
 class ApiClient {
+  private readonly adminMfaStorageKey = 'x_admin_mfa_token';
   private accessToken: string | null = null;
   private adminMfaToken: string | null = null;
   private onUnauthorizedCallback: (() => void) | null = null;
@@ -33,8 +34,10 @@ class ApiClient {
     this.adminMfaToken = token;
     if (typeof window === 'undefined') return;
     if (token) {
-      window.sessionStorage.setItem('admin_mfa_token', token);
+      window.sessionStorage.setItem(this.adminMfaStorageKey, token);
+      window.sessionStorage.removeItem('admin_mfa_token');
     } else {
+      window.sessionStorage.removeItem(this.adminMfaStorageKey);
       window.sessionStorage.removeItem('admin_mfa_token');
     }
   }
@@ -42,7 +45,10 @@ class ApiClient {
   getAdminMfaToken(): string | null {
     const token =
       this.adminMfaToken ||
-      (typeof window !== 'undefined' ? window.sessionStorage.getItem('admin_mfa_token') : null);
+      (typeof window !== 'undefined'
+        ? window.sessionStorage.getItem(this.adminMfaStorageKey) ||
+          window.sessionStorage.getItem('admin_mfa_token')
+        : null);
     if (!token) return null;
     const claims = this.getTokenClaims(token);
     if (
@@ -141,7 +147,8 @@ class ApiClient {
       }
 
       // Special handling for 401 Unauthorized
-      if (response.status === 401 && this.onUnauthorizedCallback) {
+      const isAdminStepUpRequest = normalizedPath === '/api/v1/auth/admin-mfa/step-up';
+      if (response.status === 401 && this.onUnauthorizedCallback && !isAdminStepUpRequest) {
         this.onUnauthorizedCallback();
       }
 

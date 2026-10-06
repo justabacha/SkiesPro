@@ -36,6 +36,8 @@ export const LoginPage = () => {
         navigate('/verify-otp');
       } else if (nextStep === 'setup') {
         navigate('/admin-mfa-enrollment');
+      } else {
+        navigate('/dashboard', { replace: true });
       }
     } catch (err) {
       // Error is handled in context and displayed via state

@@ -182,6 +182,7 @@ export class AuthService {
         display_name: user.display_name,
         role: this.primaryRole(roles),
         roles,
+        mfa_enabled: user.mfa_enabled,
         kyc_status: user.kyc_status,
       },
     };
@@ -244,6 +245,7 @@ export class AuthService {
         display_name: user.display_name,
         role: this.primaryRole(roles),
         roles,
+        mfa_enabled: user.mfa_enabled,
         kyc_status: user.kyc_status,
       },
     };

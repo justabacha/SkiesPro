@@ -9,6 +9,7 @@ interface User {
   role: string;
   roles: string[];
   kycStatus: string;
+  mfaEnabled: boolean;
 }
 
 const ADMIN_ROLE_SET = new Set([
@@ -62,6 +63,7 @@ interface AuthResponse {
       role: string;
       roles?: string[];
       kyc_status: string;
+      mfa_enabled?: boolean;
     };
   };
 }
@@ -96,10 +98,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role,
       roles,
       kycStatus: userData.kyc_status,
+      mfaEnabled: userData.mfa_enabled === true,
     };
   };
 
   const setAuthData = useCallback((data: AuthResponse['data']) => {
+    console.info('[AUTH_TRACE] Session auth payload:', {
+      user_id: data.user?.id,
+      resolved_role: data.user?.role,
+      roles_array: data.user?.roles,
+      mfa_enabled: data.user?.mfa_enabled,
+      has_access_token: !!data.access_token,
+    });
     if (data.access_token) {
       apiClient.setAccessToken(data.access_token);
     }
@@ -151,6 +161,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await apiClient.post<AuthResponse>('/api/v1/auth/login', credentials);
       const { data } = response;
+      console.info('[AUTH_TRACE] Login Success Response:', {
+        user_id: data.user?.id,
+        email: data.user?.email,
+        resolved_role: data.user?.role,
+        roles_array: data.user?.roles,
+        mfa_enabled: data.user?.mfa_enabled,
+        mfa_setup_required: data.mfa_setup_required,
+        requires_mfa: data.requires_mfa,
+        has_access_token: !!data.access_token,
+        has_enrollment_token: !!data.mfa_enrollment_token,
+      });
 
       if (data.requires_mfa) {
         const mfaData = {
@@ -271,7 +292,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await apiClient.post<AuthResponse>('/api/v1/auth/refresh', {
         refresh_token: storedToken
       });
-      setAuthData(response.data);
+      apiClient.setAccessToken(response.data.access_token || null);
+      const profile = await apiClient.get<{
+        data: NonNullable<AuthResponse['data']['user']>;
+      }>('/api/v1/auth/me');
+      console.info('[AUTH_TRACE] Session Restore /auth/me Response:', {
+        user_id: profile.data.id,
+        email: profile.data.email,
+        resolved_role: profile.data.role,
+        roles_array: profile.data.roles,
+        mfa_enabled: profile.data.mfa_enabled,
+      });
+      setAuthData({ ...response.data, user: profile.data });
     } catch (err) {
       // If refresh fails, it just means no valid session exists
       apiClient.setAccessToken(null);
