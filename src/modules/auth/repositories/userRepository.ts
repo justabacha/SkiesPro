@@ -31,7 +31,10 @@ export class UserRepository extends BaseRepository {
 
   async findByEmail(email: string): Promise<UserRow | null> {
     const result = await this.query<UserRow>(
-      'SELECT * FROM app_auth.users WHERE email = $1 AND deleted_at IS NULL',
+      `SELECT * FROM app_auth.users
+       WHERE (LOWER(email) = LOWER($1) OR LOWER(REPLACE(email, '.', '')) = LOWER(REPLACE($1, '.', '')))
+         AND deleted_at IS NULL
+       LIMIT 1`,
       [email]
     );
     return result.rows[0] || null;

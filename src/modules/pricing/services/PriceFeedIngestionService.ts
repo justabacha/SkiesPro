@@ -69,20 +69,23 @@ export class PriceFeedIngestionService {
     this.heartbeatInterval = setInterval(() => {
       this.checkFeedHeartbeat();
     }, 1000);
+    this.heartbeatInterval.unref?.();
 
     // Periodically flush ticks buffer to DB
-    setInterval(() => {
+    const flushTicksTimer = setInterval(() => {
       this.flushTicks().catch((err) => {
         logger.error('Error flushing ticks', { error: err.message });
       });
     }, this.flushInterval);
+    flushTicksTimer.unref?.();
 
     // Periodically flush candles
-    setInterval(() => {
+    const flushCandlesTimer = setInterval(() => {
       this.ohlcService.flush().catch((err) => {
         logger.error('Error flushing candles', { error: err.message });
       });
     }, 10000);
+    flushCandlesTimer.unref?.();
   }
 
   stop() {

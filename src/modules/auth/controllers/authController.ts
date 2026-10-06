@@ -122,6 +122,16 @@ export class AuthController {
     }
   }
 
+  async getMe(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const user = await this.authService.getMe(authReq.user.sub);
+      res.status(200).json({ data: user, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  }
+
   async logout(_req: Request, res: Response): Promise<void> {
     // Implementation should revoke current session via tokenService
     res.clearCookie('refresh_token', {

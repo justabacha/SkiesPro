@@ -20,12 +20,13 @@ router.post('/mpesa/callback', (req: Request, res: Response) =>
 router.use(authenticate);
 
 router.post(
-  '/deposit/initiate',
+  ['/deposit/initiate', '/deposit/stkpush', '/mpesa/stkpush'],
   rateLimit('authenticated'),
   [
     body('amount').isNumeric().withMessage('Amount must be a number').isLength({ min: 1 }),
-    body('gateway_id').isInt().withMessage('Gateway ID must be an integer'),
+    body('gateway_id').optional().isInt().withMessage('Gateway ID must be an integer'),
     body('currency')
+      .optional()
       .isString()
       .isLength({ min: 3, max: 3 })
       .withMessage('Currency must be 3 characters'),

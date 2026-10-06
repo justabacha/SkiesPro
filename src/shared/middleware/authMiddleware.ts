@@ -9,6 +9,7 @@ export interface AuthenticatedRequest extends Request {
     role: string;
     permissions: string[];
     email?: string;
+    mfa_verified?: boolean;
   };
 }
 

@@ -8,6 +8,7 @@
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
 | 2026-07-24 | 1.0.0 | Initial Master Implementation Checklist. Derived from all 14 prerequisite documents: BRD v1.0, SRS v1.0, Domain Model v1.0, Software Architecture v1.1, Architecture Review v1.0, Database Design v1.0, API Design v1.0, UI/UX Design v1.0, Security Architecture v1.0, Infrastructure & DevOps v1.0, Implementation v1.0, Testing Strategy v1.0, Deployment & Operations Manual v1.0, Developer Handbook v1.0, Project Plan v1.0, and Technical Analysis Report v1.0. | Lead Architect / Antigravity |
+| 2026-10-05 | 1.1.0 | Ground-truth reconciliation by Document Auditor: re-computed task count (88 → **80** enumerated rows), marked Phase 5 (Trading Engine) & Phase 6 (Settlement) **Complete**, corrected Phase 10 to **87.5% (7/8)**, added the **WP-21 post-Phase-10 increment** (Demo Trade Surface), annotated Price-Feed/WebSocket/Demo/Chart items, and updated the Progress Dashboard (Overall **60.0% / 48 of 80**). | Document Auditor Agent |
 
 ---
 
@@ -186,27 +187,28 @@ Phase 4: Week 8-9 (shifted)
 | :--- | :--- | :--- |
 | **Total Phases** | 11 | IMP §3 |
 | **Total Modules** | 11 (Auth, User, Wallet, Payment, Pricing, Trading, Settlement, Notification, Referral, Admin, Frontend) | IMP §7 |
-| **Total Features** | 88 tasks across 11 phases | This document |
+| **Total Features** | 80 tasks across 11 phases (+ WP-21 demo post-Phase-10 increment) | This document |
 | **Estimated Duration** | 24-32 weeks (based on 6-8 person team) | PLAN |
-| **Current Status** | Not Started | N/A |
+| **Current Status** | In Progress — 60.0% (48/80 tasks complete) | This document §2.2 / §9.2 |
 
 ### 2.2 Current Status Dashboard
 
 | Phase | Status | Completion | Critical Path | Blockers |
 | :--- | :--- | :--- | :--- | :--- |
-| Phase 1: Foundation | ✅ Complete | 100% | ✅ Yes | None |
+| Phase 1: Foundation | ✅ Complete | 87.5% | ✅ Yes | 1.4 monitoring 🔄 (deferred to Phase 11) |
 | Phase 2: Auth & User | ✅ Complete | 100% | ✅ Yes | None |
 | Phase 3: Wallet & Payments | ✅ Complete | 100% | ✅ Yes | None |
 | Phase 4: Pricing & Market Data | ✅ Complete | 100% | ✅ Yes | None |
-| Phase 5: Trading Engine | ☐ Not Started | 0% | ✅ Yes | None |
-| Phase 6: Settlement & Workers | ☐ Not Started | 0% | ✅ Yes | None |
+| Phase 5: Trading Engine | ✅ Complete | 100% | ✅ Yes | None |
+| Phase 6: Settlement & Workers | ✅ Complete | 100% | ✅ Yes | None |
 | Phase 7: Notifications | ☐ Not Started | 0% | ⏸ No | None |
 | Phase 8: Referral System | ☐ Not Started | 0% | ⏸ No | None |
 | Phase 9: Admin Panel | ☐ Not Started | 0% | ⏸ No | None |
-| Phase 10: Frontend | 🔄 In Progress | 50% | ✅ Yes | None |
+| Phase 10: Frontend | 🔄 In Progress | 87.5% | ✅ Yes | None |
 | Phase 11: Testing & Launch | ☐ Not Started | 0% | ✅ Yes | None |
+| WP-21 (post-Phase-10) | 🔄 In Progress | ≈85% | ✅ Yes (D4) | Demo candle history, UI-DEMO tests open |
 
-**Overall Completion: 38.6%**
+**Overall Completion: 60.0%** (48 of 80 enumerated Phase 1–11 tasks; WP-21 treated as a post-Phase-10 increment)
 
 ### 2.3 Critical Path Diagram
 
@@ -392,12 +394,12 @@ These phases can run in parallel with critical path phases once their dependenci
 
 | # | Feature / Task | Module | Effort | Prerequisites | Dependencies | Documents | Acceptance Criteria | Deliverable | Validation | Status | Owner | Notes |
 |---|---------------|--------|--------|---------------|--------------|-----------|---------------------|-------------|------------|--------|-------|-------|
-| 4.1 | Price feed ingestion | Pricing | L | 1.1–1.8 | None | IMP §7.5, ADR-012, SAD §X | External feeds connected, data normalized | Ingestion service | Unit tests pass | ✅ | | |
-| 4.2 | Price validation | Pricing | M | 4.1 | 4.1 | IMP §7.5, ADR-012, DM §X | Invalid prices rejected, anomalies flagged | Validation service | Unit tests pass | ✅ | | |
-| 4.3 | Price storage | Pricing | M | 4.2 | 4.2 | IMP §7.5, DDS §X, ADR-012 | Prices stored with timestamps, indexed for queries | Price repository | DB tests pass | ✅ | | |
-| 4.4 | Price distribution | Pricing | M | 4.3 | 4.3 | IMP §7.5, ADS §X, SAD §X | Prices distributed to trading engine, cached | Distribution service | Integration tests pass | ✅ | | |
-| 4.5 | Historical price data | Pricing | M | 4.3 | 4.3 | IMP §7.5, DDS §X | Historical data queryable, aggregated | History API | Performance tests pass | ✅ | | |
-| 4.6 | WebSocket price streaming | Realtime | L | 4.4 | 4.4 | IMP §7.5, ADS §X, IDS §X | Realtime prices stream to clients, latency < 100ms | WebSocket server | Load tests pass | ✅ | | |
+| 4.1 | Price feed ingestion | Pricing | L | 1.1–1.8 | None | IMP §7.5, ADR-012, SAD §X | External feeds connected, data normalized | Ingestion service | Unit tests pass | ✅ | | | Kraken/Coinbase adapters + isolated `DemoPriceFeedService` (dedicated MockPriceAdapter, 24/7) |
+| 4.2 | Price validation | Pricing | M | 4.1 | 4.1 | IMP §7.5, ADR-012, DM §X | Invalid prices rejected, anomalies flagged | Validation service | Unit tests pass | ✅ | | | 5% deviation + stale-price checks shared by live & demo feeds |
+| 4.3 | Price storage | Pricing | M | 4.2 | 4.2 | IMP §7.5, DDS §X, ADR-012 | Prices stored with timestamps, indexed for queries | Price repository | DB tests pass | ✅ | | | `price_ticks.source ∈ {'live','demo'}` (mig 033); getLatest/getPriceAt require explicit source |
+| 4.4 | Price distribution | Pricing | M | 4.3 | 4.3 | IMP §7.5, ADS §X, SAD §X | Prices distributed to trading engine, cached | Distribution service | Integration tests pass | ✅ | | | `demo:{symbol}` cache + `demo:ticks:*` Pub/Sub isolated from live |
+| 4.5 | Historical price data | Pricing | M | 4.3 | 4.3 | IMP §7.5, DDS §X | Historical data queryable, aggregated | History API | Performance tests pass | ✅ | | | Candle query fixed (newest-N, ASC) + aggregation for granularity > 60s; chart tick query |
+| 4.6 | WebSocket price streaming | Realtime | L | 4.4 | 4.4 | IMP §7.5, ADS §X, IDS §X | Realtime prices stream to clients, latency < 100ms | WebSocket server | Load tests pass | ✅ | | | Live `price.{symbol}` + isolated `demo.price.{symbol}`; `demo.price` gated on `DEMO_ENABLED` |
 
 **Phase 4 Exit Criteria:**
 - ✅ Price feed operational and validated
@@ -415,12 +417,12 @@ These phases can run in parallel with critical path phases once their dependenci
 
 | # | Feature / Task | Module | Effort | Prerequisites | Dependencies | Documents | Acceptance Criteria | Deliverable | Validation | Status | Owner | Notes |
 |---|---------------|--------|--------|---------------|--------------|-----------|---------------------|-------------|------------|--------|-------|-------|
-| 5.1 | Trade placement API | Trading | L | 3.3, 4.4 | 3.3, 4.4 | IMP §7.6, ADS §X, DM §X | Trade placed, validated, stored, queued | Trading API | Unit + API tests | ☐ | | |
-| 5.2 | Stake validation | Trading | M | 5.1 | 5.1 | IMP §7.6, DM §X, DHCS §5.4 | Stake within limits, wallet has funds, locked correctly | Validation service | Unit tests pass | ☐ | | |
-| 5.3 | Trade expiry handling | Trading | M | 5.1 | 5.1 | IMP §7.6, DM §X, DDS §X | Expiry calculated, triggered, settlement queued | Expiry scheduler | Integration tests pass | ☐ | | |
-| 5.4 | Trade history | Trading | S | 5.1 | 5.1 | IMP §7.6, ADS §X, UDS §X | History paginated, filtered, accurate | History API, UI | API tests pass | ☐ | | |
-| 5.5 | Open positions view | Trading | S | 5.1 | 5.1 | IMP §7.6, ADS §X, UDS §X | Open trades visible, realtime updates | Open positions API | API tests pass | ☐ | | |
-| 5.6 | Trading limits | Trading | M | 5.2 | 5.2 | IMP §7.6, SRS §X, DM §X | Daily/max limits enforced per user | Limits service | Unit tests pass | ☐ | | |
+| 5.1 | Trade placement API | Trading | L | 3.3, 4.4 | 3.3, 4.4 | IMP §7.6, ADS §X, DM §X | Trade placed, validated, stored, queued | Trading API | Unit + API tests | ✅ | | | WP-10 (real) + WP-21 `DemoTradingService` (`/api/v1/demo/trading/contracts`) |
+| 5.2 | Stake validation | Trading | M | 5.1 | 5.1 | IMP §7.6, DM §X, DHCS §5.4 | Stake within limits, wallet has funds, locked correctly | Validation service | Unit tests pass | ✅ | | | `StakeValidator` shared real/demo; 100–50,000 KES; duration 60/300/900s |
+| 5.3 | Trade expiry handling | Trading | M | 5.1 | 5.1 | IMP §7.6, DM §X, DDS §X | Expiry calculated, triggered, settlement queued | Expiry scheduler | Integration tests pass | ✅ | | | `trade.expiry` queue; demo contracts carry `account_type='demo'` |
+| 5.4 | Trade history | Trading | S | 5.1 | 5.1 | IMP §7.6, ADS §X, UDS §X | History paginated, filtered, accurate | History API, UI | API tests pass | ✅ | | | Account-type scoped (`listByUser(userId, accountType)`) |
+| 5.5 | Open positions view | Trading | S | 5.1 | 5.1 | IMP §7.6, ADS §X, UDS §X | Open trades visible, realtime updates | Open positions API | API tests pass | ✅ | | | `getActiveByUser(userId, accountType)`; demo isolated |
+| 5.6 | Trading limits | Trading | M | 5.2 | 5.2 | IMP §7.6, SRS §X, DM §X | Daily/max limits enforced per user | Limits service | Unit tests pass | ✅ | | | Per-asset max exposure; demo exposure is user-scoped (`'demo'`, userId) |
 
 **Phase 5 Exit Criteria:**
 - ✅ Trade placement end-to-end
@@ -438,12 +440,12 @@ These phases can run in parallel with critical path phases once their dependenci
 
 | # | Feature / Task | Module | Effort | Prerequisites | Dependencies | Documents | Acceptance Criteria | Deliverable | Validation | Status | Owner | Notes |
 |---|---------------|--------|--------|---------------|--------------|-----------|---------------------|-------------|------------|--------|-------|-------|
-| 6.1 | Settlement worker | Settlement | XL | 5.3, 1.6 | 5.3, 1.6 | IMP §7.6, ADR-010, DHCS §16 | Worker processes queue, handles crashes, retries | Settlement worker | Worker tests pass | ☐ | | |
-| 6.2 | Settlement CAS logic | Settlement | L | 6.1 | 6.1 | IMP §7.6, ADR-010, DDS §X | Compare-and-swap prevents double payout | CAS implementation | Concurrency tests pass | ☐ | | |
-| 6.3 | Payout calculation | Settlement | M | 6.2 | 6.2 | IMP §7.6, DM §X, DDS §X | Payout correct per contract terms | Payout service | Unit tests pass | ☐ | | |
-| 6.4 | Idempotency handling | Settlement | M | 6.1 | 6.1 | IMP §7.6, ADR-010, DHCS §15 | Duplicate settlements prevented, keys managed | Idempotency layer | Duplicate injection tests | ☐ | | |
-| 6.5 | Settlement audit trail | Settlement | S | 6.3 | 6.3 | IMP §7.6, DDS §X, SATM §X | Every settlement logged, traceable | Audit logging | Audit log verification | ☐ | | |
-| 6.6 | Outbox pattern | Infrastructure | L | 1.6 | 1.6 | IMP §7.6, ADR-011, SAD §X | Events published reliably, failures retried | Outbox implementation | Integration tests pass | ☐ | | |
+| 6.1 | Settlement worker | Settlement | XL | 5.3, 1.6 | 5.3, 1.6 | IMP §7.6, ADR-010, DHCS §16 | Worker processes queue, handles crashes, retries | Settlement worker | Worker tests pass | ✅ | | | WP-11; `SettlementWorker` handles real AND demo contracts (account-type branch) |
+| 6.2 | Settlement CAS logic | Settlement | L | 6.1 | 6.1 | IMP §7.6, ADR-010, DDS §X | Compare-and-swap prevents double payout | CAS implementation | Concurrency tests pass | ✅ | | | `updateStatusCAS` active→settling; account-type included in predicate |
+| 6.3 | Payout calculation | Settlement | M | 6.2 | 6.2 | IMP §7.6, DM §X, DDS §X | Payout correct per contract terms | Payout service | Unit tests pass | ✅ | | | `PayoutService` reused verbatim by demo (60% + pip-tolerance draw) |
+| 6.4 | Idempotency handling | Settlement | M | 6.1 | 6.1 | IMP §7.6, ADR-010, DHCS §15 | Duplicate settlements prevented, keys managed | Idempotency layer | Duplicate injection tests | ✅ | | | Message-level idempotency + demo idempotency table (`demo_trade_idempotency`) |
+| 6.5 | Settlement audit trail | Settlement | S | 6.3 | 6.3 | IMP §7.6, DDS §X, SATM §X | Every settlement logged, traceable | Audit logging | Audit log verification | ✅ | | | `contract_events` audit; demo entries tagged `accountType: 'demo'` |
+| 6.6 | Outbox pattern | Infrastructure | L | 1.6 | 1.6 | IMP §7.6, ADR-011, SAD §X | Events published reliably, failures retried | Outbox implementation | Integration tests pass | ✅ | | | `TradeSettled`/`TradeOpened` outbox events include `accountType` |
 
 **Phase 6 Exit Criteria:**
 - ✅ Settlement worker processes trades correctly
@@ -532,12 +534,12 @@ These phases can run in parallel with critical path phases once their dependenci
 |---|---------------|--------|--------|---------------|--------------|-----------|---------------------|-------------|------------|--------|-------|-------|
 | 10.1 | Design system | Frontend | L | 1.1 | None | UDS §X, DHCS §5 | Components reusable, themed, documented | Component library | Visual regression tests | ✅ | | |
 | 10.2 | Authentication screens | Frontend | M | 2.1–2.6 | 2.1–2.6 | UDS §X, IMP §7.1 | Login, register, MFA, reset screens functional | Auth screens | E2E tests pass | ✅ | | |
-| 10.3 | Trading interface | Frontend | XL | 5.1–5.6 | 5.1–5.6 | UDS §X, IMP §7.6 | Trade placement, chart, history, open positions | Trading UI | E2E tests pass | ☐ | | |
-| 10.4 | Wallet screens | Frontend | M | 3.7, 3.8 | 3.7, 3.8 | UDS §X, IMP §7.3 | Balance, history, deposit, withdrawal screens | Wallet UI | E2E tests pass | ✅ | | |
-| 10.5 | Deposit/withdrawal UI | Frontend | M | 3.4, 3.5 | 3.4, 3.5 | UDS §X, IMP §7.4 | Deposit form, withdrawal request, status tracking | Payment UI | E2E tests pass | ✅ | | |
-| 10.6 | Admin dashboard UI | Frontend | XL | 9.1–9.8 | 9.1–9.8 | UDS §X, IMP §7.9 | All admin features accessible, responsive | Admin UI | E2E tests pass | ☐ | | |
-| 10.7 | Responsive design | Frontend | M | 10.1 | 10.1 | UDS §X, DHCS §5 | Mobile, tablet, desktop layouts correct | Responsive CSS | Visual tests | ☐ | | |
-| 10.8 | Dark mode | Frontend | S | 10.1 | 10.1 | UDS §X | Theme toggle, persistent preference | Theme system | Visual tests | ☐ | | |
+| 10.3 | Trading interface | Frontend | XL | 5.1–5.6 | 5.1–5.6 | UDS §X, IMP §7.6 | Trade placement, chart, history, open positions | Trading UI | E2E tests pass | ✅ | | | WP-18 + WP-21 demo toggle; `lightweight-charts` v5 (line/candle, timeframes, pip-delta pill) |
+| 10.4 | Wallet screens | Frontend | M | 3.7, 3.8 | 3.7, 3.8 | UDS §X, IMP §7.3 | Balance, history, deposit, withdrawal screens | Wallet UI | E2E tests pass | ✅ | | | WP-19; demo balance chip in `Navbar`/`AccountSwitcher` |
+| 10.5 | Deposit/withdrawal UI | Frontend | M | 3.4, 3.5 | 3.4, 3.5 | UDS §X, IMP §7.4 | Deposit form, withdrawal request, status tracking | Payment UI | E2E tests pass | ✅ | | | WP-19; real-only — locked out in demo mode |
+| 10.6 | Admin dashboard UI | Frontend | XL | 9.1–9.8 | 9.1–9.8 | UDS §X, IMP §7.9 | All admin features accessible, responsive | Admin UI | E2E tests pass | ☐ | | | Blocked by WP-14/WP-20 final spec |
+| 10.7 | Responsive design | Frontend | M | 10.1 | 10.1 | UDS §X, DHCS §5 | Mobile, tablet, desktop layouts correct | Responsive CSS | Visual tests | ✅ | | | Chart + trading grid responsive at 375/768/1440; `MobileNav` |
+| 10.8 | Dark mode | Frontend | S | 10.1 | 10.1 | UDS §X | Theme toggle, persistent preference | Theme system | Visual tests | ✅ | | | `ThemeContext` + dark-mode flash prevention |
 
 **Phase 10 Exit Criteria:**
 - ✅ All user-facing screens functional
@@ -692,11 +694,13 @@ These phases can run in parallel with critical path phases once their dependenci
 | Component | Type | Reference | Deliverable | Validation |
 |-----------|------|-----------|-------------|------------|
 | PriceController | Controller | ADS §13 | GET /api/v1/pricing/current, GET /api/v1/pricing/history | API tests pass |
-| PriceIngestionService | Service | IMP §7.5, ADR-012 | External feed connection, data normalization | Unit tests pass |
-| PriceValidationService | Service | IMP §7.5, ADR-012 | Price validation, anomaly detection | Unit tests pass |
+| PriceIngestionService | Service | IMP §7.5, ADR-012 | External feed connection (Kraken/Coinbase), data normalization | Unit tests pass |
+| DemoPriceFeedService | Service | WP-21 §4.1/§4.5 | Dedicated `MockPriceAdapter` loop (24/7), `demo:{symbol}` cache + `demo:ticks:*` Pub/Sub, `source='demo'` persistence, 30-day retention | Demo unit + integration tests pass |
+| PriceValidationService | Service | IMP §7.5, ADR-012 | Price validation (5% deviation), anomaly detection | Unit tests pass |
 | PriceRepository | Repository | DDS §5.7 | Price data CRUD operations | Integration tests pass |
+| TickRepository | Repository | DDS §5.7, WP-21 §4.5 | `price_ticks` CRUD with mandatory `source ∈ {'live','demo'}` on save/getLatest/getPriceAt | Unit + isolation tests pass |
 | PriceDistributionService | Service | IMP §7.5 | Price distribution to trading engine, caching | Integration tests pass |
-| WebSocketServer | Infrastructure | IMP §7.5, IDS §X | Realtime price streaming | Load tests pass |
+| WebSocketServer | Infrastructure | IMP §7.5, IDS §X, WP-21 §4.1 | Realtime price streaming; live `price.{symbol}` + isolated `demo.price.{symbol}` channels | Load tests pass |
 | PriceUpdatedEvent | Event | SAD §5 | Price update event | Event tests pass |
 | Pricing tests | Tests | TSQS §4.7 | Unit, integration, performance tests | All tests pass |
 | Pricing README | Documentation | DHCS §11 | Module documentation | Review approved |
@@ -860,6 +864,17 @@ These phases can run in parallel with critical path phases once their dependenci
 | 10.6 Admin dashboard UI | BRD §X | SRS §X | ADS §16 | - | UDS §8 | SATM §6 | TSQS §12 | - |
 | 10.7 Responsive design | BRD §X | SRS §X | - | - | UDS §2 | - | TSQS §12 | - |
 | 10.8 Dark mode | BRD §X | SRS §X | - | - | UDS §2 | - | TSQS §12 | - |
+| **WP-21: Demo Trade Surface (post-Phase-10)** | | | | | | | | |
+| WP-21.1 Demo isolation migration (033/034) | D4=YES | SRS §X | - | DDS §5.9/5.8/5.7 | - | SATM §7 | TSQS §4.5 | DOM §5 |
+| WP-21.2 Demo price feed (isolated mock) | D4=YES | SRS §X | ADS §13 | DDS §5.7 | - | SATM §7 | TSQS §4.7 | - |
+| WP-21.3 Demo wallet & reset quota | D4=YES | SRS §X | ADS §10 | DDS §5.9 | UDS §6 | SATM §7 | TSQS §4.3 | - |
+| WP-21.4 Demo REST namespace `/api/v1/demo/*` | D4=YES | SRS §X | ADS §12 | DDS §5.8/5.16 | - | SATM §7 | TSQS §4.5 | - |
+| WP-21.5 DemoTradingService | D4=YES | SRS §X | ADS §12 | DDS §5.8 | - | SATM §7 | TSQS §4.5 | - |
+| WP-21.6 Settlement mode branch | D4=YES | SRS §X | - | DDS §5.8/5.7 | - | SATM §7 | TSQS §4.6 | - |
+| WP-21.7 AccountModeContext + switcher | D4=YES | SRS §X | - | - | UDS §7 | SATM §6 | TSQS §12 | - |
+| WP-21.8 Demo banner/badge (chart + order panel) | D4=YES | SRS §X | - | - | UDS §7 | - | TSQS §12 | - |
+| WP-21.9 Mode-aware hooks + WS teardown | D4=YES | SRS §X | ADS §17 | - | UDS §7 | SATM §6 | TSQS §12 | - |
+| WP-21.10 Demo tests (unit/integration/security) | D4=YES | SRS §X | - | - | - | SATM §X | TSQS §4.5/4.6/4.7 | - |
 | **Phase 11: Testing & Launch** | | | | | | | | |
 | 11.1 Unit test suite | - | SRS §X | - | - | - | - | TSQS §4 | - |
 | 11.2 Integration test suite | - | SRS §X | - | - | - | - | TSQS §5 | - |
@@ -1004,21 +1019,22 @@ Critical Path Status =
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| **Overall Completion** | 38.6% | 100% | ☐ |
-| **Phase 1 Completion** | 100% | 100% | ✅ |
+| **Overall Completion** | 60.0% (48/80) | 100% | 🔄 |
+| **Phase 1 Completion** | 87.5% | 100% | 🔄 |
 | **Phase 2 Completion** | 100% | 100% | ✅ |
 | **Phase 3 Completion** | 100% | 100% | ✅ |
 | **Phase 4 Completion** | 100% | 100% | ✅ |
-| **Phase 5 Completion** | 0% | 100% | ☐ |
-| **Phase 6 Completion** | 0% | 100% | ☐ |
+| **Phase 5 Completion** | 100% | 100% | ✅ |
+| **Phase 6 Completion** | 100% | 100% | ✅ |
 | **Phase 7 Completion** | 0% | 100% | ☐ |
 | **Phase 8 Completion** | 0% | 100% | ☐ |
 | **Phase 9 Completion** | 0% | 100% | ☐ |
-| **Phase 10 Completion** | 50% | 100% | 🔄 |
+| **Phase 10 Completion** | 87.5% (7/8) | 100% | 🔄 |
 | **Phase 11 Completion** | 0% | 100% | ☐ |
+| **WP-21 Demo (post-Phase-10)** | ≈85% (backend + FE; UI-DEMO tests + demo candles open) | 100% | 🔄 |
 | **Critical Path Status** | Green | Green | ✅ |
 | **Estimated Timeline** | 24-32 weeks | 24-32 weeks | ☐ |
-| **Actual Timeline** | TBD | 24-32 weeks | ☐ |
+| **Actual Timeline** | In progress | 24-32 weeks | ☐ |
 
 ### 9.3 Burndown Chart Description
 
@@ -1061,7 +1077,9 @@ Estimated Weeks Remaining = Remaining Tasks / Velocity
 | Task | Cannot Start Until |
 |------|-------------------|
 | **Settlement Worker** | Wallet complete (Phase 3), Trading complete (Phase 5), Price feed complete (Phase 4), Queue operational (Phase 1) |
-| **Admin Dashboard** | Auth complete (Phase 2), APIs complete (Phase 2-6) |
+| **Admin Dashboard** | Auth complete (Phase 2), APIs complete (Phase 2-6) → **WP-14/WP-20 ready to execute (all prerequisites ✅)** |
+| **Withdrawal approval (manual)** | Admin Dashboard (WP-14/WP-20) complete — deferred by WP-07 §3.2, WP-19 §3.2 |
+| **Demo Trade Surface close-out** | Demo candle history (`pricing.candles` source column + demo OHLC) and `UI-DEMO-001..010` tests; then owner sign-off |
 | **Withdrawal flow** | Wallet locking complete (Phase 3, Task 3.3) |
 | **Trading Engine** | Wallet complete (Phase 3), Price feed complete (Phase 4) |
 | **Production deployment** | All tests pass (Phase 11), Staging validated (Phase 11, Task 11.9) |

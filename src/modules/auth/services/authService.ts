@@ -138,7 +138,8 @@ export class AuthService {
       roles[0] || 'trader',
       permissions,
       ip,
-      userAgent
+      userAgent,
+      !user.mfa_enabled
     );
 
     return {
@@ -150,6 +151,26 @@ export class AuthService {
         role: roles[0] || 'trader',
         kyc_status: user.kyc_status,
       },
+    };
+  }
+
+  async getMe(userId: string) {
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const roles = await this.userRepo.getRoles(userId);
+    return {
+      id: user.id,
+      email: user.email,
+      display_name: user.display_name,
+      phone: user.phone,
+      status: user.status,
+      kyc_status: user.kyc_status,
+      mfa_enabled: user.mfa_enabled,
+      role: roles[0] || 'trader',
+      roles,
+      created_at: user.created_at,
     };
   }
 
@@ -178,7 +199,8 @@ export class AuthService {
       roles[0] || 'trader',
       permissions,
       ip,
-      userAgent
+      userAgent,
+      true
     );
 
     return {

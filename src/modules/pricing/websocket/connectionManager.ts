@@ -237,6 +237,7 @@ export class ConnectionManager {
         this.removeConnection(connection.id);
       }
     }, this.PING_INTERVAL);
+    connection.pingInterval.unref?.();
   }
 
   private setupSocketHandlers(connection: ConnectionInfo): void {
@@ -311,6 +312,7 @@ export class ConnectionManager {
         });
       }
     }, 60000);
+    this.cleanupInterval.unref?.();
   }
 
   getStats(): {

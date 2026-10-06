@@ -349,9 +349,9 @@ describe('Demo wallet isolation integration', () => {
       `INSERT INTO pricing.price_ticks
          (symbol, tick_time, bid_price, ask_price, mid_price, volume, source)
        VALUES
-         ('EUR/USD', $1, '1.10000', '1.10010', '1.10005', '0', 'demo'),
-         ('EUR/USD', $1, '1.10000', '1.10010', '1.10005', '0', 'live'),
-         ('EUR/USD', $2, '1.10000', '1.10010', '1.10005', '0', 'demo')
+         ('BTC/USD', $1, '50000.00', '50010.00', '50005.00', '0', 'demo'),
+         ('BTC/USD', $1, '50000.00', '50010.00', '50005.00', '0', 'live'),
+         ('BTC/USD', $2, '50000.00', '50010.00', '50005.00', '0', 'demo')
        RETURNING id, source`,
       [oldTickTime, recentTickTime]
     );

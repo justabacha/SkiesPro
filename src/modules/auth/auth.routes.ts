@@ -12,7 +12,7 @@ router.post(
   '/register',
   rateLimit('unauthenticated'),
   [
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
     body('password')
       .isLength({ min: 8 })
       .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/),
@@ -34,7 +34,7 @@ router.get(
 router.post(
   '/login',
   rateLimit('login'),
-  [body('email').isEmail().normalizeEmail(), body('password').notEmpty()],
+  [body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }), body('password').notEmpty()],
   (req: Request, res: Response) => controller.login(req, res)
 );
 
@@ -55,6 +55,9 @@ router.post(
   (req: Request, res: Response) => controller.refresh(req, res)
 );
 
+// Auth Session Check
+router.get('/me', authenticate, (req: Request, res: Response) => controller.getMe(req, res));
+
 // Logout
 router.post('/logout', authenticate, (req: Request, res: Response) => controller.logout(req, res));
 
@@ -62,7 +65,7 @@ router.post('/logout', authenticate, (req: Request, res: Response) => controller
 router.post(
   '/forgot-password',
   rateLimit('passwordReset'),
-  [body('email').isEmail().normalizeEmail()],
+  [body('email').isEmail().normalizeEmail({ gmail_remove_dots: false })],
   (req: Request, res: Response) => controller.forgotPassword(req, res)
 );
 

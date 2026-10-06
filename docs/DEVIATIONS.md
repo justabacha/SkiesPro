@@ -63,6 +63,7 @@ The following deviations from `docs/06_DATABASE_DESIGN_SPECIFICATION.md` have be
 | `trading.contract_events` | `details` | JSONB | NONE - Fixed in migration 022 | - |
 | `pricing.candles` | `tick_count` | INTEGER | LOW - Charting metadata | Add in WP-06 if needed |
 | `reporting.daily_revenue_summary` | `trade_count` | BIGINT | LOW - Reporting metric | Already fixed in migration 019 |
+| `pricing.candles` | `source` | `VARCHAR(10)` with CHECK ('live','demo') | MEDIUM - Demo candle isolation; candles cannot yet be mode-separated because the column does not exist | Add in WP-21 close-out (source column + demo OHLC feed) |
 
 ---
 

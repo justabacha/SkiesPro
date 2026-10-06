@@ -40,12 +40,15 @@ export class DemoPriceFeedService {
     this.flushTimer = setInterval(() => {
       void this.flushTicks();
     }, 1000);
+    this.flushTimer.unref?.();
+
     this.retentionTimer = setInterval(
       () => {
         void this.pruneExpiredTicks();
       },
       60 * 60 * 1000
     );
+    this.retentionTimer.unref?.();
   }
 
   async stop(): Promise<void> {

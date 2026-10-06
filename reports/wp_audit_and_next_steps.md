@@ -1,9 +1,22 @@
 # SkiesPro — Work Package Audit & Next Steps
 
-**Date:** 2026-10-04
-**Branch:** main @ 1864ad4
-**Scope:** Full audit of `work-packages/*`, cross-checked against `reports/*` execution
-reports and the actual `src/` / `frontend/src/` implementations.
+> ⚠️ **SUPERSEDED (2026-10-05):** This report's §2 claim that the Demo Trade Surface is
+> "0% (unassigned) / NOT OWNED BY ANY WORK PACKAGE" is **stale**. WP-21 was created
+> (2026-10-04) and implemented (subsequent commits). The current state is documented in
+> `reports/WP-21_EXECUTION_REPORT.md`, and `docs/15_MASTER_IMPLEMENTATION_CHECKLIST.md`
+> has been reconciled to 60.0% overall. Sections 1–4 below are retained as historical
+> evidence of the audit that produced WP-21. The live recommendation is in
+> `reports/WP-21_EXECUTION_REPORT.md` §6 → **WP-14/WP-20 Admin Dashboard**.
+
+---
+
+## 0. Current State (reconciliated 2026-10-05, main @ 1ce9648)
+
+| WP ID | Title | Status | Key evidence |
+|-------|-------|--------|--------------|
+| WP-21 | Demo Trade Surface | 🔄 ~85% Implemented — PENDING CLOSE-OUT | `migrations/033+034`, `src/modules/demo/**`, `src/modules/pricing/services/DemoPriceFeedService.ts`, `src/modules/trading/services/demoTradingService.ts`, `SettlementWorker` account-type branch, FE `AccountModeContext`/`AccountSwitcher`/`DemoModeBanner`; backend demo tests PASS. Open: demo candle history, `UI-DEMO-001..010`, owner sign-off. |
+
+**Overall MIC completion: 60.0% (48/80).** Phases 5 & 6 now marked complete; Phase 10 = 87.5%; WP-21 tracked as post-Phase-10 increment.
 
 ---
 

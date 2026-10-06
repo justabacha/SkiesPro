@@ -32,6 +32,44 @@ export class WalletController {
     }
   }
 
+  async getAllWallets(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).user.sub;
+      const realWallet = await this.walletService.getBalance(userId, 'real').catch(() => null);
+      const demoWallet = await this.walletService.getBalance(userId, 'demo').catch(() => null);
+
+      res.status(200).json({
+        data: {
+          real: realWallet
+            ? {
+                id: realWallet.id,
+                balance: realWallet.balance,
+                locked_balance: realWallet.locked_balance,
+                available_balance: realWallet.available_balance,
+                currency: realWallet.currency,
+                account_type: 'real',
+              }
+            : null,
+          demo: demoWallet
+            ? {
+                id: demoWallet.id,
+                balance: demoWallet.balance,
+                locked_balance: demoWallet.locked_balance,
+                available_balance: demoWallet.available_balance,
+                currency: demoWallet.currency,
+                account_type: 'demo',
+              }
+            : null,
+          wallets: [realWallet, demoWallet].filter(Boolean),
+        },
+        meta: { request_id: req.correlationId },
+      });
+    } catch (error) {
+      logger.error('Failed to get all wallets', { error: (error as Error).message });
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
   async getLedger(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).user.sub;

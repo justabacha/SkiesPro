@@ -14,6 +14,9 @@ export class PaymentController {
   }
 
   async initiateDeposit(req: Request, res: Response): Promise<void> {
+    req.body.gateway_id = req.body.gateway_id || 1;
+    req.body.currency = req.body.currency || 'KES';
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ errors: errors.array() });

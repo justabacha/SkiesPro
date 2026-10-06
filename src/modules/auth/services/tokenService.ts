@@ -28,7 +28,8 @@ export class TokenService {
   generateAccessToken(
     userId: string,
     role: string,
-    permissions: string[]
+    permissions: string[],
+    mfaVerified: boolean = false
   ): { token: string; jti: string } {
     const jti = uuidv4();
     const token = jwt.sign(
@@ -37,6 +38,7 @@ export class TokenService {
         role,
         permissions,
         jti,
+        mfa_verified: mfaVerified,
       },
       this.privateKey,
       {
@@ -58,9 +60,15 @@ export class TokenService {
     role: string,
     permissions: string[],
     ip: string | null,
-    userAgent: string | null
+    userAgent: string | null,
+    mfaVerified: boolean = false
   ) {
-    const { token: accessToken, jti } = this.generateAccessToken(userId, role, permissions);
+    const { token: accessToken, jti } = this.generateAccessToken(
+      userId,
+      role,
+      permissions,
+      mfaVerified
+    );
     const { token: refreshToken, hash: refreshTokenHash } = this.generateRefreshToken();
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
