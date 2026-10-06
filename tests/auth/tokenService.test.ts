@@ -30,6 +30,32 @@ describe('TokenService', () => {
       expect(result.sub).toBe('user-id');
     });
 
+    describe('administrator MFA tokens', () => {
+      it('creates short-lived, purpose-restricted enrollment and step-up tokens', () => {
+        const enrollmentToken = tokenService.generateAdminMfaEnrollmentToken(
+          'admin-id',
+          'admin@example.com',
+          'admin'
+        );
+        const stepUpToken = tokenService.generateAdminMfaToken('admin-id', 'admin');
+
+        expect(tokenService.validateAdminMfaEnrollmentToken(enrollmentToken)).toMatchObject({
+          sub: 'admin-id',
+          email: 'admin@example.com',
+          role: 'admin',
+          purpose: 'admin_mfa_enrollment',
+        });
+        expect(tokenService.validateAdminMfaToken(stepUpToken)).toMatchObject({
+          sub: 'admin-id',
+          role: 'admin',
+          purpose: 'admin_mfa_step_up',
+          mfa_verified: true,
+        });
+        expect(tokenService.validateAdminMfaToken(enrollmentToken)).toBeNull();
+        expect(tokenService.validateAdminMfaEnrollmentToken(stepUpToken)).toBeNull();
+      });
+    });
+
     it('should return null for invalid token', () => {
       const result = tokenService.validateAccessToken('token');
       expect(result).toBeNull();

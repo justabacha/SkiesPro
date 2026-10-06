@@ -1,8 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { body, query } from 'express-validator';
 import { AuthController } from './controllers/authController.js';
-import { authenticate } from '../../shared/middleware/authMiddleware.js';
+import {
+  authenticate,
+  authenticateAdminMfaEnrollment,
+} from '../../shared/middleware/authMiddleware.js';
 import { rateLimit } from '../../shared/middleware/rateLimit.js';
+import { validate } from '../../shared/middleware/validate.js';
+import { requireAdminRole } from '../admin/middleware/adminAuthMiddleware.js';
 
 const router = Router();
 const controller = new AuthController();
@@ -47,6 +52,29 @@ router.post(
   rateLimit('login'),
   [body('userId').isUUID(), body('totp_code').isLength({ min: 6, max: 6 }).isNumeric()],
   (req: Request, res: Response) => controller.verifyMfa(req, res)
+);
+router.post(
+  '/admin-mfa/setup',
+  rateLimit('login'),
+  authenticateAdminMfaEnrollment,
+  (req: Request, res: Response) => controller.setupAdminMfa(req, res)
+);
+router.post(
+  '/admin-mfa/verify-setup',
+  rateLimit('login'),
+  authenticateAdminMfaEnrollment,
+  [body('totp_code').isLength({ min: 6, max: 6 }).isNumeric()],
+  validate,
+  (req: Request, res: Response) => controller.confirmAdminMfaSetup(req, res)
+);
+router.post(
+  '/admin-mfa/step-up',
+  rateLimit('login'),
+  authenticate,
+  requireAdminRole(),
+  [body('totp_code').isLength({ min: 6, max: 6 }).isNumeric()],
+  validate,
+  (req: Request, res: Response) => controller.adminMfaStepUp(req, res)
 );
 
 // Token Refresh

@@ -91,6 +91,7 @@ describe('AuthService', () => {
         kyc_status: 'unverified',
       };
       userRepoMock.findByEmail.mockResolvedValue(user);
+      userRepoMock.getRoles.mockResolvedValue(['trader']);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
       tokenServiceMock.createSession.mockResolvedValue({
         access_token: 'at',
@@ -115,12 +116,35 @@ describe('AuthService', () => {
         locked_until: null,
       };
       userRepoMock.findByEmail.mockResolvedValue(user);
+      userRepoMock.getRoles.mockResolvedValue(['admin']);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await authService.login('test@example.com', 'password', '127.0.0.1', 'ua');
 
       expect(result).toHaveProperty('requires_mfa', true);
       expect(result).toHaveProperty('mfa_session_token');
+    });
+
+    it('requires TOTP enrollment before issuing a session to staff without MFA', async () => {
+      userRepoMock.findByEmail.mockResolvedValue({
+        id: 'staff-id',
+        email: 'staff@example.com',
+        password_hash: 'hashed',
+        mfa_enabled: false,
+        failed_login_attempts: 0,
+        locked_until: null,
+      });
+      userRepoMock.getRoles.mockResolvedValue(['support']);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      tokenServiceMock.generateAdminMfaEnrollmentToken.mockReturnValue('enrollment-token');
+
+      const result = await authService.login('staff@example.com', 'password', '127.0.0.1', 'ua');
+
+      expect(result).toEqual({
+        mfa_setup_required: true,
+        mfa_enrollment_token: 'enrollment-token',
+      });
+      expect(tokenServiceMock.createSession).not.toHaveBeenCalled();
     });
 
     it('should throw error on invalid credentials', async () => {

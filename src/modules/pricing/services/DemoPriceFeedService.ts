@@ -129,11 +129,7 @@ export class DemoPriceFeedService {
   }
 
   private async flushTicks(): Promise<void> {
-    if (
-      this.tickBuffer.length === 0 ||
-      this.flushInProgress ||
-      Date.now() < this.nextFlushAt
-    ) {
+    if (this.tickBuffer.length === 0 || this.flushInProgress || Date.now() < this.nextFlushAt) {
       return;
     }
     const batch = this.tickBuffer.splice(0, this.tickBuffer.length);

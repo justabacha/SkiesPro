@@ -9,6 +9,16 @@ import { OutboxRepository } from '../repositories/outboxRepository.js';
 import { RegisterDto } from '../dto/register.dto.js';
 import { logger } from '../../../shared/middleware/logger.js';
 
+const ADMIN_ROLES = new Set([
+  'super_admin',
+  'admin',
+  'compliance',
+  'risk',
+  'risk_manager',
+  'finance',
+  'support',
+]);
+
 export class AuthService {
   private userRepo: UserRepository;
   private tokenService: TokenService;
@@ -20,6 +30,10 @@ export class AuthService {
     this.tokenService = new TokenService();
     this.mfaService = new MfaService();
     this.mfaRepo = new MfaRepository();
+  }
+
+  private primaryRole(roles: string[]): string {
+    return roles.find((role) => ADMIN_ROLES.has(role.toLowerCase())) || roles[0] || 'trader';
   }
 
   async register(data: RegisterDto) {
@@ -119,6 +133,20 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
+    const roles = await this.userRepo.getRoles(user.id);
+    const adminRole = roles.find((role) => ADMIN_ROLES.has(role.toLowerCase()));
+
+    if (adminRole && !user.mfa_enabled) {
+      return {
+        mfa_setup_required: true,
+        mfa_enrollment_token: this.tokenService.generateAdminMfaEnrollmentToken(
+          user.id,
+          user.email,
+          adminRole
+        ),
+      };
+    }
+
     if (user.mfa_enabled) {
       const mfaSessionToken = uuidv4();
       // The MFA token is returned for verification; no server-side cache is used.
@@ -130,12 +158,11 @@ export class AuthService {
     }
 
     await this.userRepo.updateLastLogin(user.id);
-    const roles = await this.userRepo.getRoles(user.id);
     const permissions: string[] = []; // Placeholder
 
     const tokens = await this.tokenService.createSession(
       user.id,
-      roles[0] || 'trader',
+      this.primaryRole(roles),
       permissions,
       ip,
       userAgent,
@@ -148,7 +175,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         display_name: user.display_name,
-        role: roles[0] || 'trader',
+        role: this.primaryRole(roles),
         kyc_status: user.kyc_status,
       },
     };
@@ -168,7 +195,7 @@ export class AuthService {
       status: user.status,
       kyc_status: user.kyc_status,
       mfa_enabled: user.mfa_enabled,
-      role: roles[0] || 'trader',
+      role: this.primaryRole(roles),
       roles,
       created_at: user.created_at,
     };
@@ -196,7 +223,7 @@ export class AuthService {
 
     const tokens = await this.tokenService.createSession(
       user.id,
-      roles[0] || 'trader',
+      this.primaryRole(roles),
       permissions,
       ip,
       userAgent,
@@ -209,7 +236,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         display_name: user.display_name,
-        role: roles[0] || 'trader',
+        role: this.primaryRole(roles),
         kyc_status: user.kyc_status,
       },
     };
@@ -226,6 +253,18 @@ export class AuthService {
       qr_code_url: setup.qr_code_url,
       setup_completed: false,
     };
+  }
+
+  async setupAdminMfa(userId: string, email: string) {
+    const user = await this.userRepo.findById(userId);
+    const roles = await this.userRepo.getRoles(userId);
+    if (!user || !roles.some((role) => ADMIN_ROLES.has(role.toLowerCase()))) {
+      throw new Error('FORBIDDEN_NOT_ADMIN');
+    }
+    if (user.mfa_enabled) {
+      throw new Error('MFA already enabled for this administrator');
+    }
+    return this.setupMfa(userId, email);
   }
 
   async confirmMfaSetup(userId: string, code: string) {
@@ -245,6 +284,36 @@ export class AuthService {
     return { message: 'MFA enabled successfully', recovery_codes: mfa.backup_codes };
   }
 
+  async confirmAdminMfaSetup(userId: string, code: string) {
+    const user = await this.userRepo.findById(userId);
+    const roles = await this.userRepo.getRoles(userId);
+    if (!user || !roles.some((role) => ADMIN_ROLES.has(role.toLowerCase()))) {
+      throw new Error('FORBIDDEN_NOT_ADMIN');
+    }
+    if (user.mfa_enabled) {
+      throw new Error('MFA already enabled for this administrator');
+    }
+    return this.confirmMfaSetup(userId, code);
+  }
+
+  async verifyAdminStepUp(userId: string, role: string, code: string): Promise<string> {
+    if (!ADMIN_ROLES.has(role.toLowerCase())) {
+      throw new Error('FORBIDDEN_NOT_ADMIN');
+    }
+
+    const mfa = await this.mfaRepo.findByUserId(userId);
+    if (!mfa || !mfa.is_enabled) {
+      throw new Error('MFA_STEP_UP_REQUIRED');
+    }
+
+    const secret = this.mfaService.decrypt(mfa.secret_encrypted);
+    if (!(await this.mfaService.verifyToken(code, secret))) {
+      throw new Error('MFA_STEP_UP_REQUIRED');
+    }
+
+    return this.tokenService.generateAdminMfaToken(userId, role);
+  }
+
   async refresh(refreshToken: string, ip: string | null, userAgent: string | null) {
     const userId = await this.tokenService.refreshSession(refreshToken, ip, userAgent);
     if (!userId) {
@@ -259,7 +328,7 @@ export class AuthService {
 
     const tokens = await this.tokenService.createSession(
       userId,
-      roles[0] || 'trader',
+      this.primaryRole(roles),
       permissions,
       ip,
       userAgent
@@ -271,7 +340,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         display_name: user.display_name,
-        role: roles[0] || 'trader',
+        role: this.primaryRole(roles),
         kyc_status: user.kyc_status,
       },
     };

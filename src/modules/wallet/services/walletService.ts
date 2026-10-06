@@ -54,6 +54,42 @@ export class WalletService {
     return wallet;
   }
 
+  async getWalletBalance(userId: string): Promise<
+    | {
+        balance: string;
+        locked_balance: string;
+        available_balance: string;
+        pending_balance: string;
+        currency: string;
+        exists: true;
+      }
+    | {
+        available_balance: string;
+        pending_balance: string;
+        currency: string;
+        exists: false;
+      }
+  > {
+    const wallet = await this.walletRepo.findByUserId(userId, 'real');
+    if (!wallet) {
+      return {
+        available_balance: '0.00',
+        pending_balance: '0.00',
+        currency: 'KES',
+        exists: false,
+      };
+    }
+
+    return {
+      balance: wallet.balance,
+      locked_balance: wallet.locked_balance,
+      available_balance: wallet.available_balance,
+      pending_balance: '0.00',
+      currency: wallet.currency,
+      exists: true,
+    };
+  }
+
   private async withTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     if (this.externalClient) {
       return work(this.externalClient);

@@ -3,6 +3,7 @@ import { AppLayout } from '@/shared/components/layout/AppLayout';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { MfaPage } from '@/pages/auth/MfaPage';
+import { AdminMfaEnrollmentPage } from '@/pages/auth/AdminMfaEnrollmentPage';
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { EmailVerificationPage } from '@/pages/auth/EmailVerificationPage';
@@ -66,6 +67,10 @@ export const router = createBrowserRouter([
   {
     path: '/verify-otp',
     element: <MfaPage />,
+  },
+  {
+    path: '/admin-mfa-enrollment',
+    element: <AdminMfaEnrollmentPage />,
   },
   {
     path: '/forgot-password',

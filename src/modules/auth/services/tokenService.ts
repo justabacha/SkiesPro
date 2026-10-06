@@ -55,6 +55,60 @@ export class TokenService {
     return { token, hash };
   }
 
+  generateAdminMfaEnrollmentToken(userId: string, email: string, role: string): string {
+    return jwt.sign(
+      { sub: userId, email, role, purpose: 'admin_mfa_enrollment' },
+      this.privateKey,
+      { algorithm: 'RS256', expiresIn: '10m' }
+    );
+  }
+
+  validateAdminMfaEnrollmentToken(token: string): Record<string, unknown> | null {
+    try {
+      const payload = jwt.verify(token, this.publicKey, { algorithms: ['RS256'] });
+      if (
+        typeof payload === 'object' &&
+        payload !== null &&
+        payload.purpose === 'admin_mfa_enrollment' &&
+        typeof payload.sub === 'string' &&
+        typeof payload.email === 'string' &&
+        typeof payload.role === 'string'
+      ) {
+        return payload;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  generateAdminMfaToken(userId: string, role: string): string {
+    return jwt.sign(
+      { sub: userId, role, purpose: 'admin_mfa_step_up', mfa_verified: true },
+      this.privateKey,
+      { algorithm: 'RS256', expiresIn: '5m' }
+    );
+  }
+
+  validateAdminMfaToken(token: string): Record<string, unknown> | null {
+    try {
+      const payload = jwt.verify(token, this.publicKey, { algorithms: ['RS256'] });
+      if (
+        typeof payload === 'object' &&
+        payload !== null &&
+        payload.purpose === 'admin_mfa_step_up' &&
+        payload.mfa_verified === true &&
+        typeof payload.sub === 'string' &&
+        typeof payload.role === 'string'
+      ) {
+        return payload;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   async createSession(
     userId: string,
     role: string,

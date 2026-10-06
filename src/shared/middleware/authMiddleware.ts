@@ -43,6 +43,37 @@ export const authenticate = async (
   next();
 };
 
+export const authenticateAdminMfaEnrollment = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Admin MFA enrollment token missing or invalid' });
+    return;
+  }
+
+  const tokenService = new TokenService();
+  const payload = tokenService.validateAdminMfaEnrollmentToken(authHeader.slice(7));
+  const enrollmentRoles = [
+    'super_admin',
+    'admin',
+    'compliance',
+    'risk',
+    'risk_manager',
+    'finance',
+    'support',
+  ];
+  if (!payload || !enrollmentRoles.includes(String(payload.role).toLowerCase())) {
+    res.status(401).json({ error: 'Admin MFA enrollment token is invalid or expired' });
+    return;
+  }
+
+  (req as AuthenticatedRequest).user = payload as AuthenticatedRequest['user'];
+  next();
+};
+
 export const authorize = (permissions: string[] = []) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const user = (req as AuthenticatedRequest).user;

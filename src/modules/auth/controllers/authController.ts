@@ -174,4 +174,46 @@ export class AuthController {
       res.status(400).json({ error: (error as Error).message });
     }
   }
+
+  async setupAdminMfa(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const result = await this.authService.setupAdminMfa(
+        authReq.user.sub,
+        authReq.user.email || ''
+      );
+      res.status(200).json({ data: result });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
+  async confirmAdminMfaSetup(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const result = await this.authService.confirmAdminMfaSetup(
+        authReq.user.sub,
+        req.body.totp_code
+      );
+      res.status(200).json({ data: result });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
+  async adminMfaStepUp(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const adminMfaToken = await this.authService.verifyAdminStepUp(
+        authReq.user.sub,
+        authReq.user.role,
+        req.body.totp_code
+      );
+      res.status(200).json({ data: { admin_mfa_token: adminMfaToken, expires_in: 300 } });
+    } catch (error) {
+      const code = (error as Error).message;
+      const status = code === 'FORBIDDEN_NOT_ADMIN' ? 403 : 401;
+      res.status(status).json({ error: code, code });
+    }
+  }
 }

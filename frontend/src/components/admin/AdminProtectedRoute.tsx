@@ -1,9 +1,19 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { AccessDenied } from './AccessDenied';
+import { MfaStepUpModal } from './MfaStepUpModal';
+import { apiClient } from '@/shared/services/apiClient';
 
-const ALL_ADMIN_ROLES = ['support', 'finance', 'risk_manager', 'compliance', 'admin', 'super_admin'];
+const ALL_ADMIN_ROLES = [
+  'support',
+  'finance',
+  'risk_manager',
+  'risk',
+  'compliance',
+  'admin',
+  'super_admin',
+];
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
@@ -16,6 +26,22 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
 }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [adminMfaToken, setAdminMfaToken] = React.useState(() => apiClient.getAdminMfaToken());
+
+  React.useEffect(() => {
+    if (!adminMfaToken) return;
+    const expiresAt = apiClient.getAdminMfaTokenExpiration();
+    if (!expiresAt) {
+      setAdminMfaToken(null);
+      return;
+    }
+    const timeout = window.setTimeout(
+      () => setAdminMfaToken(null),
+      Math.max(0, expiresAt - Date.now())
+    );
+    return () => window.clearTimeout(timeout);
+  }, [adminMfaToken]);
 
   if (isLoading) {
     return (
@@ -32,11 +58,40 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const userRole = user.role;
-  const isAllowed = allowedRoles.includes(userRole);
+  const userRole = user.role.toLowerCase();
+  const isStaff = ALL_ADMIN_ROLES.includes(userRole);
+  if (!isStaff) {
+    return <Navigate to="/" replace />;
+  }
+
+  const isAllowed = allowedRoles.map((role) => role.toLowerCase()).includes(userRole) ||
+    (userRole === 'risk' && allowedRoles.includes('risk_manager'));
 
   if (!isAllowed) {
     return <AccessDenied requiredRoles={allowedRoles} />;
+  }
+
+  if (!adminMfaToken) {
+    return (
+      <>
+        <MfaStepUpModal
+          isOpen
+          onClose={() => {
+            apiClient.setAdminMfaToken(null);
+            navigate('/', { replace: true });
+          }}
+          onConfirm={async (totpCode) => {
+            const response = await apiClient.post<{
+              data: { admin_mfa_token: string };
+            }>('/api/v1/auth/admin-mfa/step-up', { totp_code: totpCode });
+            apiClient.setAdminMfaToken(response.data.admin_mfa_token);
+            setAdminMfaToken(response.data.admin_mfa_token);
+          }}
+          title="Administrator verification"
+          description="Enter your authenticator code to unlock the admin console for five minutes."
+        />
+      </>
+    );
   }
 
   return <>{children}</>;

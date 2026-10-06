@@ -15,7 +15,7 @@ import { AlertCircle, ShieldCheck } from 'lucide-react';
 import { useEffect } from 'react';
 
 export const MfaPage = () => {
-  const { verifyMfa, isLoading, error, isAuthenticated, userId } = useAuth();
+  const { verifyMfa, isLoading, error, isAuthenticated, userId, user } = useAuth();
   const navigate = useNavigate();
 
   const {
@@ -28,12 +28,19 @@ export const MfaPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      const role = user?.role.toLowerCase();
+      navigate(
+        ['support', 'finance', 'risk', 'risk_manager', 'compliance', 'admin', 'super_admin'].includes(
+          role || ''
+        )
+          ? '/admin'
+          : '/'
+      );
     } else if (!userId) {
       // If we don't have a userId, we shouldn't be here
       navigate('/login');
     }
-  }, [isAuthenticated, userId, navigate]);
+  }, [isAuthenticated, userId, user, navigate]);
 
   const onSubmit = async (data: MfaInput) => {
     try {

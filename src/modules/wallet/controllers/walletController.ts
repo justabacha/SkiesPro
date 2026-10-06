@@ -15,15 +15,10 @@ export class WalletController {
   async getBalance(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).user.sub;
-      const wallet = await this.walletService.getBalance(userId, 'real');
+      const wallet = await this.walletService.getWalletBalance(userId);
 
       res.status(200).json({
-        data: {
-          balance: wallet.balance,
-          locked_balance: wallet.locked_balance,
-          available_balance: wallet.available_balance,
-          currency: wallet.currency,
-        },
+        data: wallet,
         meta: { request_id: req.correlationId },
       });
     } catch (error) {

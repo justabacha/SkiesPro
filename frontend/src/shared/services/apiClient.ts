@@ -14,6 +14,7 @@ export interface ApiError {
 
 class ApiClient {
   private accessToken: string | null = null;
+  private adminMfaToken: string | null = null;
   private onUnauthorizedCallback: (() => void) | null = null;
 
   registerUnauthorizedCallback(cb: (() => void) | null) {
@@ -26,6 +27,66 @@ class ApiClient {
 
   getAccessToken(): string | null {
     return this.accessToken;
+  }
+
+  setAdminMfaToken(token: string | null) {
+    this.adminMfaToken = token;
+    if (typeof window === 'undefined') return;
+    if (token) {
+      window.sessionStorage.setItem('admin_mfa_token', token);
+    } else {
+      window.sessionStorage.removeItem('admin_mfa_token');
+    }
+  }
+
+  getAdminMfaToken(): string | null {
+    const token =
+      this.adminMfaToken ||
+      (typeof window !== 'undefined' ? window.sessionStorage.getItem('admin_mfa_token') : null);
+    if (!token) return null;
+    const claims = this.getTokenClaims(token);
+    if (
+      !claims ||
+      claims.purpose !== 'admin_mfa_step_up' ||
+      claims.mfa_verified !== true ||
+      typeof claims.exp !== 'number' ||
+      claims.exp * 1000 <= Date.now()
+    ) {
+      this.setAdminMfaToken(null);
+      return null;
+    }
+    this.adminMfaToken = token;
+    return token;
+  }
+
+  getAdminMfaTokenExpiration(): number | null {
+    const token = this.getAdminMfaToken();
+    return token ? this.getTokenExpiration(token) : null;
+  }
+
+  private getTokenExpiration(token: string): number | null {
+    const claims = this.getTokenClaims(token);
+    return typeof claims?.exp === 'number' ? claims.exp * 1000 : null;
+  }
+
+  private getTokenClaims(token: string): {
+    exp?: unknown;
+    purpose?: unknown;
+    mfa_verified?: unknown;
+  } | null {
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) return null;
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      return JSON.parse(window.atob(padded)) as {
+        exp?: unknown;
+        purpose?: unknown;
+        mfa_verified?: unknown;
+      };
+    } catch {
+      return null;
+    }
   }
 
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -42,11 +103,15 @@ class ApiClient {
       url = normalizedPath;
     }
 
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
-      ...options.headers,
-    };
+    const headers = new Headers(options.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (this.accessToken && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${this.accessToken}`);
+    }
+    if (normalizedPath.startsWith('/api/v1/admin/')) {
+      const adminMfaToken = this.getAdminMfaToken();
+      if (adminMfaToken) headers.set('X-Admin-MFA-Token', adminMfaToken);
+    }
 
     const response = await fetch(url, {
       ...options,

@@ -15,7 +15,7 @@ import {
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export const LoginPage = () => {
-  const { login, isLoading, error, requiresMfa } = useAuth();
+  const { login, isLoading, error } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const registered = location.state?.registered;
@@ -31,9 +31,11 @@ export const LoginPage = () => {
 
   const onSubmit = async (data: LoginInput) => {
     try {
-      await login(data);
-      if (requiresMfa) {
+      const nextStep = await login(data);
+      if (nextStep === 'mfa') {
         navigate('/verify-otp');
+      } else if (nextStep === 'setup') {
+        navigate('/admin-mfa-enrollment');
       }
     } catch (err) {
       // Error is handled in context and displayed via state
