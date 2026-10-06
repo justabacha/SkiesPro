@@ -235,7 +235,7 @@ export class PriceFeedIngestionService {
       await this.distributionService.distributeTick(normalizedSymbol, bid, ask, mid, time);
 
       // 4. Process for OHLC
-      await this.ohlcService.processTick(normalizedSymbol, mid, '0', time);
+      await this.ohlcService.processTick(normalizedSymbol, mid, '0', time, 'live');
 
       // 5. Check if buffer full
       if (this.tickBuffer.length >= this.batchSize) {

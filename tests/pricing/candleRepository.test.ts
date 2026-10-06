@@ -14,6 +14,41 @@ describe('CandleRepository and PricingService (WP-08 Candle Fixes)', () => {
   });
 
   describe('CandleRepository', () => {
+    it('upserts candles using the source-inclusive unique constraint', async () => {
+      const candle = {
+        symbol: 'EUR/USD',
+        granularity_seconds: 60,
+        open_time: new Date('2026-10-04T12:00:00Z'),
+        close_time: new Date('2026-10-04T12:00:59.999Z'),
+        open_price: '1.1245',
+        high_price: '1.1250',
+        low_price: '1.1240',
+        close_price: '1.1248',
+        volume: '0',
+        source: 'live',
+      };
+
+      await repo.upsert(candle);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /volume, source\s*\)\s*VALUES \(\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10\)\s*ON CONFLICT \(symbol, granularity_seconds, open_time, source\)/i
+        ),
+        [
+          candle.symbol,
+          candle.granularity_seconds,
+          candle.open_time,
+          candle.close_time,
+          candle.open_price,
+          candle.high_price,
+          candle.low_price,
+          candle.close_price,
+          candle.volume,
+          candle.source,
+        ]
+      );
+    });
+
     it('getCandles queries newest N candles and returns ASC order', async () => {
       const from = new Date('2026-10-04T00:00:00Z');
       const to = new Date('2026-10-04T12:00:00Z');
@@ -63,6 +98,7 @@ describe('CandleRepository and PricingService (WP-08 Candle Fixes)', () => {
           low_price: '1.1240',
           close_price: '1.1248',
           volume: '0',
+          source: 'live',
           created_at: new Date('2026-10-04T12:01:00Z'),
         },
       ]);

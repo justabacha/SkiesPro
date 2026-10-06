@@ -12,16 +12,23 @@ export class OHLCService {
       close: Decimal;
       volume: bigint;
       openTime: Date;
+      source: string;
     }
   > = new Map();
 
   constructor(private candleRepo: CandleRepository) {}
 
-  async processTick(symbol: string, price: string, volume: string, time: Date): Promise<void> {
+  async processTick(
+    symbol: string,
+    price: string,
+    volume: string,
+    time: Date,
+    source: string
+  ): Promise<void> {
     const granularity = 60; // 1-minute candles
     const openTimeMs = Math.floor(time.getTime() / (granularity * 1000)) * (granularity * 1000);
     const openTime = new Date(openTimeMs);
-    const key = `${symbol}:${granularity}`;
+    const key = `${symbol}:${source}:${granularity}`;
 
     const current = this.currentCandles.get(key);
     const priceDec = new Decimal(price);
@@ -36,7 +43,7 @@ export class OHLCService {
     } else {
       // If there was a previous candle, save it
       if (current) {
-        await this.saveCandle(current, granularity);
+        await this.saveCandle(current, granularity, source);
       }
 
       // Start new candle
@@ -48,11 +55,24 @@ export class OHLCService {
         close: priceDec,
         volume: volBig,
         openTime,
+        source,
       });
     }
   }
 
-  private async saveCandle(candle: any, granularity: number): Promise<void> {
+  private async saveCandle(
+    candle: {
+      symbol: string;
+      open: Decimal;
+      high: Decimal;
+      low: Decimal;
+      close: Decimal;
+      volume: bigint;
+      openTime: Date;
+    },
+    granularity: number,
+    source: string
+  ): Promise<void> {
     await this.candleRepo.upsert({
       symbol: candle.symbol,
       granularity_seconds: granularity,
@@ -63,6 +83,7 @@ export class OHLCService {
       low_price: candle.low.toString(),
       close_price: candle.close.toString(),
       volume: candle.volume.toString(),
+      source,
     });
   }
 
@@ -75,7 +96,7 @@ export class OHLCService {
 
     for (const [key, candle] of this.currentCandles.entries()) {
       if (candle.openTime.getTime() < currentOpenTimeMs) {
-        await this.saveCandle(candle, granularity);
+        await this.saveCandle(candle, granularity, candle.source);
         this.currentCandles.delete(key);
       }
     }

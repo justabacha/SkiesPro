@@ -95,7 +95,7 @@ describe('DemoPriceFeedService', () => {
     expect(repository.saveBatch).not.toHaveBeenCalled();
   });
 
-  it('requeues ticks after a persistence failure and retries them', async () => {
+  it('drops a failed batch rather than retrying it indefinitely', async () => {
     repository.saveBatch.mockRejectedValueOnce(new Error('temporary database failure'));
     await (
       service as unknown as {
@@ -107,7 +107,10 @@ describe('DemoPriceFeedService', () => {
     await flush.call(service);
     await flush.call(service);
 
-    expect(repository.saveBatch).toHaveBeenCalledTimes(2);
+    expect(repository.saveBatch).toHaveBeenCalledTimes(1);
+    expect(
+      (service as unknown as { tickBuffer: unknown[] }).tickBuffer
+    ).toHaveLength(0);
   });
 
   it('runs immediate and scheduled retention cleanup with the configured 30-day window', async () => {

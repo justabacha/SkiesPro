@@ -7,6 +7,7 @@ import { PriceValidationService } from './priceValidationService.js';
 import { normalizeSymbol, normalizeCacheSymbol } from '../utils/symbolNormalizer.js';
 
 type PendingDemoTick = Omit<TickRow, 'id' | 'created_at'>;
+const FLUSH_RETRY_BACKOFF_MS = [5000, 10000, 20000, 40000, 60000];
 
 export class DemoPriceFeedService {
   private readonly adapter: MockPriceAdapter;
@@ -16,7 +17,12 @@ export class DemoPriceFeedService {
   private flushTimer: NodeJS.Timeout | null = null;
   private retentionTimer: NodeJS.Timeout | null = null;
   private readonly bufferLimit = 50;
+  private readonly maxBufferSize = 1000;
   private readonly flushIntervalMs = 5000;
+  private flushInProgress = false;
+  private bufferDropWarningActive = false;
+  private consecutiveFlushFailures = 0;
+  private nextFlushAt = 0;
 
   constructor(
     tickRepository = new TickRepository(),
@@ -89,6 +95,17 @@ export class DemoPriceFeedService {
       source: 'demo',
     };
     this.tickBuffer.push(tick);
+    if (this.tickBuffer.length > this.maxBufferSize) {
+      const droppedCount = this.tickBuffer.length - this.maxBufferSize;
+      this.tickBuffer.splice(0, droppedCount);
+      if (!this.bufferDropWarningActive) {
+        logger.warn('Dropped oldest demo ticks because the persistence buffer is full', {
+          droppedCount,
+          maxBufferSize: this.maxBufferSize,
+        });
+        this.bufferDropWarningActive = true;
+      }
+    }
 
     const message = JSON.stringify({
       symbol: normalizedSymbol,
@@ -112,16 +129,36 @@ export class DemoPriceFeedService {
   }
 
   private async flushTicks(): Promise<void> {
-    if (this.tickBuffer.length === 0) return;
+    if (
+      this.tickBuffer.length === 0 ||
+      this.flushInProgress ||
+      Date.now() < this.nextFlushAt
+    ) {
+      return;
+    }
     const batch = this.tickBuffer.splice(0, this.tickBuffer.length);
+    this.bufferDropWarningActive = false;
+    this.flushInProgress = true;
     try {
       await this.tickRepository.saveBatch(batch);
+      this.consecutiveFlushFailures = 0;
+      this.nextFlushAt = 0;
     } catch (error) {
-      this.tickBuffer.unshift(...batch);
+      this.consecutiveFlushFailures = Math.min(
+        this.consecutiveFlushFailures + 1,
+        FLUSH_RETRY_BACKOFF_MS.length
+      );
+      const retryDelayMs = FLUSH_RETRY_BACKOFF_MS[this.consecutiveFlushFailures - 1];
+      this.nextFlushAt = Date.now() + retryDelayMs;
       logger.error('Failed to persist demo ticks', {
         error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
         count: batch.length,
+        dropped: true,
+        retryDelayMs,
       });
+    } finally {
+      this.flushInProgress = false;
     }
   }
 

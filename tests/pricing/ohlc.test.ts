@@ -21,15 +21,15 @@ describe('OHLCService', () => {
     const symbol = 'EUR/USD';
     const baseTime = new Date('2026-01-01T10:00:05Z');
 
-    await service.processTick(symbol, '1.1000', '100', baseTime);
-    await service.processTick(symbol, '1.1100', '200', new Date(baseTime.getTime() + 1000));
-    await service.processTick(symbol, '1.0900', '150', new Date(baseTime.getTime() + 2000));
-    await service.processTick(symbol, '1.1050', '50', new Date(baseTime.getTime() + 3000));
+    await service.processTick(symbol, '1.1000', '100', baseTime, 'live');
+    await service.processTick(symbol, '1.1100', '200', new Date(baseTime.getTime() + 1000), 'live');
+    await service.processTick(symbol, '1.0900', '150', new Date(baseTime.getTime() + 2000), 'live');
+    await service.processTick(symbol, '1.1050', '50', new Date(baseTime.getTime() + 3000), 'live');
 
     // Move "now" to next minute and process a tick to trigger auto-save of previous candle
     jest.setSystemTime(new Date('2026-01-01T10:01:05Z'));
     const nextMinute = new Date('2026-01-01T10:01:05Z');
-    await service.processTick(symbol, '1.1200', '100', nextMinute);
+    await service.processTick(symbol, '1.1200', '100', nextMinute, 'live');
 
     expect(mockRepo.upsert).toHaveBeenCalledWith(expect.objectContaining({
       symbol,
@@ -38,7 +38,8 @@ describe('OHLCService', () => {
       high_price: '1.11',
       low_price: '1.09',
       close_price: '1.105',
-      volume: '500'
+      volume: '500',
+      source: 'live'
     }));
   });
 
@@ -46,7 +47,7 @@ describe('OHLCService', () => {
     const symbol = 'EUR/USD';
     const baseTime = new Date('2026-01-01T10:00:05Z');
 
-    await service.processTick(symbol, '1.1000', '100', baseTime);
+    await service.processTick(symbol, '1.1000', '100', baseTime, 'live');
 
     // Manual flush should not save if current time is in the same minute
     await service.flush();

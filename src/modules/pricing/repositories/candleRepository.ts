@@ -12,6 +12,7 @@ export interface CandleRow {
   low_price: string;
   close_price: string;
   volume: string;
+  source: string;
   created_at: Date;
 }
 
@@ -25,15 +26,15 @@ export class CandleRepository {
   async upsert(candle: Omit<CandleRow, 'id' | 'created_at'>): Promise<CandleRow> {
     const result = await this.client.query<CandleRow>(
       `INSERT INTO pricing.candles (
-        symbol, granularity_seconds, open_time, close_time, open_price, high_price, low_price, close_price, volume
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      ON CONFLICT (symbol, granularity_seconds, open_time) DO UPDATE SET
+        symbol, granularity_seconds, open_time, close_time, open_price, high_price, low_price, close_price, volume, source
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ON CONFLICT (symbol, granularity_seconds, open_time, source) DO UPDATE SET
         high_price = GREATEST(pricing.candles.high_price, EXCLUDED.high_price),
         low_price = LEAST(pricing.candles.low_price, EXCLUDED.low_price),
         close_price = EXCLUDED.close_price,
         close_time = EXCLUDED.close_time,
         volume = pricing.candles.volume + EXCLUDED.volume
-      RETURNING id, symbol, granularity_seconds, open_time, close_time, open_price, high_price, low_price, close_price, volume, created_at`,
+      RETURNING id, symbol, granularity_seconds, open_time, close_time, open_price, high_price, low_price, close_price, volume, source, created_at`,
       [
         candle.symbol,
         candle.granularity_seconds,
@@ -44,6 +45,7 @@ export class CandleRepository {
         candle.low_price,
         candle.close_price,
         candle.volume,
+        candle.source,
       ]
     );
     return result.rows[0];
@@ -59,7 +61,7 @@ export class CandleRepository {
     const result = await this.client.query<CandleRow>(
       `SELECT * FROM (
          SELECT id, symbol, granularity_seconds, open_time, close_time, open_price,
-                high_price, low_price, close_price, volume, created_at
+                high_price, low_price, close_price, volume, source, created_at
          FROM pricing.candles
          WHERE symbol = $1 AND granularity_seconds = $2 AND open_time >= $3 AND open_time <= $4
          ORDER BY open_time DESC
@@ -80,9 +82,10 @@ export class CandleRepository {
   ): Promise<CandleRow[]> {
     const result = await this.client.query<CandleRow>(
       `SELECT
-         'bucket_' || extract(epoch from open_time)::bigint AS id,
+         'bucket_' || extract(epoch from open_time)::bigint || '_' || source AS id,
          $1 AS symbol,
          $2::integer AS granularity_seconds,
+         source,
          open_time,
          close_time,
          open_price,
@@ -94,6 +97,7 @@ export class CandleRepository {
        FROM (
          SELECT
            to_timestamp(floor(extract(epoch from open_time) / $2) * $2) AS open_time,
+           source,
            to_timestamp(floor(extract(epoch from open_time) / $2) * $2) + ($2 * interval '1 second') - interval '1 millisecond' AS close_time,
            (ARRAY_AGG(open_price ORDER BY open_time ASC))[1] AS open_price,
            MAX(high_price) AS high_price,
@@ -105,7 +109,7 @@ export class CandleRepository {
            AND granularity_seconds = 60
            AND open_time >= $3
            AND open_time <= $4
-         GROUP BY floor(extract(epoch from open_time) / $2)
+         GROUP BY floor(extract(epoch from open_time) / $2), source
          ORDER BY open_time DESC
          LIMIT $5
        ) recent

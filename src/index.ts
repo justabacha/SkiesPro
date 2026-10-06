@@ -1,9 +1,9 @@
 import express, { Application } from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import http from 'http';
 import { config } from './config/app.js';
+import { corsMiddleware } from './config/cors.js';
 import { correlationIdMiddleware } from './shared/middleware/correlationId.js';
 import { requestLogger } from './shared/middleware/logger.js';
 import routes from './infrastructure/routes.js';
@@ -16,6 +16,10 @@ const app: Application = express();
 app.set('trust proxy', 1);
 app.set('etag', false);
 
+// CORS
+app.use(corsMiddleware);
+app.options('*', corsMiddleware);
+
 // Security middleware
 app.use(
   helmet({
@@ -23,25 +27,6 @@ app.use(
   })
 );
 app.use(cookieParser());
-
-// CORS
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const allowedOrigins = Array.isArray(config.corsOrigin)
-        ? config.corsOrigin
-        : [config.corsOrigin];
-
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error(`Origin ${origin} not allowed by CORS`), false);
-    },
-    credentials: true,
-  })
-);
 
 // Body parsing
 app.use(express.json());
