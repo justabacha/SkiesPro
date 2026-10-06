@@ -7,8 +7,22 @@ interface User {
   email: string;
   displayName: string;
   role: string;
+  roles: string[];
   kycStatus: string;
 }
+
+const ADMIN_ROLE_SET = new Set([
+  'super_admin',
+  'admin',
+  'compliance',
+  'risk',
+  'risk_manager',
+  'finance',
+  'support',
+]);
+
+const normalizeRole = (role: string): string =>
+  role.trim().toLowerCase().replace(/[\s-]+/g, '_');
 
 interface AuthState {
   user: User | null;
@@ -46,6 +60,7 @@ interface AuthResponse {
       email: string;
       display_name: string;
       role: string;
+      roles?: string[];
       kyc_status: string;
     };
   };
@@ -64,13 +79,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     mfaEnrollmentToken: null,
   });
 
-  const mapUserResponse = (userData: NonNullable<AuthResponse['data']['user']>): User => ({
-    id: userData.id,
-    email: userData.email,
-    displayName: userData.display_name,
-    role: userData.role || 'trader',
-    kycStatus: userData.kyc_status,
-  });
+  const mapUserResponse = (userData: NonNullable<AuthResponse['data']['user']>): User => {
+    const roles = [...new Set((userData.roles || []).map(normalizeRole))];
+    const reportedRole = normalizeRole(userData.role || '');
+    const role =
+      (ADMIN_ROLE_SET.has(reportedRole) && reportedRole) ||
+      roles.find((candidate) => ADMIN_ROLE_SET.has(candidate)) ||
+      reportedRole ||
+      'trader';
+    if (!roles.includes(role)) roles.unshift(role);
+
+    return {
+      id: userData.id,
+      email: userData.email,
+      displayName: userData.display_name,
+      role,
+      roles,
+      kycStatus: userData.kyc_status,
+    };
+  };
 
   const setAuthData = useCallback((data: AuthResponse['data']) => {
     if (data.access_token) {

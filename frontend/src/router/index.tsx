@@ -14,7 +14,7 @@ import { ProtectedRoute, PublicRoute } from '@/shared/components';
 import DesignSystemPage from '@/pages/DesignSystem';
 
 import { AdminLayout } from '@/pages/admin/AdminLayout';
-import { AdminProtectedRoute } from '@/components/admin/AdminProtectedRoute';
+import { AdminRouteGuard } from '@/components/auth/AdminRouteGuard';
 import { adminRoutes } from '@/routes/adminRoutes';
 
 export const router = createBrowserRouter([
@@ -42,9 +42,9 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <AdminProtectedRoute>
+      <AdminRouteGuard>
         <AdminLayout />
-      </AdminProtectedRoute>
+      </AdminRouteGuard>
     ),
     children: adminRoutes,
   },

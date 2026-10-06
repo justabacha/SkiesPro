@@ -86,10 +86,12 @@ interface AdminSidebarProps {
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, onToggleCollapse }) => {
   const { user } = useAuth();
-  const userRole = user?.role || 'trader';
+  const userRoles = new Set(user?.roles || (user?.role ? [user.role] : ['trader']));
 
   // Filter items dynamically by user role
-  const visibleItems = SIDEBAR_NAV_ITEMS.filter((item) => item.roles.includes(userRole));
+  const visibleItems = SIDEBAR_NAV_ITEMS.filter((item) =>
+    item.roles.some((role) => userRoles.has(role))
+  );
 
   return (
     <aside

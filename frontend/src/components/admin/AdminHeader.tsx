@@ -21,7 +21,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => 
   const location = useLocation();
   const navigate = useNavigate();
 
-  const roleStyle = ROLE_COLOR_MAP[user?.role || 'admin'] || ROLE_COLOR_MAP.admin;
+  const role = user?.role.toLowerCase() || 'admin';
+  const roleStyle = ROLE_COLOR_MAP[role] || ROLE_COLOR_MAP.admin;
 
   // Format path for breadcrumbs
   const pathSegments = location.pathname.split('/').filter(Boolean);
@@ -84,7 +85,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => 
             <div className="text-xs font-semibold text-slate-200">{user?.displayName || user?.email}</div>
             <div className="flex items-center gap-1">
               <span className={`px-1.5 py-0.5 text-[10px] uppercase font-bold rounded border ${roleStyle.bg} ${roleStyle.text} ${roleStyle.border}`}>
-                {user?.role || 'admin'}
+                {role}
               </span>
             </div>
           </div>

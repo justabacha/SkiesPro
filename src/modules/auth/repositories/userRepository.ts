@@ -95,10 +95,21 @@ export class UserRepository extends BaseRepository {
       `SELECT r.name
        FROM app_auth.roles r
        JOIN app_auth.user_roles ur ON r.id = ur.role_id
-       WHERE ur.user_id = $1`,
+       WHERE ur.user_id = $1
+         AND ur.revoked_at IS NULL
+       ORDER BY CASE LOWER(r.name)
+         WHEN 'super_admin' THEN 1
+         WHEN 'admin' THEN 2
+         WHEN 'compliance' THEN 3
+         WHEN 'risk_manager' THEN 4
+         WHEN 'risk' THEN 4
+         WHEN 'finance' THEN 5
+         WHEN 'support' THEN 6
+         ELSE 100
+       END, LOWER(r.name)`,
       [userId]
     );
-    return result.rows.map((row) => row.name);
+    return result.rows.map((row) => String(row.name).trim().toLowerCase().replace(/[\s-]+/g, '_'));
   }
 
   async assignRole(userId: string, roleName: string): Promise<void> {

@@ -58,14 +58,19 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const userRole = user.role.toLowerCase();
-  const isStaff = ALL_ADMIN_ROLES.includes(userRole);
+  const userRoles = new Set((user.roles || [user.role]).map((role) => role.toLowerCase()));
+  const isStaff = [...userRoles].some((role) => ALL_ADMIN_ROLES.includes(role));
   if (!isStaff) {
     return <Navigate to="/" replace />;
   }
 
-  const isAllowed = allowedRoles.map((role) => role.toLowerCase()).includes(userRole) ||
-    (userRole === 'risk' && allowedRoles.includes('risk_manager'));
+  const allowedRoleSet = new Set(allowedRoles.map((role) => role.toLowerCase()));
+  const isAllowed = [...userRoles].some(
+    (role) =>
+      allowedRoleSet.has(role) ||
+      (role === 'risk' && allowedRoleSet.has('risk_manager')) ||
+      (role === 'risk_manager' && allowedRoleSet.has('risk'))
+  );
 
   if (!isAllowed) {
     return <AccessDenied requiredRoles={allowedRoles} />;

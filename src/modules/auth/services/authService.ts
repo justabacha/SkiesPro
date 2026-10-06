@@ -32,8 +32,13 @@ export class AuthService {
     this.mfaRepo = new MfaRepository();
   }
 
+  private normalizeRoles(roles: string[]): string[] {
+    return [...new Set(roles.map((role) => role.trim().toLowerCase().replace(/[\s-]+/g, '_')))];
+  }
+
   private primaryRole(roles: string[]): string {
-    return roles.find((role) => ADMIN_ROLES.has(role.toLowerCase())) || roles[0] || 'trader';
+    const normalizedRoles = this.normalizeRoles(roles);
+    return normalizedRoles.find((role) => ADMIN_ROLES.has(role)) || normalizedRoles[0] || 'trader';
   }
 
   async register(data: RegisterDto) {
@@ -133,8 +138,8 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    const roles = await this.userRepo.getRoles(user.id);
-    const adminRole = roles.find((role) => ADMIN_ROLES.has(role.toLowerCase()));
+    const roles = this.normalizeRoles(await this.userRepo.getRoles(user.id));
+    const adminRole = roles.find((role) => ADMIN_ROLES.has(role));
 
     if (adminRole && !user.mfa_enabled) {
       return {
@@ -176,6 +181,7 @@ export class AuthService {
         email: user.email,
         display_name: user.display_name,
         role: this.primaryRole(roles),
+        roles,
         kyc_status: user.kyc_status,
       },
     };
@@ -186,7 +192,7 @@ export class AuthService {
     if (!user) {
       throw new Error('User not found');
     }
-    const roles = await this.userRepo.getRoles(userId);
+    const roles = this.normalizeRoles(await this.userRepo.getRoles(userId));
     return {
       id: user.id,
       email: user.email,
@@ -218,7 +224,7 @@ export class AuthService {
     if (!user) throw new Error('User not found');
 
     await this.userRepo.updateLastLogin(user.id);
-    const roles = await this.userRepo.getRoles(user.id);
+    const roles = this.normalizeRoles(await this.userRepo.getRoles(user.id));
     const permissions: string[] = [];
 
     const tokens = await this.tokenService.createSession(
@@ -237,6 +243,7 @@ export class AuthService {
         email: user.email,
         display_name: user.display_name,
         role: this.primaryRole(roles),
+        roles,
         kyc_status: user.kyc_status,
       },
     };
@@ -257,7 +264,7 @@ export class AuthService {
 
   async setupAdminMfa(userId: string, email: string) {
     const user = await this.userRepo.findById(userId);
-    const roles = await this.userRepo.getRoles(userId);
+    const roles = this.normalizeRoles(await this.userRepo.getRoles(userId));
     if (!user || !roles.some((role) => ADMIN_ROLES.has(role.toLowerCase()))) {
       throw new Error('FORBIDDEN_NOT_ADMIN');
     }
@@ -286,7 +293,7 @@ export class AuthService {
 
   async confirmAdminMfaSetup(userId: string, code: string) {
     const user = await this.userRepo.findById(userId);
-    const roles = await this.userRepo.getRoles(userId);
+    const roles = this.normalizeRoles(await this.userRepo.getRoles(userId));
     if (!user || !roles.some((role) => ADMIN_ROLES.has(role.toLowerCase()))) {
       throw new Error('FORBIDDEN_NOT_ADMIN');
     }
@@ -341,6 +348,7 @@ export class AuthService {
         email: user.email,
         display_name: user.display_name,
         role: this.primaryRole(roles),
+        roles,
         kyc_status: user.kyc_status,
       },
     };

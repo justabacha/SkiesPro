@@ -181,6 +181,37 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('access_token');
     });
 
+    it('resolves uppercase super-admin roles consistently in authentication payloads', async () => {
+      mfaRepoMock.findByUserId.mockResolvedValue({ is_enabled: true, secret_encrypted: 'enc' });
+      (authService as any).mfaService = {
+        decrypt: jest.fn().mockReturnValue('secret'),
+        verifyToken: jest.fn().mockResolvedValue(true),
+      };
+      userRepoMock.findById.mockResolvedValue({
+        id: 'user-id',
+        email: 'admin@example.com',
+        display_name: 'Admin',
+        kyc_status: 'verified',
+      });
+      userRepoMock.getRoles.mockResolvedValue(['TRADER', 'SUPER_ADMIN']);
+      tokenServiceMock.createSession.mockResolvedValue({ access_token: 'at' });
+
+      const result = await authService.verifyMfa('user-id', '123456', 'ip', 'ua');
+
+      expect(tokenServiceMock.createSession).toHaveBeenCalledWith(
+        'user-id',
+        'super_admin',
+        [],
+        'ip',
+        'ua',
+        true
+      );
+      expect(result.user).toMatchObject({
+        role: 'super_admin',
+        roles: ['trader', 'super_admin'],
+      });
+    });
+
     it('should throw if MFA code is invalid', async () => {
       mfaRepoMock.findByUserId.mockResolvedValue({ is_enabled: true, secret_encrypted: 'enc' });
       (authService as any).mfaService = {
@@ -190,6 +221,26 @@ describe('AuthService', () => {
 
       await expect(authService.verifyMfa('user-id', '123456', 'ip', 'ua'))
         .rejects.toThrow('Invalid MFA code');
+    });
+  });
+
+  describe('getMe', () => {
+    it('returns a normalized staff role and all active roles', async () => {
+      userRepoMock.findById.mockResolvedValue({
+        id: 'user-id',
+        email: 'admin@example.com',
+        display_name: 'Admin',
+        status: 'active',
+        kyc_status: 'verified',
+        mfa_enabled: true,
+        created_at: new Date(),
+      });
+      userRepoMock.getRoles.mockResolvedValue(['TRADER', 'SUPER_ADMIN']);
+
+      const result = await authService.getMe('user-id');
+
+      expect(result.role).toBe('super_admin');
+      expect(result.roles).toEqual(['trader', 'super_admin']);
     });
   });
 
