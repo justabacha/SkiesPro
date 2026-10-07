@@ -95,7 +95,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, o
 
   return (
     <aside
-      className={`bg-slate-900/80 backdrop-blur-md border-r border-slate-800/80 flex flex-col transition-all duration-300 z-40 ${
+      className={`bg-slate-900/80 backdrop-blur-md border-r border-slate-800/80 flex flex-col h-full flex-shrink-0 transition-all duration-300 z-40 ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >

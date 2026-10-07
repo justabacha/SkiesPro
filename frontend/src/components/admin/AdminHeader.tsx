@@ -28,7 +28,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => 
   const pathSegments = location.pathname.split('/').filter(Boolean);
 
   return (
-    <header className="h-16 bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-16 bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between flex-shrink-0 w-full z-30">
       <div className="flex items-center gap-4">
         {onToggleSidebar && (
           <button

@@ -8,9 +8,9 @@ export const AdminLayout: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0F1117] text-slate-100 font-sans flex overflow-hidden">
+    <div className="h-screen w-screen overflow-hidden flex flex-row bg-[#0F1117] text-slate-100 font-sans">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex shrink-0">
+      <div className="hidden lg:flex flex-shrink-0 h-full">
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -24,17 +24,17 @@ export const AdminLayout: React.FC = () => {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <div className="relative z-10 w-64">
+          <div className="relative z-10 w-64 h-full">
             <AdminSidebar collapsed={false} />
           </div>
         </div>
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         <AdminHeader onToggleSidebar={() => setMobileSidebarOpen(true)} />
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
           <Outlet />
         </main>
       </div>
