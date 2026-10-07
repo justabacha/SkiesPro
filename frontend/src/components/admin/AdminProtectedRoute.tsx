@@ -35,40 +35,49 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
         window.sessionStorage.getItem('admin_mfa_token')
       : null;
 
-  const normalizedRoles = (user?.roles || (user?.role ? [user.role] : []))
-    .map((role) => role.trim().toLowerCase().replace(/[\s-]+/g, '_'));
-  const isStaff = normalizedRoles.some((role) => ALL_ADMIN_ROLES.includes(role));
-  const roleMissing = !user?.role && normalizedRoles.length === 0;
-  const allowedRoleSet = new Set(allowedRoles.map((role) => role.toLowerCase()));
-  const isAllowed = normalizedRoles.some(
-    (role) =>
-      allowedRoleSet.has(role) ||
-      (role === 'risk' && allowedRoleSet.has('risk_manager')) ||
-      (role === 'risk_manager' && allowedRoleSet.has('risk'))
-  );
-  const guardDecision = isLoading
-    ? 'waiting_for_auth'
-    : !isAuthenticated || !user
-      ? 'redirect_to_login'
-      : roleMissing
-        ? 'blocked_missing_role'
-        : !isStaff
-          ? 'blocked_non_staff'
-          : !isAllowed
-            ? 'blocked_insufficient_role'
-            : !adminMfaToken
-              ? 'open_step_up_modal'
-              : 'mount_admin_ui';
+  const normalizedRoles = React.useMemo(() => {
+    return (user?.roles || (user?.role ? [user.role] : [])).map((role) =>
+      role.trim().toLowerCase().replace(/[\s-]+/g, '_')
+    );
+  }, [user?.role, user?.roles]);
 
-  console.info('[GUARD_TRACE] Route Guard Evaluation:', {
-    targetPath: location.pathname,
-    userId: user?.id,
-    extractedRole: user?.role,
-    roles: user?.roles,
-    mfa_enabled: user?.mfaEnabled,
-    stepUpTokenInStorage: !!storedStepUpToken,
-    decision: guardDecision,
-  });
+  const isStaff = React.useMemo(() => {
+    return normalizedRoles.some((role) => ALL_ADMIN_ROLES.includes(role));
+  }, [normalizedRoles]);
+
+  const roleMissing = !user?.role && normalizedRoles.length === 0;
+
+  const isAllowed = React.useMemo(() => {
+    const allowedRoleSet = new Set(allowedRoles.map((role) => role.toLowerCase()));
+    return normalizedRoles.some(
+      (role) =>
+        allowedRoleSet.has(role) ||
+        (role === 'risk' && allowedRoleSet.has('risk_manager')) ||
+        (role === 'risk_manager' && allowedRoleSet.has('risk'))
+    );
+  }, [normalizedRoles, allowedRoles]);
+
+  const guardDecision = React.useMemo(() => {
+    if (isLoading) return 'waiting_for_auth';
+    if (!isAuthenticated || !user) return 'redirect_to_login';
+    if (roleMissing) return 'blocked_missing_role';
+    if (!isStaff) return 'blocked_non_staff';
+    if (!isAllowed) return 'blocked_insufficient_role';
+    if (!adminMfaToken) return 'open_step_up_modal';
+    return 'mount_admin_ui';
+  }, [isLoading, isAuthenticated, user, roleMissing, isStaff, isAllowed, adminMfaToken]);
+
+  React.useEffect(() => {
+    console.info('[GUARD_TRACE] Route Guard Evaluation:', {
+      targetPath: location.pathname,
+      userId: user?.id,
+      extractedRole: user?.role,
+      roles: user?.roles,
+      mfa_enabled: user?.mfaEnabled,
+      stepUpTokenInStorage: !!storedStepUpToken,
+      decision: guardDecision,
+    });
+  }, [guardDecision, location.pathname, user?.id, user?.role, user?.roles, user?.mfaEnabled, storedStepUpToken]);
 
   React.useEffect(() => {
     if (!adminMfaToken) return;

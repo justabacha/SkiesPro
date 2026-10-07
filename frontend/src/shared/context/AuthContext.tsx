@@ -285,12 +285,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   }, []);
 
+  const isRefreshingRef = React.useRef(false);
+
   const refresh = useCallback(async () => {
+    if (isRefreshingRef.current) return;
+    const storedToken = localStorage.getItem('refresh_token');
+    if (!storedToken) {
+      setState((prev) => ({ ...prev, isLoading: false, isAuthenticated: false, user: null }));
+      return;
+    }
+
+    isRefreshingRef.current = true;
     try {
-      // Send refresh_token from localStorage as body fallback
-      const storedToken = localStorage.getItem('refresh_token');
       const response = await apiClient.post<AuthResponse>('/api/v1/auth/refresh', {
-        refresh_token: storedToken
+        refresh_token: storedToken,
       });
       apiClient.setAccessToken(response.data.access_token || null);
       const profile = await apiClient.get<{
@@ -305,11 +313,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       setAuthData({ ...response.data, user: profile.data });
     } catch (err) {
-      // If refresh fails, it just means no valid session exists
+      // If refresh fails, clear tokens cleanly
       apiClient.setAccessToken(null);
       apiClient.setAdminMfaToken(null);
       localStorage.removeItem('refresh_token');
-      setState((prev) => ({ ...prev, isLoading: false, isAuthenticated: false }));
+      setState((prev) => ({ ...prev, isLoading: false, isAuthenticated: false, user: null }));
+    } finally {
+      isRefreshingRef.current = false;
     }
   }, [setAuthData]);
 

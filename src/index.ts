@@ -39,24 +39,56 @@ app.use(requestLogger);
 // Routes
 app.use('/', routes);
 
+// Process crash safeguards
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+});
+
+const setCorsHeadersOnResponse = (req: express.Request, res: express.Response) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = Array.from(
+    new Set([
+      'https://skies-pro.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      ...config.corsOrigin,
+    ])
+  );
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+};
+
 // 404 handler
-app.use((req, res) => {
+app.use((req: express.Request, res: express.Response) => {
+  setCorsHeadersOnResponse(req, res);
   res.status(404).json({
+    success: false,
     error: 'Not Found',
+    message: `Cannot ${req.method} ${req.path}`,
     path: req.path,
   });
 });
 
-// Error handler
-app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+// Global Error handler
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  setCorsHeadersOnResponse(req, res);
+
   logger.error('Unhandled error', {
     correlationId: (req as any).correlationId,
-    error: err.message,
+    error: err?.message || String(err),
   });
 
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: config.nodeEnv === 'development' ? err.message : undefined,
+  const status = err?.status || err?.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: err?.message || 'Internal Server Error',
+    error: err?.message || 'Internal Server Error',
   });
 });
 

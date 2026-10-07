@@ -119,11 +119,25 @@ class ApiClient {
       if (adminMfaToken) headers.set('X-Admin-MFA-Token', adminMfaToken);
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include',
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    } catch (networkError) {
+      console.warn(`[API_CLIENT] Network request failed for ${normalizedPath}:`, networkError);
+      const error = new Error('Network error: Server is unreachable') as Error & {
+        status?: number;
+        code?: string;
+        isNetworkError?: boolean;
+      };
+      error.status = 0;
+      error.code = 'NETWORK_ERROR';
+      error.isNetworkError = true;
+      throw error;
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -148,7 +162,16 @@ class ApiClient {
 
       // Special handling for 401 Unauthorized
       const isAdminStepUpRequest = normalizedPath === '/api/v1/auth/admin-mfa/step-up';
-      if (response.status === 401 && this.onUnauthorizedCallback && !isAdminStepUpRequest) {
+      const isRefreshRequest = normalizedPath === '/api/v1/auth/refresh';
+      const isLoginRequest = normalizedPath === '/api/v1/auth/login';
+
+      if (
+        response.status === 401 &&
+        this.onUnauthorizedCallback &&
+        !isAdminStepUpRequest &&
+        !isRefreshRequest &&
+        !isLoginRequest
+      ) {
         this.onUnauthorizedCallback();
       }
 

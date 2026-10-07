@@ -82,7 +82,19 @@ export function rateLimit(configName: keyof typeof RATE_LIMIT_CONFIGS) {
       res.setHeader('X-RateLimit-Reset', resetAt.toISOString());
 
       if (currentHits > config.maxRequests) {
+        const origin = req.headers.origin;
+        const allowedOrigins = [
+          'https://skies-pro.vercel.app',
+          'http://localhost:5173',
+          'http://localhost:3000',
+        ];
+        if (origin && allowedOrigins.includes(origin)) {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
+        }
+
         res.status(429).json({
+          success: false,
           error: 'Too Many Requests',
           message: 'Rate limit exceeded',
           retryAfter: Math.ceil(config.windowMs / 1000),
