@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   adminApiClient,
   KycApplication,
@@ -11,26 +11,42 @@ export function useAdminKyc() {
   const [statusFilter, setStatusFilter] = useState<KycStatusFilter>('pending');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const requestSequence = useRef(0);
 
   const fetchPendingKyc = useCallback(
-    async (totp_code?: string, status: KycStatusFilter = statusFilter) => {
+    async (status: KycStatusFilter, totp_code?: string) => {
+      const requestId = ++requestSequence.current;
       setIsLoading(true);
       setError(null);
       try {
         const pending = await adminApiClient.getPendingKyc(totp_code, status);
-        setPendingKyc(pending);
+        if (requestId === requestSequence.current) {
+          setPendingKyc(pending);
+        }
       } catch (err) {
-        setError((err as Error).message);
+        if (requestId === requestSequence.current) {
+          setError((err as Error).message);
+        }
       } finally {
-        setIsLoading(false);
+        if (requestId === requestSequence.current) {
+          setIsLoading(false);
+        }
       }
     },
-    [statusFilter]
+    []
   );
 
   useEffect(() => {
-    fetchPendingKyc();
+    void fetchPendingKyc('pending');
   }, [fetchPendingKyc]);
+
+  const selectStatusFilter = useCallback(
+    (status: KycStatusFilter) => {
+      setStatusFilter(status);
+      void fetchPendingKyc(status);
+    },
+    [fetchPendingKyc]
+  );
 
   const selectKyc = useCallback(async (id: string, totp_code?: string) => {
     setIsLoading(true);
@@ -51,7 +67,7 @@ export function useAdminKyc() {
       setError(null);
       try {
         const res = await adminApiClient.reviewKyc(id, { status, review_notes, totp_code });
-        await fetchPendingKyc(totp_code, statusFilter);
+        await fetchPendingKyc(statusFilter, totp_code);
         setSelectedKyc(null);
         return res;
       } catch (err) {
@@ -68,7 +84,7 @@ export function useAdminKyc() {
     pendingKyc,
     selectedKyc,
     statusFilter,
-    setStatusFilter,
+    selectStatusFilter,
     isLoading,
     error,
     fetchPendingKyc,

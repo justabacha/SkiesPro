@@ -11,7 +11,7 @@ export const KycReviewPage: React.FC = () => {
     pendingKyc,
     selectedKyc,
     statusFilter,
-    setStatusFilter,
+    selectStatusFilter,
     isLoading,
     error,
     fetchPendingKyc,
@@ -45,7 +45,7 @@ export const KycReviewPage: React.FC = () => {
         </div>
 
         <button
-          onClick={() => fetchPendingKyc()}
+          onClick={() => fetchPendingKyc(statusFilter)}
           disabled={isLoading}
           className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors border border-slate-700 self-start md:self-auto"
         >
@@ -71,7 +71,7 @@ export const KycReviewPage: React.FC = () => {
           <button
             key={status}
             onClick={() => {
-              setStatusFilter(status);
+              selectStatusFilter(status);
               clearSelectedKyc();
               setDecisionStatus(null);
             }}
