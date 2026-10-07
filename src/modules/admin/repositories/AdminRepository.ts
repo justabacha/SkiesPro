@@ -2,6 +2,27 @@ import crypto from 'crypto';
 import { PoolClient } from 'pg';
 import { BaseRepository } from '../../../shared/repositories/baseRepository.js';
 
+const assignedRoleJoin = `
+  LEFT JOIN LATERAL (
+    SELECT UPPER(r.name) AS role
+    FROM app_auth.user_roles ur
+    JOIN app_auth.roles r ON r.id = ur.role_id
+    WHERE ur.user_id = u.id
+      AND ur.revoked_at IS NULL
+    ORDER BY CASE LOWER(r.name)
+      WHEN 'super_admin' THEN 1
+      WHEN 'admin' THEN 2
+      WHEN 'compliance' THEN 3
+      WHEN 'risk_manager' THEN 4
+      WHEN 'risk' THEN 4
+      WHEN 'finance' THEN 5
+      WHEN 'support' THEN 6
+      ELSE 100
+    END, LOWER(r.name)
+    LIMIT 1
+  ) assigned_role ON TRUE
+`;
+
 export interface UserStatusUpdateInput {
   status: 'active' | 'suspended' | 'closed';
   reason: string;
@@ -20,27 +41,34 @@ export class AdminRepository extends BaseRepository {
   }): Promise<{ rows: any[]; total: number }> {
     const limit = Math.min(filters.perPage || 20, 100);
     const offset = ((filters.page || 1) - 1) * limit;
-    const conditions: string[] = ['deleted_at IS NULL'];
+    const conditions: string[] = ['u.deleted_at IS NULL'];
     const params: any[] = [];
 
     if (filters.status) {
       params.push(filters.status);
-      conditions.push(`status = $${params.length}`);
+      conditions.push(`u.status = $${params.length}`);
     }
 
     if (filters.search) {
       params.push(`%${filters.search}%`);
-      conditions.push(`(email ILIKE $${params.length} OR display_name ILIKE $${params.length})`);
+      conditions.push(
+        `(u.email ILIKE $${params.length} OR u.display_name ILIKE $${params.length})`
+      );
     }
 
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const countResult = await this.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM app_auth.users ${whereClause}`,
+      `SELECT COUNT(*)::int AS count FROM app_auth.users u ${whereClause}`,
       params
     );
 
     const rowsResult = await this.query<any>(
-      `SELECT * FROM app_auth.users ${whereClause} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      `SELECT u.*, COALESCE(assigned_role.role, 'TRADER') AS role
+       FROM app_auth.users u
+       ${assignedRoleJoin}
+       ${whereClause}
+       ORDER BY u.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset]
     );
 
@@ -52,10 +80,56 @@ export class AdminRepository extends BaseRepository {
 
   async getUserById(id: string): Promise<any | null> {
     const result = await this.query<any>(
-      'SELECT * FROM app_auth.users WHERE id = $1 AND deleted_at IS NULL',
+      `SELECT
+         u.*,
+         COALESCE(assigned_role.role, 'TRADER') AS role,
+         wallet_stats.real_balance,
+         wallet_stats.available_balance,
+         wallet_stats.demo_balance,
+         trade_stats.total_trades,
+         trade_stats.winning_trades
+       FROM app_auth.users u
+       ${assignedRoleJoin}
+       LEFT JOIN LATERAL (
+         SELECT
+           MAX(balance) FILTER (WHERE account_type = 'real') AS real_balance,
+           MAX(available_balance) FILTER (WHERE account_type = 'real') AS available_balance,
+           MAX(balance) FILTER (WHERE account_type = 'demo') AS demo_balance
+         FROM wallet.wallets
+         WHERE user_id = u.id
+       ) wallet_stats ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT
+           COUNT(*)::int AS total_trades,
+           COUNT(*) FILTER (WHERE status = 'won')::int AS winning_trades
+         FROM trading.binary_contracts
+         WHERE user_id = u.id
+       ) trade_stats ON TRUE
+       WHERE u.id = $1 AND u.deleted_at IS NULL`,
       [id]
     );
-    return result.rows[0] || null;
+    const row = result.rows[0];
+    if (!row) return null;
+
+    const { real_balance, available_balance, demo_balance, winning_trades, ...user } = row;
+    const realBalance = Number(real_balance ?? 0);
+    const availableBalance = Number(available_balance ?? 0);
+    const demoBalance = Number(demo_balance ?? 0);
+    const totalTrades = Number(row.total_trades ?? 0);
+    const winningTrades = Number(winning_trades ?? 0);
+
+    return {
+      ...user,
+      wallet_balance_kes: realBalance,
+      demo_balance_kes: demoBalance,
+      total_trades: totalTrades,
+      win_rate_pct: totalTrades > 0 ? (winningTrades / totalTrades) * 100 : null,
+      wallet: {
+        real_balance: realBalance,
+        available_balance: availableBalance,
+        demo_balance: demoBalance,
+      },
+    };
   }
 
   async updateUserStatus(
@@ -93,12 +167,30 @@ export class AdminRepository extends BaseRepository {
     const offset = ((page || 1) - 1) * limit;
 
     const totalResult = await this.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM wallet.ledger_entries WHERE user_id = $1`,
+      `SELECT COUNT(*)::int AS count
+       FROM wallet.ledger_entries le
+       JOIN wallet.wallets w ON w.id = le.wallet_id
+       WHERE w.user_id = $1`,
       [userId]
     );
 
     const rowsResult = await this.query<any>(
-      `SELECT * FROM wallet.ledger_entries WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+      `SELECT
+         le.id,
+         w.user_id,
+         le.wallet_id,
+         CASE WHEN le.entry_type = 'debit' THEN -le.amount ELSE le.amount END AS amount,
+         le.entry_type AS type,
+         le.reference_type,
+         le.description,
+         le.balance_after,
+         w.currency,
+         le.created_at
+       FROM wallet.ledger_entries le
+       JOIN wallet.wallets w ON w.id = le.wallet_id
+       WHERE w.user_id = $1
+       ORDER BY le.created_at DESC
+       LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
     );
 

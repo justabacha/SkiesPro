@@ -29,7 +29,12 @@ export interface UserDetail extends UserSummary {
   wallet_balance_usd?: number;
   demo_balance_kes?: number;
   total_trades?: number;
-  win_rate_pct?: number;
+  win_rate_pct?: number | null;
+  wallet?: {
+    real_balance: number;
+    available_balance: number;
+    demo_balance: number;
+  };
   recent_trades?: Array<{
     id: string;
     symbol: string;
@@ -44,10 +49,11 @@ export interface UserLedgerEntry {
   id: string;
   user_id: string;
   type: string;
-  amount: number;
+  amount: number | string;
   currency: string;
-  balance_after: number;
-  description: string;
+  balance_after: number | string;
+  description?: string | null;
+  reference_type?: string;
   reference_id?: string;
   created_at: string;
 }
