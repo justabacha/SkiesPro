@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PendingAction } from '@/services/admin/adminApiClient';
+import { safeFormatNumber, safeFormatDate } from '@/shared/utils/safeFormatters';
 import { MfaStepUpModal } from './MfaStepUpModal';
 import { CheckSquare, ShieldCheck, User, Calendar, AlertTriangle } from 'lucide-react';
 
@@ -58,7 +59,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({ action, 
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500" /> Threshold Exposure
             </span>
             <span className="text-amber-400 font-bold">
-              ${action.amount_usd ? action.amount_usd.toFixed(2) : '500+'} USD
+              ${action.amount_usd != null ? safeFormatNumber(action.amount_usd, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '500+'} USD
             </span>
           </div>
 
@@ -66,7 +67,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({ action, 
             <span className="text-slate-400 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-slate-500" /> Initiated At
             </span>
-            <span className="text-slate-400">{new Date(action.created_at).toLocaleString()}</span>
+            <span className="text-slate-400">{safeFormatDate(action.created_at)}</span>
           </div>
 
           {action.details && (

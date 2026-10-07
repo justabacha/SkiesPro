@@ -26,6 +26,14 @@ const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
     maxRequests: 300,
     keyGenerator: (req: Request) => `token:${req.headers['authorization']}`,
   },
+  admin: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 300,
+    keyGenerator: (req: Request) => {
+      const token = req.headers['authorization'] || req.headers['x-admin-mfa-token'];
+      return token ? `admin:${token}` : `admin:ip:${req.ip}`;
+    },
+  },
   trading: {
     windowMs: 1 * 1000, // 1 second
     maxRequests: 10,

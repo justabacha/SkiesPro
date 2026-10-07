@@ -1,5 +1,6 @@
 import React from 'react';
 import { AuditLogItem } from '@/services/admin/adminApiClient';
+import { safeFormatDate } from '@/shared/utils/safeFormatters';
 import { ShieldCheck } from 'lucide-react';
 
 interface AuditLogsTableProps {
@@ -66,7 +67,7 @@ export const AuditLogsTable: React.FC<AuditLogsTableProps> = ({ logs, isLoading 
                   </div>
                 </td>
                 <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                  {log.created_at ? new Date(log.created_at).toUTCString() : 'N/A'}
+                  {safeFormatDate(log.created_at, { utc: true })}
                 </td>
               </tr>
             ))}

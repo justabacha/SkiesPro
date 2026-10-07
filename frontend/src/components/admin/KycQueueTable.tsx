@@ -1,5 +1,6 @@
 import React from 'react';
 import { KycApplication } from '@/services/admin/adminApiClient';
+import { safeFormatDate } from '@/shared/utils/safeFormatters';
 import { FileSearch, CheckCircle2 } from 'lucide-react';
 
 interface KycQueueTableProps {
@@ -62,7 +63,7 @@ export const KycQueueTable: React.FC<KycQueueTableProps> = ({
                   {app.doc_number || 'N/A'}
                 </td>
                 <td className="py-3.5 px-4 text-slate-400">
-                  {app.submitted_at ? new Date(app.submitted_at).toLocaleString() : 'N/A'}
+                  {safeFormatDate(app.submitted_at)}
                 </td>
                 <td className="py-3.5 px-4">
                   <span className="px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">

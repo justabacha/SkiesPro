@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminReports } from '@/hooks/admin/useAdminReports';
+import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { BarChart3, RefreshCw, TrendingUp, DollarSign, Users, Activity, AlertCircle } from 'lucide-react';
 
 export const ReportsDashboardPage: React.FC = () => {
@@ -105,8 +106,8 @@ export const ReportsDashboardPage: React.FC = () => {
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
                     <span className="font-mono text-slate-400">{item.date}</span>
                     <div className="flex items-center gap-6">
-                      <span className="font-bold text-emerald-400">KES {item.revenue_kes.toLocaleString()}</span>
-                      <span className="text-slate-300 font-medium">${item.revenue_usd} USD</span>
+                      <span className="font-bold text-emerald-400">KES {safeFormatNumber(item.revenue_kes)}</span>
+                      <span className="text-slate-300 font-medium">${safeFormatNumber(item.revenue_usd)} USD</span>
                     </div>
                   </div>
                 ))}
@@ -126,8 +127,8 @@ export const ReportsDashboardPage: React.FC = () => {
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
                     <span className="font-mono text-slate-400">{item.date}</span>
                     <div className="flex items-center gap-6">
-                      <span className="font-bold text-blue-400">KES {item.volume_kes.toLocaleString()}</span>
-                      <span className="text-slate-400">{item.trade_count} trades</span>
+                      <span className="font-bold text-blue-400">KES {safeFormatNumber(item.volume_kes)}</span>
+                      <span className="text-slate-400">{safeFormatNumber(item.trade_count)} trades</span>
                     </div>
                   </div>
                 ))}

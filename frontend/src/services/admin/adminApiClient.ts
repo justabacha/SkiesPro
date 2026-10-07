@@ -75,6 +75,8 @@ export interface WithdrawalRequest {
   user_email?: string;
   user_display_name?: string;
   amount_kes: number;
+  amount?: number | string;
+  net_amount?: number | string;
   amount_usd?: number;
   phone_number: string;
   status: 'pending' | 'approved' | 'rejected' | 'completed' | 'failed';

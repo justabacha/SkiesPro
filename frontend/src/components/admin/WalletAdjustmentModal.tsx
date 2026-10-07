@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MfaStepUpModal } from './MfaStepUpModal';
+import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { Wallet, ShieldAlert, AlertCircle, X } from 'lucide-react';
 
 const FOUR_EYES_THRESHOLD_USD = 500;
@@ -186,7 +187,7 @@ export const WalletAdjustmentModal: React.FC<WalletAdjustmentModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-100 font-bold focus:outline-none focus:border-blue-500/80"
               />
               <div className="text-[11px] text-slate-500 mt-1">
-                Approx USD value: ${equivalentUsd.toFixed(2)}
+                Approx USD value: ${safeFormatNumber(equivalentUsd, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
 

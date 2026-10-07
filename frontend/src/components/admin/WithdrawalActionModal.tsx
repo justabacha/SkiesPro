@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { WithdrawalRequest } from '@/services/admin/adminApiClient';
+import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { MfaStepUpModal } from './MfaStepUpModal';
 import { Wallet, AlertCircle, X } from 'lucide-react';
 
@@ -25,6 +26,8 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen || !withdrawal || !actionType) return null;
+
+  const amountVal = withdrawal.amount ?? withdrawal.amount_kes ?? withdrawal.net_amount;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +74,7 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
                 Confirm Withdrawal {actionType === 'approve' ? 'Approval' : 'Rejection'}
               </h3>
               <p className="text-xs text-slate-400">
-                Amount: KES {withdrawal.amount_kes.toLocaleString()} ({withdrawal.phone_number})
+                Amount: KES {safeFormatNumber(amountVal)} ({withdrawal.phone_number})
               </p>
             </div>
           </div>
@@ -101,7 +104,7 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
 
             {actionType === 'approve' && (
               <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300">
-                Approving will dispatch M-Pesa B2C payout of KES {withdrawal.amount_kes.toLocaleString()} to recipient {withdrawal.phone_number}.
+                Approving will dispatch M-Pesa B2C payout of KES {safeFormatNumber(amountVal)} to recipient {withdrawal.phone_number}.
               </div>
             )}
 
@@ -133,7 +136,7 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
         onClose={() => setIsMfaOpen(false)}
         onConfirm={handleMfaConfirm}
         title="Finance Withdrawal MFA Verification"
-        description={`Confirm ${actionType.toUpperCase()} request for KES ${withdrawal.amount_kes.toLocaleString()}? Enter TOTP code.`}
+        description={`Confirm ${actionType.toUpperCase()} request for KES ${safeFormatNumber(amountVal)}? Enter TOTP code.`}
       />
     </>
   );

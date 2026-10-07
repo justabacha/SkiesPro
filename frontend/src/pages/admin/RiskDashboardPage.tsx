@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminRisk } from '@/hooks/admin/useAdminRisk';
+import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { AssetConfigModal } from '@/components/admin/AssetConfigModal';
 import { SymbolExposure } from '@/services/admin/adminApiClient';
 import { TrendingUp, RefreshCw, Sliders, AlertCircle } from 'lucide-react';
@@ -56,7 +57,7 @@ export const RiskDashboardPage: React.FC = () => {
         <div className="p-5 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl">
           <div className="text-xs text-slate-400 font-medium mb-1">Payout Exposure</div>
           <div className="text-2xl font-extrabold text-rose-400">
-            KES {metrics ? metrics.total_payout_exposure_kes.toLocaleString() : '0'}
+            KES {safeFormatNumber(metrics?.total_payout_exposure_kes)}
           </div>
           <div className="text-[10px] text-slate-500 mt-1">Aggregate potential payout liability</div>
         </div>
@@ -64,7 +65,7 @@ export const RiskDashboardPage: React.FC = () => {
         <div className="p-5 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl">
           <div className="text-xs text-slate-400 font-medium mb-1">Trader Win Ratio</div>
           <div className="text-2xl font-extrabold text-amber-400">
-            {metrics ? `${(metrics.platform_win_loss_ratio * 100).toFixed(1)}%` : '0%'}
+            {metrics ? `${((metrics.platform_win_loss_ratio || 0) * 100).toFixed(1)}%` : '0%'}
           </div>
           <div className="text-[10px] text-slate-500 mt-1">Platform win vs loss percentage</div>
         </div>
@@ -72,7 +73,7 @@ export const RiskDashboardPage: React.FC = () => {
         <div className="p-5 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl">
           <div className="text-xs text-slate-400 font-medium mb-1">24h Volume</div>
           <div className="text-2xl font-extrabold text-emerald-400">
-            KES {metrics ? metrics.daily_volume_kes.toLocaleString() : '0'}
+            KES {safeFormatNumber(metrics?.daily_volume_kes)}
           </div>
           <div className="text-[10px] text-slate-500 mt-1">Total stake volume in last 24h</div>
         </div>
@@ -110,16 +111,16 @@ export const RiskDashboardPage: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-semibold">C: KES {item.open_call_volume.toLocaleString()}</span>
+                        <span className="text-emerald-400 font-semibold">C: KES {safeFormatNumber(item.open_call_volume)}</span>
                         <span className="text-slate-600">|</span>
-                        <span className="text-rose-400 font-semibold">P: KES {item.open_put_volume.toLocaleString()}</span>
+                        <span className="text-rose-400 font-semibold">P: KES {safeFormatNumber(item.open_put_volume)}</span>
                       </div>
                     </td>
                     <td className="py-3.5 px-4 font-bold text-slate-200">
-                      KES {item.net_exposure.toLocaleString()}
+                      KES {safeFormatNumber(item.net_exposure)}
                     </td>
                     <td className="py-3.5 px-4 text-slate-400 font-mono">
-                      {item.min_stake} / {item.max_stake}
+                      {safeFormatNumber(item.min_stake)} / {safeFormatNumber(item.max_stake)}
                     </td>
                     <td className="py-3.5 px-4">
                       <span

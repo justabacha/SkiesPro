@@ -1,5 +1,6 @@
 import React from 'react';
 import { KycApplication } from '@/services/admin/adminApiClient';
+import { safeFormatDate } from '@/shared/utils/safeFormatters';
 import { X, FileText, UserCheck, CheckCircle2, XCircle } from 'lucide-react';
 
 interface KycDocumentViewerProps {
@@ -128,7 +129,7 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Submitted At</span>
-              <span className="text-slate-200">{new Date(application.submitted_at).toLocaleString()}</span>
+              <span className="text-slate-200">{safeFormatDate(application.submitted_at)}</span>
             </div>
           </div>
         </div>

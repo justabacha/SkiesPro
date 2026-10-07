@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserSummary } from '@/services/admin/adminApiClient';
+import { safeFormatDate } from '@/shared/utils/safeFormatters';
 import { Eye, UserX, ShieldAlert } from 'lucide-react';
 
 interface UserTableProps {
@@ -77,7 +78,7 @@ export const UserTable: React.FC<UserTableProps> = ({
                   <span className="text-slate-300 font-medium">{user.kyc_status || 'Unverified'}</span>
                 </td>
                 <td className="py-3.5 px-4 text-slate-400">
-                  {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                  {safeFormatDate(user.created_at, { dateOnly: true })}
                 </td>
                 <td className="py-3.5 px-4 text-right">
                   <div className="flex items-center justify-end gap-2">

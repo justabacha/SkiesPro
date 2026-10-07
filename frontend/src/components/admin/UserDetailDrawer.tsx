@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserDetail, UserLedgerEntry } from '@/services/admin/adminApiClient';
+import { safeFormatNumber, safeFormatDate } from '@/shared/utils/safeFormatters';
 import { X, Wallet, Award } from 'lucide-react';
 
 interface UserDetailDrawerProps {
@@ -77,7 +78,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                     KES Balance
                   </div>
                   <div className="text-xl font-bold text-slate-100">
-                    KES {(user.wallet_balance_kes || 0).toLocaleString()}
+                    KES {safeFormatNumber(user.wallet_balance_kes)}
                   </div>
                 </div>
 
@@ -130,7 +131,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                           <div className="text-[10px] text-slate-500 uppercase">{trade.direction}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-slate-200">KES {trade.amount.toLocaleString()}</div>
+                          <div className="font-bold text-slate-200">KES {safeFormatNumber(trade.amount)}</div>
                           <div className={`text-[10px] font-semibold uppercase ${trade.status === 'won' ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {trade.status}
                           </div>
@@ -157,13 +158,13 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                       <div className="flex justify-between font-semibold">
                         <span className="text-slate-200 uppercase">{entry.type}</span>
                         <span className={entry.amount >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                          {entry.amount >= 0 ? '+' : ''}{entry.amount.toLocaleString()} {entry.currency}
+                          {entry.amount >= 0 ? '+' : ''}{safeFormatNumber(entry.amount)} {entry.currency}
                         </span>
                       </div>
                       <p className="text-slate-400 text-[11px]">{entry.description}</p>
                       <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                        <span>Balance after: {entry.balance_after.toLocaleString()}</span>
-                        <span>{new Date(entry.created_at).toLocaleString()}</span>
+                        <span>Balance after: {safeFormatNumber(entry.balance_after)}</span>
+                        <span>{safeFormatDate(entry.created_at)}</span>
                       </div>
                     </div>
                   ))}

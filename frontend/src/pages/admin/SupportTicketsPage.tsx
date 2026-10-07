@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAdminSupport } from '@/hooks/admin/useAdminSupport';
+import { safeFormatDate } from '@/shared/utils/safeFormatters';
 import { TicketDetailDrawer } from '@/components/admin/TicketDetailDrawer';
 import { Headphones, RefreshCw, MessageSquare, AlertCircle } from 'lucide-react';
 
@@ -132,7 +133,7 @@ export const SupportTicketsPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                    {ticket.updated_at ? new Date(ticket.updated_at).toLocaleString() : 'N/A'}
+                    {safeFormatDate(ticket.updated_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <button

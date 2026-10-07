@@ -1,4 +1,5 @@
 import React from 'react';
+import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { ShieldCheck, ShieldAlert, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 interface AuditChainStatusBannerProps {
@@ -53,7 +54,7 @@ export const AuditChainStatusBanner: React.FC<AuditChainStatusBannerProps> = ({
           <p className="text-xs text-slate-400 mt-0.5">
             {result
               ? result.valid
-                ? `Cryptographic SHA-256 validation passed for ${result.total_verified || 'all'} audit log entries.`
+                ? `Cryptographic SHA-256 validation passed for ${result.total_verified != null ? safeFormatNumber(result.total_verified) : 'all'} audit log entries.`
                 : `Hash mismatch detected at audit record ID: ${result.broken_at_id}. Immediate compliance audit required.`
               : 'Execute SHA-256 verification across all log blocks to detect any database tampering.'}
           </p>

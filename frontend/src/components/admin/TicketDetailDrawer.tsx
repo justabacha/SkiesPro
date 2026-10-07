@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SupportTicket } from '@/services/admin/adminApiClient';
+import { safeFormatDate } from '@/shared/utils/safeFormatters';
 import { MfaStepUpModal } from './MfaStepUpModal';
 import { X, Send, AlertCircle } from 'lucide-react';
 
@@ -126,7 +127,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 >
                   <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold mb-1">
                     <span>{msg.sender_name || (msg.sender === 'agent' ? 'Support Officer' : 'Customer')}</span>
-                    <span>{new Date(msg.created_at).toLocaleTimeString()}</span>
+                    <span>{safeFormatDate(msg.created_at, { timeOnly: true })}</span>
                   </div>
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.message}</p>
                 </div>

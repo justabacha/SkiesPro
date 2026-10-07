@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminAudit } from '@/hooks/admin/useAdminAudit';
+import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { AuditChainStatusBanner } from '@/components/admin/AuditChainStatusBanner';
 import { AuditLogsTable } from '@/components/admin/AuditLogsTable';
 import { Search, Filter, AlertCircle } from 'lucide-react';
@@ -87,7 +88,7 @@ export const AuditLogsPage: React.FC = () => {
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider">
             Immutable Audit Trail Log
           </h2>
-          <span className="text-xs text-slate-400 font-mono">Total Log Count: {total}</span>
+          <span className="text-xs text-slate-400 font-mono">Total Log Count: {safeFormatNumber(total)}</span>
         </div>
 
         <AuditLogsTable logs={logs} isLoading={isLoading} />

@@ -30,7 +30,7 @@ export const hasAdminRole = (role?: string): boolean =>
 export const requiresMfaStepUp = (user: { mfa_verified?: boolean } = {}): boolean =>
   user.mfa_verified === undefined || user.mfa_verified === false;
 
-export const adminRateLimit = rateLimit('authenticated');
+export const adminRateLimit = rateLimit('admin');
 
 const hasValidAdminMfaToken = (req: Request, user: AdminAuthenticatedRequest['user']): boolean => {
   const token = req.header('X-Admin-MFA-Token');
