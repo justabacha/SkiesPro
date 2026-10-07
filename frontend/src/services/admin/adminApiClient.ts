@@ -37,10 +37,13 @@ export interface UserDetail extends UserSummary {
   };
   recent_trades?: Array<{
     id: string;
-    symbol: string;
-    amount: number;
-    direction: 'call' | 'put';
-    status: 'won' | 'lost' | 'pending';
+    asset_pair?: string;
+    symbol?: string;
+    amount: number | string;
+    payout?: number | string;
+    direction: string;
+    result?: string;
+    status: string;
     created_at: string;
   }>;
 }

@@ -111,6 +111,23 @@ export class AdminRepository extends BaseRepository {
     const row = result.rows[0];
     if (!row) return null;
 
+    const tradesResult = await this.query<any>(
+      `SELECT
+         id,
+         asset_symbol AS asset_pair,
+         contract_type AS direction,
+         stake AS amount,
+         potential_payout AS payout,
+         status AS result,
+         status,
+         created_at
+       FROM trading.binary_contracts
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 5`,
+      [id]
+    );
+
     const { real_balance, available_balance, demo_balance, winning_trades, ...user } = row;
     const realBalance = Number(real_balance ?? 0);
     const availableBalance = Number(available_balance ?? 0);
@@ -124,6 +141,7 @@ export class AdminRepository extends BaseRepository {
       demo_balance_kes: demoBalance,
       total_trades: totalTrades,
       win_rate_pct: totalTrades > 0 ? (winningTrades / totalTrades) * 100 : null,
+      recent_trades: tradesResult.rows,
       wallet: {
         real_balance: realBalance,
         available_balance: availableBalance,

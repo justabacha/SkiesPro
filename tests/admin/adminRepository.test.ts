@@ -49,11 +49,31 @@ describe('AdminRepository user data', () => {
           winning_trades: 3,
         },
       ],
+    }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'trade-1',
+          asset_pair: 'BTC/USD',
+          direction: 'higher',
+          amount: '100.0000',
+          payout: '180.0000',
+          result: 'won',
+          status: 'won',
+          created_at: '2026-10-07T12:00:00.000Z',
+        },
+      ],
     });
 
     const result = await repository.getUserById('user-1');
 
     expect(client.query.mock.calls[0][0]).toContain("WHERE status = 'won'");
+    const recentTradesQuery = client.query.mock.calls[1][0] as string;
+    expect(recentTradesQuery).toContain('asset_symbol AS asset_pair');
+    expect(recentTradesQuery).toContain('contract_type AS direction');
+    expect(recentTradesQuery).toContain('potential_payout AS payout');
+    expect(recentTradesQuery).toContain('ORDER BY created_at DESC');
+    expect(recentTradesQuery).toContain('LIMIT 5');
+    expect(client.query.mock.calls[1][1]).toEqual(['user-1']);
     expect(result).toMatchObject({
       id: 'user-1',
       role: 'RISK_MANAGER',
@@ -66,6 +86,18 @@ describe('AdminRepository user data', () => {
         available_balance: 18360,
         demo_balance: 10000,
       },
+      recent_trades: [
+        {
+          id: 'trade-1',
+          asset_pair: 'BTC/USD',
+          direction: 'higher',
+          amount: '100.0000',
+          payout: '180.0000',
+          result: 'won',
+          status: 'won',
+          created_at: '2026-10-07T12:00:00.000Z',
+        },
+      ],
     });
     expect(result).not.toHaveProperty('real_balance');
     expect(result).not.toHaveProperty('winning_trades');
@@ -85,7 +117,7 @@ describe('AdminRepository user data', () => {
           winning_trades: 0,
         },
       ],
-    });
+    }).mockResolvedValueOnce({ rows: [] });
 
     const result = await repository.getUserById('user-2');
 

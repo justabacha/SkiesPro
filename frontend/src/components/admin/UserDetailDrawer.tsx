@@ -71,6 +71,14 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
     (user as any)?.trades ||
     (user as any)?.recentTrades ||
     [];
+  const tradeDirectionLabel = (direction: string) => {
+    const normalized = direction.toLowerCase();
+    if (normalized === 'higher') return 'HIGH';
+    if (normalized === 'lower') return 'LOW';
+    return direction.toUpperCase();
+  };
+  const tradeOutcomeLabel = (trade: (typeof recentTrades)[number]) =>
+    String(trade.result || trade.status || 'pending').toUpperCase();
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -179,20 +187,41 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                 <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3">Recent Trade Activity</h4>
                 {recentTrades.length > 0 ? (
                   <div className="space-y-2">
-                    {recentTrades.map((trade: any) => (
-                      <div key={trade.id || Math.random().toString()} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                        <div>
-                          <div className="font-semibold text-slate-200">{trade.symbol}</div>
-                          <div className="text-[10px] text-slate-500 uppercase">{trade.direction}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-slate-200">KES {safeFormatNumber(trade.amount)}</div>
-                          <div className={`text-[10px] font-semibold uppercase ${trade.status === 'won' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {trade.status}
+                    {recentTrades.map((trade: (typeof recentTrades)[number]) => {
+                      const outcome = tradeOutcomeLabel(trade);
+                      const outcomeStyle =
+                        outcome === 'WON' || outcome === 'WIN'
+                          ? 'bg-emerald-500/10 text-emerald-400'
+                          : outcome === 'LOST' || outcome === 'LOSS'
+                            ? 'bg-rose-500/10 text-rose-400'
+                            : 'bg-slate-700/50 text-slate-300';
+
+                      return (
+                        <div key={trade.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="font-semibold text-slate-200">
+                                {trade.asset_pair || trade.symbol || 'Unknown asset'}
+                              </div>
+                              <div className="text-[10px] text-slate-500 uppercase">
+                                {tradeDirectionLabel(trade.direction)}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-slate-200">
+                                KES {safeFormatNumber(trade.amount)}
+                              </div>
+                              <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${outcomeStyle}`}>
+                                {outcome}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono">
+                            {safeFormatDate(trade.created_at)}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="p-4 bg-slate-950/40 border border-slate-800 rounded-lg text-center text-xs text-slate-500">
