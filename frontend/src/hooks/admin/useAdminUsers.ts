@@ -6,6 +6,8 @@ export function useAdminUsers() {
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [ledger, setLedger] = useState<UserLedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDrawerLoading, setIsDrawerLoading] = useState<boolean>(false);
+  const [isLedgerLoading, setIsLedgerLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -20,9 +22,9 @@ export function useAdminUsers() {
         status: statusFilter || undefined,
         role: roleFilter || undefined,
       });
-      setUsers(data.rows || []);
+      setUsers(data?.rows || []);
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message || 'Failed to load user directory.');
     } finally {
       setIsLoading(false);
     }
@@ -33,16 +35,23 @@ export function useAdminUsers() {
   }, [fetchUsers]);
 
   const selectUser = useCallback(async (id: string) => {
-    setIsLoading(true);
+    setIsDrawerLoading(true);
     setError(null);
     try {
       const user = await adminApiClient.getUserById(id);
       setSelectedUser(user);
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message || 'Failed to load user details.');
     } finally {
-      setIsLoading(false);
+      setIsDrawerLoading(false);
     }
+  }, []);
+
+  const clearSelectedUser = useCallback(() => {
+    setSelectedUser(null);
+    setLedger([]);
+    setIsDrawerLoading(false);
+    setIsLedgerLoading(false);
   }, []);
 
   const updateUserStatus = useCallback(
@@ -58,7 +67,7 @@ export function useAdminUsers() {
         }
         return res;
       } catch (err) {
-        setError((err as Error).message);
+        setError((err as Error).message || 'Failed to update user status.');
         throw err;
       } finally {
         setIsLoading(false);
@@ -68,17 +77,17 @@ export function useAdminUsers() {
   );
 
   const fetchUserLedger = useCallback(async (id: string, totp_code?: string) => {
-    setIsLoading(true);
+    setIsLedgerLoading(true);
     setError(null);
     try {
       const entries = await adminApiClient.getUserLedger(id, totp_code);
       setLedger(entries);
       return entries;
     } catch (err) {
-      setError((err as Error).message);
-      throw err;
+      setError((err as Error).message || 'Failed to load user ledger.');
+      return [];
     } finally {
-      setIsLoading(false);
+      setIsLedgerLoading(false);
     }
   }, []);
 
@@ -87,6 +96,8 @@ export function useAdminUsers() {
     selectedUser,
     ledger,
     isLoading,
+    isDrawerLoading,
+    isLedgerLoading,
     error,
     search,
     setSearch,
@@ -96,7 +107,7 @@ export function useAdminUsers() {
     setRoleFilter,
     fetchUsers,
     selectUser,
-    clearSelectedUser: () => setSelectedUser(null),
+    clearSelectedUser,
     updateUserStatus,
     fetchUserLedger,
   };

@@ -10,6 +10,46 @@ interface UserTableProps {
   onChangeStatus: (user: UserSummary) => void;
 }
 
+export const getRoleString = (user: any): string => {
+  const rawRole =
+    user?.role ||
+    user?.roles?.[0] ||
+    user?.role_name ||
+    user?.account_role ||
+    'TRADER';
+  return String(rawRole).toUpperCase();
+};
+
+export const getRoleBadgeStyle = (roleStr: string): string => {
+  switch (roleStr) {
+    case 'SUPER_ADMIN':
+    case 'ADMIN':
+      return 'text-purple-400 bg-purple-950/50 border border-purple-800';
+    case 'COMPLIANCE':
+      return 'text-amber-400 bg-amber-950/50 border border-amber-800';
+    case 'FINANCE':
+      return 'text-emerald-400 bg-emerald-950/50 border border-emerald-800';
+    case 'RISK_MANAGER':
+      return 'text-rose-400 bg-rose-950/50 border border-rose-800';
+    case 'SUPPORT':
+      return 'text-cyan-400 bg-cyan-950/50 border border-cyan-800';
+    case 'TRADER':
+    default:
+      return 'text-blue-400 bg-blue-950/50 border border-blue-800';
+  }
+};
+
+export const RoleBadge: React.FC<{ user: any }> = ({ user }) => {
+  const roleStr = getRoleString(user);
+  const style = getRoleBadgeStyle(roleStr);
+
+  return (
+    <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${style}`}>
+      {roleStr}
+    </span>
+  );
+};
+
 export const UserTable: React.FC<UserTableProps> = ({
   users,
   isLoading,
@@ -50,56 +90,59 @@ export const UserTable: React.FC<UserTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50 text-xs">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-800/40 transition-colors">
-                <td className="py-3.5 px-4">
-                  <div className="font-semibold text-slate-200">{user.display_name || 'N/A'}</div>
-                  <div className="text-[11px] text-slate-400">{user.email}</div>
-                </td>
-                <td className="py-3.5 px-4">
-                  <span className="px-2 py-0.5 text-[10px] uppercase font-bold bg-slate-800 text-slate-300 border border-slate-700 rounded">
-                    {user.role}
-                  </span>
-                </td>
-                <td className="py-3.5 px-4">
-                  <span
-                    className={`px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full ${
-                      user.status === 'active'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : user.status === 'suspended'
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                    }`}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-                <td className="py-3.5 px-4">
-                  <span className="text-slate-300 font-medium">{user.kyc_status || 'Unverified'}</span>
-                </td>
-                <td className="py-3.5 px-4 text-slate-400">
-                  {safeFormatDate(user.created_at, { dateOnly: true })}
-                </td>
-                <td className="py-3.5 px-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => onSelectUser(user.id)}
-                      className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                      title="Inspect User Details"
+            {users.map((user) => {
+              const displayName = user.display_name || (user as any).name || (user as any).full_name || 'N/A';
+              const kycStatus = user.kyc_status || (user as any).kyc_level || 'Unverified';
+
+              return (
+                <tr key={user.id} className="hover:bg-slate-800/40 transition-colors">
+                  <td className="py-3.5 px-4">
+                    <div className="font-semibold text-slate-200">{displayName}</div>
+                    <div className="text-[11px] text-slate-400">{user.email}</div>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <RoleBadge user={user} />
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span
+                      className={`px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full ${
+                        user.status === 'active'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : user.status === 'suspended'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      }`}
                     >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onChangeStatus(user)}
-                      className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
-                      title="Change User Status"
-                    >
-                      <UserX className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {user.status || 'active'}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className="text-slate-300 font-medium">{kycStatus}</span>
+                  </td>
+                  <td className="py-3.5 px-4 text-slate-400">
+                    {safeFormatDate(user.created_at, { dateOnly: true })}
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => onSelectUser(user.id)}
+                        className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                        title="Inspect User Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onChangeStatus(user)}
+                        className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                        title="Change User Status"
+                      >
+                        <UserX className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -12,6 +12,8 @@ export const UserManagementPage: React.FC = () => {
     selectedUser,
     ledger,
     isLoading,
+    isDrawerLoading,
+    isLedgerLoading,
     error,
     search,
     setSearch,
@@ -119,6 +121,8 @@ export const UserManagementPage: React.FC = () => {
         user={selectedUser}
         ledger={ledger}
         isOpen={!!selectedUser}
+        isDrawerLoading={isDrawerLoading}
+        isLedgerLoading={isLedgerLoading}
         onClose={clearSelectedUser}
         onFetchLedger={fetchUserLedger}
       />

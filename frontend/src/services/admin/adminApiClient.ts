@@ -217,15 +217,26 @@ class AdminApiClient {
   // --- Users ---
   async getUsers(params: { search?: string; status?: string; role?: string; page?: number; limit?: number }) {
     const query = this.formatQuery(params);
-    const res = await apiClient.get<ApiResponse<{ rows: UserSummary[]; total: number }>>(
+    const res = await apiClient.get<ApiResponse<{ rows: UserSummary[]; total: number } | UserSummary[]>>(
       `/api/v1/admin/users${query}`
     );
-    return res.data || { rows: [], total: 0 };
+    const data = res.data;
+    if (Array.isArray(data)) {
+      return { rows: data, total: data.length };
+    }
+    if (data && typeof data === 'object' && Array.isArray((data as any).rows)) {
+      return { rows: (data as any).rows, total: (data as any).total ?? (data as any).rows.length };
+    }
+    return { rows: [], total: 0 };
   }
 
-  async getUserById(id: string) {
-    const res = await apiClient.get<ApiResponse<UserDetail>>(`/api/v1/admin/users/${id}`);
-    return res.data;
+  async getUserById(id: string): Promise<UserDetail> {
+    const res = await apiClient.get<ApiResponse<UserDetail | { user: UserDetail }>>(`/api/v1/admin/users/${id}`);
+    const d = res.data;
+    if (d && typeof d === 'object' && 'user' in d && (d as any).user) {
+      return (d as any).user as UserDetail;
+    }
+    return d as UserDetail;
   }
 
   async updateUserStatus(id: string, payload: { status: string; reason: string; totp_code?: string }) {
@@ -241,16 +252,26 @@ class AdminApiClient {
     return res.data;
   }
 
-  async getUserLedger(id: string, totp_code?: string) {
+  async getUserLedger(id: string, totp_code?: string): Promise<UserLedgerEntry[]> {
     const headers: Record<string, string> = {};
     if (totp_code) {
       headers['X-Admin-MFA-Token'] = totp_code;
     }
-    const res = await apiClient.get<ApiResponse<{ rows: UserLedgerEntry[]; total: number }>>(
+    const res = await apiClient.get<ApiResponse<{ rows: UserLedgerEntry[]; total: number } | UserLedgerEntry[]>>(
       `/api/v1/admin/users/${id}/ledger`,
       { headers }
     );
-    return res.data?.rows || [];
+    const data = res.data;
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && typeof data === 'object' && Array.isArray((data as any).rows)) {
+      return (data as any).rows;
+    }
+    if (Array.isArray(res)) {
+      return res as unknown as UserLedgerEntry[];
+    }
+    return [];
   }
 
   // --- KYC ---

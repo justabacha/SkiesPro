@@ -1,12 +1,15 @@
 import React from 'react';
 import { UserDetail, UserLedgerEntry } from '@/services/admin/adminApiClient';
 import { safeFormatNumber, safeFormatDate } from '@/shared/utils/safeFormatters';
+import { RoleBadge } from './UserTable';
 import { X, Wallet, Award } from 'lucide-react';
 
 interface UserDetailDrawerProps {
   user: UserDetail | null;
   ledger?: UserLedgerEntry[];
   isOpen: boolean;
+  isDrawerLoading?: boolean;
+  isLedgerLoading?: boolean;
   onClose: () => void;
   onFetchLedger?: (userId: string) => void;
 }
@@ -15,12 +18,59 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
   user,
   ledger = [],
   isOpen,
+  isDrawerLoading = false,
+  isLedgerLoading = false,
   onClose,
   onFetchLedger,
 }) => {
   const [activeTab, setActiveTab] = React.useState<'overview' | 'ledger'>('overview');
 
-  if (!isOpen || !user) return null;
+  if (!isOpen) return null;
+
+  const displayName =
+    user?.display_name ||
+    (user as any)?.name ||
+    (user as any)?.full_name ||
+    user?.email ||
+    'N/A';
+
+  const kesBalance =
+    user?.wallet_balance_kes ??
+    (user as any)?.balance ??
+    (user as any)?.wallet?.balance ??
+    (user as any)?.wallet_balance ??
+    (user as any)?.kes_balance ??
+    0;
+
+  const winRateRaw =
+    user?.win_rate_pct ??
+    (user as any)?.win_rate ??
+    (user as any)?.stats?.win_rate_pct ??
+    (user as any)?.stats?.win_rate;
+
+  const winRateStr =
+    winRateRaw !== undefined && winRateRaw !== null
+      ? `${Number(winRateRaw).toFixed(1)}%`
+      : 'N/A';
+
+  const totalTrades =
+    user?.total_trades ??
+    (user as any)?.stats?.total_trades ??
+    (user as any)?.trades_count ??
+    (user as any)?.total_trades_count ??
+    0;
+
+  const kycStatus =
+    user?.kyc_status ||
+    (user as any)?.kyc_level ||
+    (user as any)?.kyc_state ||
+    'Unverified';
+
+  const recentTrades =
+    user?.recent_trades ||
+    (user as any)?.trades ||
+    (user as any)?.recentTrades ||
+    [];
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -28,8 +78,10 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
         {/* Header */}
         <div className="p-6 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/60">
           <div>
-            <h2 className="text-lg font-bold text-slate-100">{user.display_name || user.email}</h2>
-            <p className="text-xs text-slate-400 font-mono">User ID: {user.id}</p>
+            <h2 className="text-lg font-bold text-slate-100">
+              {user ? displayName : 'User Profile'}
+            </h2>
+            {user && <p className="text-xs text-slate-400 font-mono">User ID: {user.id}</p>}
           </div>
           <button
             onClick={onClose}
@@ -54,7 +106,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
           <button
             onClick={() => {
               setActiveTab('ledger');
-              if (onFetchLedger) onFetchLedger(user.id);
+              if (onFetchLedger && user?.id) onFetchLedger(user.id);
             }}
             className={`py-3 px-4 text-xs font-semibold border-b-2 transition-colors ${
               activeTab === 'ledger'
@@ -68,7 +120,12 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {activeTab === 'overview' && (
+          {isDrawerLoading && !user ? (
+            <div className="p-12 text-center text-slate-400">
+              <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
+              Loading profile details...
+            </div>
+          ) : user && activeTab === 'overview' ? (
             <>
               {/* Stat Cards Grid */}
               <div className="grid grid-cols-2 gap-4">
@@ -78,7 +135,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                     KES Balance
                   </div>
                   <div className="text-xl font-bold text-slate-100">
-                    KES {safeFormatNumber(user.wallet_balance_kes)}
+                    KES {safeFormatNumber(kesBalance)}
                   </div>
                 </div>
 
@@ -88,7 +145,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                     Win Rate
                   </div>
                   <div className="text-xl font-bold text-slate-100">
-                    {user.win_rate_pct !== undefined ? `${user.win_rate_pct}%` : 'N/A'}
+                    {winRateStr}
                   </div>
                 </div>
               </div>
@@ -101,31 +158,29 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                 </div>
                 <div className="flex justify-between border-b border-slate-800/60 pb-2">
                   <span className="text-slate-400">Account Role</span>
-                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
-                    {user.role}
-                  </span>
+                  <RoleBadge user={user} />
                 </div>
                 <div className="flex justify-between border-b border-slate-800/60 pb-2">
                   <span className="text-slate-400">Account Status</span>
-                  <span className="capitalize text-slate-200 font-medium">{user.status}</span>
+                  <span className="capitalize text-slate-200 font-medium">{user.status || 'active'}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-800/60 pb-2">
                   <span className="text-slate-400">KYC Status</span>
-                  <span className="text-emerald-400 font-semibold">{user.kyc_status || 'Unverified'}</span>
+                  <span className="text-emerald-400 font-semibold">{kycStatus}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Total Executed Trades</span>
-                  <span className="text-slate-200 font-medium">{user.total_trades || 0}</span>
+                  <span className="text-slate-200 font-medium">{totalTrades}</span>
                 </div>
               </div>
 
               {/* Recent Trades */}
               <div>
                 <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-3">Recent Trade Activity</h4>
-                {user.recent_trades && user.recent_trades.length > 0 ? (
+                {recentTrades.length > 0 ? (
                   <div className="space-y-2">
-                    {user.recent_trades.map((trade) => (
-                      <div key={trade.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
+                    {recentTrades.map((trade: any) => (
+                      <div key={trade.id || Math.random().toString()} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
                         <div>
                           <div className="font-semibold text-slate-200">{trade.symbol}</div>
                           <div className="text-[10px] text-slate-500 uppercase">{trade.direction}</div>
@@ -146,28 +201,41 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                 )}
               </div>
             </>
-          )}
-
-          {activeTab === 'ledger' && (
+          ) : activeTab === 'ledger' ? (
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Wallet Audit Ledger</h4>
-              {ledger.length > 0 ? (
+              {isLedgerLoading ? (
+                <div className="p-8 text-center text-slate-400">
+                  <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-2" />
+                  Loading ledger history...
+                </div>
+              ) : ledger.length > 0 ? (
                 <div className="space-y-2">
-                  {ledger.map((entry) => (
-                    <div key={entry.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs space-y-1">
-                      <div className="flex justify-between font-semibold">
-                        <span className="text-slate-200 uppercase">{entry.type}</span>
-                        <span className={entry.amount >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                          {entry.amount >= 0 ? '+' : ''}{safeFormatNumber(entry.amount)} {entry.currency}
-                        </span>
+                  {ledger.map((entry) => {
+                    const entryId = entry.id || (entry as any)._id || Math.random().toString();
+                    const amount = Number(entry.amount ?? (entry as any).val ?? 0);
+                    const entryType = entry.type || (entry as any).transaction_type || 'TRANSACTION';
+                    const description = entry.description || (entry as any).memo || 'N/A';
+                    const currency = entry.currency || 'KES';
+                    const balanceAfter = entry.balance_after ?? (entry as any).balance ?? 0;
+                    const createdAt = entry.created_at || (entry as any).timestamp;
+
+                    return (
+                      <div key={entryId} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs space-y-1">
+                        <div className="flex justify-between font-semibold">
+                          <span className="text-slate-200 uppercase">{entryType}</span>
+                          <span className={amount >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                            {amount >= 0 ? '+' : ''}{safeFormatNumber(amount)} {currency}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 text-[11px]">{description}</p>
+                        <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                          <span>Balance after: {safeFormatNumber(balanceAfter)}</span>
+                          <span>{safeFormatDate(createdAt)}</span>
+                        </div>
                       </div>
-                      <p className="text-slate-400 text-[11px]">{entry.description}</p>
-                      <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                        <span>Balance after: {safeFormatNumber(entry.balance_after)}</span>
-                        <span>{safeFormatDate(entry.created_at)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="p-6 bg-slate-950/40 border border-slate-800 rounded-lg text-center text-xs text-slate-500">
@@ -175,7 +243,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                 </div>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
