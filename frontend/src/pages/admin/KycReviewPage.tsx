@@ -10,6 +10,8 @@ export const KycReviewPage: React.FC = () => {
   const {
     pendingKyc,
     selectedKyc,
+    statusFilter,
+    setStatusFilter,
     isLoading,
     error,
     fetchPendingKyc,
@@ -58,6 +60,32 @@ export const KycReviewPage: React.FC = () => {
           <span>{error}</span>
         </div>
       )}
+
+      <div className="flex flex-wrap gap-2 border-b border-slate-800">
+        {([
+          ['pending', 'Pending Review'],
+          ['approved', 'Approved'],
+          ['rejected', 'Rejected'],
+          ['all', 'All Documents'],
+        ] as const).map(([status, label]) => (
+          <button
+            key={status}
+            onClick={() => {
+              setStatusFilter(status);
+              clearSelectedKyc();
+              setDecisionStatus(null);
+            }}
+            aria-pressed={statusFilter === status}
+            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
+              statusFilter === status
+                ? 'border-blue-500 text-blue-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Queue Table */}
       <KycQueueTable

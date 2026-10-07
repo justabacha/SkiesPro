@@ -7,8 +7,8 @@ export class AdminComplianceService {
     this.repo = new AdminRepository();
   }
 
-  async listPendingKyc(filters: { page: number; perPage: number }) {
-    return this.repo.listPendingKyc(filters.page, filters.perPage);
+  async listPendingKyc(filters: { page: number; perPage: number; status?: string }) {
+    return this.repo.listPendingKyc(filters.page, filters.perPage, filters.status || 'pending');
   }
 
   async getKycById(id: string) {

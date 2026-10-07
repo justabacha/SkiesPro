@@ -23,6 +23,50 @@ const assignedRoleJoin = `
   ) assigned_role ON TRUE
 `;
 
+const kycUsersForStatus = `
+  SELECT user_id
+  FROM (
+    SELECT
+      user_id,
+      CASE
+        WHEN BOOL_OR(status = 'pending') THEN 'pending'
+        WHEN BOOL_OR(status = 'rejected') THEN 'rejected'
+        WHEN BOOL_AND(status = 'approved') THEN 'approved'
+        ELSE MAX(status)
+      END AS application_status
+    FROM compliance.kyc_documents
+    GROUP BY user_id
+  ) grouped_users
+  WHERE $1 = 'all'
+     OR application_status = $1
+`;
+
+const kycAggregatedSelect = `
+  SELECT
+    u.id::text AS id,
+    u.id AS user_id,
+    u.email AS user_email,
+    u.display_name AS user_display_name,
+    u.kyc_status AS user_kyc_status,
+    STRING_AGG(DISTINCT kd.document_type, ', ' ORDER BY kd.document_type) AS doc_type,
+    CASE
+      WHEN BOOL_OR(kd.status = 'pending') THEN 'pending'
+      WHEN BOOL_OR(kd.status = 'rejected') THEN 'rejected'
+      WHEN BOOL_AND(kd.status = 'approved') THEN 'approved'
+      ELSE MAX(kd.status)
+    END AS status,
+    MAX(kd.created_at) AS created_at,
+    MAX(kd.created_at) AS submitted_at,
+    (ARRAY_AGG(kd.file_storage_path ORDER BY kd.created_at DESC)
+      FILTER (WHERE kd.document_type IN ('national_id', 'passport', 'drivers_license')))[1] AS id_front_url,
+    (ARRAY_AGG(kd.file_storage_path ORDER BY kd.created_at DESC)
+      FILTER (WHERE kd.document_type = 'proof_of_address'))[1] AS proof_of_address_url,
+    (ARRAY_AGG(kd.file_storage_path ORDER BY kd.created_at DESC)
+      FILTER (WHERE kd.document_type = 'selfie'))[1] AS selfie_url
+  FROM app_auth.users u
+  JOIN compliance.kyc_documents kd ON kd.user_id = u.id
+`;
+
 export interface UserStatusUpdateInput {
   status: 'active' | 'suspended' | 'closed';
   reason: string;
@@ -218,17 +262,28 @@ export class AdminRepository extends BaseRepository {
     };
   }
 
-  async listPendingKyc(page: number, perPage: number): Promise<{ rows: any[]; total: number }> {
+  async listPendingKyc(
+    page: number,
+    perPage: number,
+    status = 'pending'
+  ): Promise<{ rows: any[]; total: number }> {
     const limit = Math.min(perPage || 20, 100);
     const offset = ((page || 1) - 1) * limit;
 
     const totalResult = await this.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM compliance.kyc_documents WHERE status IN ('pending','review_required')`
+      `SELECT COUNT(*)::int AS count
+       FROM (${kycUsersForStatus}) kyc_users`,
+      [status]
     );
 
     const rowsResult = await this.query<any>(
-      `SELECT * FROM compliance.kyc_documents WHERE status IN ('pending','review_required') ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      `WITH matching_users AS (${kycUsersForStatus})
+       ${kycAggregatedSelect}
+       JOIN matching_users mu ON mu.user_id = u.id
+       GROUP BY u.id, u.email, u.display_name, u.kyc_status
+       ORDER BY MAX(kd.created_at) DESC
+       LIMIT $2 OFFSET $3`,
+      [status, limit, offset]
     );
 
     return {
@@ -238,18 +293,48 @@ export class AdminRepository extends BaseRepository {
   }
 
   async getKycById(id: string): Promise<any | null> {
-    const result = await this.query<any>('SELECT * FROM compliance.kyc_documents WHERE id = $1', [
-      id,
-    ]);
+    const result = await this.query<any>(
+      `${kycAggregatedSelect}
+       WHERE u.id = $1
+          OR EXISTS (
+            SELECT 1 FROM compliance.kyc_documents requested_document
+            WHERE requested_document.id = $1 AND requested_document.user_id = u.id
+          )
+       GROUP BY u.id, u.email, u.display_name, u.kyc_status`,
+      [id]
+    );
     return result.rows[0] || null;
   }
 
   async reviewKyc(id: string, action: string, note: string, reviewedBy: string): Promise<any> {
     const result = await this.query<any>(
-      `UPDATE compliance.kyc_documents
-       SET status = $1, review_note = $2, reviewed_by = $3, reviewed_at = NOW()
-       WHERE id = $4
-       RETURNING *`,
+      `WITH target_user AS (
+         SELECT u.id
+         FROM app_auth.users u
+         WHERE u.id = $4
+            OR EXISTS (
+              SELECT 1 FROM compliance.kyc_documents requested_document
+              WHERE requested_document.id = $4 AND requested_document.user_id = u.id
+            )
+         LIMIT 1
+       ),
+       updated_documents AS (
+         UPDATE compliance.kyc_documents kd
+         SET status = $1, review_note = $2, reviewed_by = $3, reviewed_at = NOW()
+         WHERE kd.user_id IN (SELECT id FROM target_user)
+           AND kd.status = 'pending'
+         RETURNING kd.*
+       ),
+       updated_user AS (
+         UPDATE app_auth.users u
+         SET kyc_status = CASE WHEN $1 = 'approved' THEN 'verified' ELSE 'rejected' END,
+             updated_at = NOW()
+         WHERE u.id IN (SELECT user_id FROM updated_documents)
+         RETURNING u.id
+       )
+       SELECT updated_documents.*
+       FROM updated_documents
+       JOIN updated_user ON updated_user.id = updated_documents.user_id`,
       [action === 'approved' ? 'approved' : 'rejected', note, reviewedBy, id]
     );
 

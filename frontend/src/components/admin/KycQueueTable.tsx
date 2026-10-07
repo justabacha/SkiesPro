@@ -18,7 +18,7 @@ export const KycQueueTable: React.FC<KycQueueTableProps> = ({
     return (
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-8 text-center text-slate-400">
         <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
-        Loading pending KYC application queue...
+        Loading KYC applications...
       </div>
     );
   }
@@ -27,8 +27,8 @@ export const KycQueueTable: React.FC<KycQueueTableProps> = ({
     return (
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-12 text-center text-slate-400">
         <CheckCircle2 className="w-10 h-10 text-emerald-500/80 mx-auto mb-3" />
-        <p className="text-base font-semibold text-slate-200">KYC Review Queue Clear</p>
-        <p className="text-xs text-slate-500 mt-1">There are no pending identity verification requests at this time.</p>
+        <p className="text-base font-semibold text-slate-200">No KYC applications found</p>
+        <p className="text-xs text-slate-500 mt-1">There are no applications matching this status filter.</p>
       </div>
     );
   }
@@ -66,7 +66,13 @@ export const KycQueueTable: React.FC<KycQueueTableProps> = ({
                   {safeFormatDate(app.submitted_at)}
                 </td>
                 <td className="py-3.5 px-4">
-                  <span className="px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full ${
+                    app.status === 'approved'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : app.status === 'rejected'
+                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}>
                     {app.status}
                   </span>
                 </td>

@@ -52,9 +52,27 @@ router.get(
 );
 
 router.get(
+  '/kyc',
+  requireAdminRole(['compliance', 'admin', 'super_admin']),
+  requireAdminMFA,
+  [
+    query('status').optional().isIn(['pending', 'approved', 'rejected', 'all']),
+    query('page').optional().isInt({ min: 1 }),
+    query('per_page').optional().isInt({ min: 1 }),
+  ],
+  validate,
+  (req: Request, res: Response) => controller.listPendingKyc(req, res)
+);
+router.get(
   '/kyc/pending',
   requireAdminRole(['compliance', 'admin', 'super_admin']),
   requireAdminMFA,
+  [
+    query('status').optional().isIn(['pending', 'approved', 'rejected', 'all']),
+    query('page').optional().isInt({ min: 1 }),
+    query('per_page').optional().isInt({ min: 1 }),
+  ],
+  validate,
   (req: Request, res: Response) => controller.listPendingKyc(req, res)
 );
 router.get(

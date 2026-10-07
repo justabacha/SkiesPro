@@ -60,6 +60,7 @@ export class AdminController {
     const result = await this.compliance.listPendingKyc({
       page: Number(req.query.page || 1),
       perPage: Number(req.query.per_page || 20),
+      status: typeof req.query.status === 'string' ? req.query.status : 'pending',
     });
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }

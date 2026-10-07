@@ -180,4 +180,83 @@ describe('AdminRepository user data', () => {
       total: 6,
     });
   });
+
+  it('returns one flattened KYC application per user with status filtering and pagination', async () => {
+    const { client, repository } = createRepository();
+    client.query
+      .mockResolvedValueOnce({ rows: [{ count: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'user-1',
+            user_id: 'user-1',
+            user_email: 'kyc@example.com',
+            user_display_name: 'KYC User',
+            doc_type: 'national_id, proof_of_address, selfie',
+            status: 'approved',
+            id_front_url: 'https://example.com/id.png',
+            proof_of_address_url: 'https://example.com/address.png',
+            selfie_url: 'https://example.com/selfie.png',
+          },
+        ],
+      });
+
+    const result = await repository.listPendingKyc(2, 5, 'approved');
+    const countQuery = client.query.mock.calls[0][0] as string;
+    const rowsQuery = client.query.mock.calls[1][0] as string;
+
+    expect(countQuery).toContain('SELECT user_id');
+    expect(countQuery).toContain('GROUP BY user_id');
+    expect(client.query.mock.calls[0][1]).toEqual(['approved']);
+    expect(rowsQuery).toContain('STRING_AGG(DISTINCT kd.document_type');
+    expect(rowsQuery).toContain("kd.document_type = 'proof_of_address'");
+    expect(rowsQuery).toContain("kd.document_type = 'selfie'");
+    expect(rowsQuery).toContain('OR application_status = $1');
+    expect(rowsQuery).toContain('GROUP BY u.id, u.email, u.display_name, u.kyc_status');
+    expect(rowsQuery).toContain('LIMIT $2 OFFSET $3');
+    expect(client.query.mock.calls[1][1]).toEqual(['approved', 5, 5]);
+    expect(result).toEqual({
+      rows: [
+        {
+          id: 'user-1',
+          user_id: 'user-1',
+          user_email: 'kyc@example.com',
+          user_display_name: 'KYC User',
+          doc_type: 'national_id, proof_of_address, selfie',
+          status: 'approved',
+          id_front_url: 'https://example.com/id.png',
+          proof_of_address_url: 'https://example.com/address.png',
+          selfie_url: 'https://example.com/selfie.png',
+        },
+      ],
+      total: 1,
+    });
+  });
+
+  it('updates pending KYC documents and the parent user status in one query', async () => {
+    const { client, repository } = createRepository();
+    client.query.mockResolvedValueOnce({
+      rows: [{ id: 'document-1', user_id: 'user-1', status: 'approved' }],
+    });
+
+    const result = await repository.reviewKyc(
+      'user-1',
+      'approved',
+      'Documents verified',
+      'reviewer-1'
+    );
+    const query = client.query.mock.calls[0][0] as string;
+
+    expect(query).toContain('UPDATE compliance.kyc_documents');
+    expect(query).toContain('UPDATE app_auth.users');
+    expect(query).toContain("THEN 'verified' ELSE 'rejected' END");
+    expect(query).toContain("kd.status = 'pending'");
+    expect(client.query.mock.calls[0][1]).toEqual([
+      'approved',
+      'Documents verified',
+      'reviewer-1',
+      'user-1',
+    ]);
+    expect(result).toEqual({ id: 'document-1', user_id: 'user-1', status: 'approved' });
+  });
 });

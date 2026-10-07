@@ -61,13 +61,16 @@ export interface UserLedgerEntry {
   created_at: string;
 }
 
+export type KycStatusFilter = 'pending' | 'approved' | 'rejected' | 'all';
+
 export interface KycApplication {
   id: string;
   user_id: string;
   user_email?: string;
   user_display_name?: string;
+  user_kyc_status?: string;
   doc_type: string;
-  status: 'pending' | 'approved' | 'rejected' | 'review_required';
+  status: 'pending' | 'approved' | 'rejected' | 'review_required' | 'expired';
   submitted_at: string;
   created_at?: string;
   doc_number?: string;
@@ -284,11 +287,12 @@ class AdminApiClient {
   }
 
   // --- KYC ---
-  async getPendingKyc(totp_code?: string) {
+  async getPendingKyc(totp_code?: string, status: KycStatusFilter = 'pending') {
     const headers: Record<string, string> = {};
     if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
+    const query = this.formatQuery({ status });
     const res = await apiClient.get<ApiResponse<{ rows: KycApplication[]; total: number }>>(
-      `/api/v1/admin/kyc/pending`,
+      `/api/v1/admin/kyc${query}`,
       { headers }
     );
     return res.data?.rows || [];
