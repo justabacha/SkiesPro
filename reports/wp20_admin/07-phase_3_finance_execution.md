@@ -37,6 +37,17 @@ Phase 3 implementation has successfully resolved all findings from `reports/wp20
 
 ---
 
+## Production Blockers & Refund Logic Fixes
+
+1. **Correct User PII Mapping**:
+   - Verified that `payments.withdrawals` joins `app_auth.users u ON w.user_id = u.id` correctly linking withdrawal requests to the trader user rather than the reviewing admin.
+   - Updated test data seeding (`scripts/seed-test-withdrawals.ts`) to assign withdrawal requests to non-admin trader accounts and restore wallet locked balances (`locked_balance = 0`).
+2. **Withdrawal Rejection Refund Logic (`AdminComplianceService.ts`)**:
+   - Implemented database transaction wrapping (`BEGIN`, `COMMIT`, `ROLLBACK`) in `rejectWithdrawal`.
+   - Integrated `WalletService.unlockFunds()` to release locked withdrawal funds back to the user's available balance upon rejection.
+
+---
+
 ## 2. Verification & Typecheck Results
 
 1. **Frontend Typecheck**: `npm --prefix frontend run typecheck` (`tsc --noEmit`) -> **0 Errors**.

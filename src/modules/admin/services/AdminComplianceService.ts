@@ -1,4 +1,7 @@
 import { AdminRepository } from '../repositories/AdminRepository.js';
+import { WalletService } from '../../wallet/services/walletService.js';
+import { pgPool } from '../../../config/database.js';
+import { Decimal } from 'decimal.js';
 
 export class AdminComplianceService {
   private readonly repo: AdminRepository;
@@ -37,7 +40,37 @@ export class AdminComplianceService {
   }
 
   async rejectWithdrawal(id: string, reviewedBy: string, reason: string) {
-    const item = await this.repo.updateWithdrawalStatus(id, 'rejected', reason, reviewedBy);
-    return { id, status: 'rejected', reviewedBy, reason, item };
+    const client = await pgPool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const adminRepoTx = new AdminRepository(client);
+      const walletServiceTx = new WalletService(client);
+
+      const withdrawal = await adminRepoTx.getWithdrawalById(id);
+      if (!withdrawal) {
+        throw new Error('Withdrawal not found');
+      }
+      if (withdrawal.status !== 'pending') {
+        throw new Error(`Cannot reject withdrawal with status '${withdrawal.status}'`);
+      }
+
+      // Unlock/refund locked funds back to available balance
+      await walletServiceTx.unlockFunds(
+        withdrawal.user_id,
+        'real',
+        new Decimal(withdrawal.amount)
+      );
+
+      const item = await adminRepoTx.updateWithdrawalStatus(id, 'rejected', reason, reviewedBy);
+
+      await client.query('COMMIT');
+      return { id, status: 'rejected', reviewedBy, reason, item };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }

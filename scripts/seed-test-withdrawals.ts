@@ -15,13 +15,32 @@ async function seedTestWithdrawals(): Promise<void> {
   try {
     await client.query('BEGIN');
 
-    // Get a user id
-    const userRes = await client.query('SELECT id FROM app_auth.users LIMIT 1');
-    if (userRes.rows.length === 0) {
+    // 1. Restore test wallets by clearing locked balances
+    console.log('Restoring test wallets by resetting locked balances...');
+    await client.query(`UPDATE wallet.wallets SET locked_balance = 0 WHERE locked_balance > 0`);
+
+    // 2. Get a non-admin user id (trader)
+    const userRes = await client.query(`
+      SELECT u.id FROM app_auth.users u
+      WHERE NOT EXISTS (
+        SELECT 1 FROM app_auth.user_roles ur
+        JOIN app_auth.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = u.id AND ur.revoked_at IS NULL
+          AND r.name IN ('admin', 'super_admin', 'compliance', 'finance', 'risk_manager', 'support')
+      )
+      LIMIT 1
+    `);
+
+    let userId = userRes.rows[0]?.id;
+    if (!userId) {
+      const fallback = await client.query('SELECT id FROM app_auth.users LIMIT 1');
+      userId = fallback.rows[0]?.id;
+    }
+
+    if (!userId) {
       console.error('No users found in app_auth.users. Cannot seed withdrawals.');
       return;
     }
-    const userId = userRes.rows[0].id;
 
     // Get a gateway id
     const gwRes = await client.query('SELECT id FROM payments.payment_gateways LIMIT 1');
@@ -31,6 +50,9 @@ async function seedTestWithdrawals(): Promise<void> {
     } else {
       await client.query(`INSERT INTO payments.payment_gateways (id, name, is_active) VALUES (1, 'M-Pesa', true) ON CONFLICT (id) DO NOTHING`);
     }
+
+    // Clear old seeded test withdrawals to avoid clutter
+    await client.query(`DELETE FROM payments.withdrawals WHERE idempotency_key LIKE 'seed_wd_%'`);
 
     const statuses = ['pending', 'approved', 'rejected'];
     for (const status of statuses) {
@@ -50,7 +72,7 @@ async function seedTestWithdrawals(): Promise<void> {
     }
 
     await client.query('COMMIT');
-    console.log('✓ Test withdrawals seeded successfully (pending, approved, rejected).');
+    console.log('✓ Test withdrawals seeded successfully with trader user ID and test wallets restored.');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('✗ Failed to seed test withdrawals:', error);
