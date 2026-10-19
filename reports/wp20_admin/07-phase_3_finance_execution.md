@@ -48,6 +48,14 @@ Phase 3 implementation has successfully resolved all findings from `reports/wp20
 
 ---
 
+## UI Conditional Action Fix (`PendingWithdrawalsTable.tsx`)
+
+- **Scoped Action Buttons**:
+  - Updated `PendingWithdrawalsTable.tsx` so that approval and rejection action buttons are strictly scoped to withdrawal requests where `item.status.toLowerCase() === 'pending'`.
+  - For resolved withdrawals (`approved`, `rejected`), the actions column displays a clean capitalized status badge (`Approved` / `Rejected`), preventing duplicate or invalid resolution attempts on historical items.
+
+---
+
 ## 2. Verification & Typecheck Results
 
 1. **Frontend Typecheck**: `npm --prefix frontend run typecheck` (`tsc --noEmit`) -> **0 Errors**.

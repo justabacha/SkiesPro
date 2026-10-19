@@ -24,8 +24,8 @@ export const PendingWithdrawalsTable: React.FC<PendingWithdrawalsTableProps> = (
       <TableEmpty
         icon={CheckCircle2}
         iconClassName="w-10 h-10 text-emerald-500/80 mx-auto mb-3"
-        title="No Pending Withdrawals"
-        description="All payout transactions have been processed."
+        title="No Withdrawals Found"
+        description="There are no payout transactions matching the current status filter."
       />
     );
   }
@@ -69,22 +69,28 @@ export const PendingWithdrawalsTable: React.FC<PendingWithdrawalsTableProps> = (
                     {safeFormatDate(item.created_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => onSelectWithdrawal(item, 'reject')}
-                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                        title="Reject Withdrawal"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onSelectWithdrawal(item, 'approve')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium transition-colors"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Approve Payout
-                      </button>
-                    </div>
+                    {item.status.toLowerCase() === 'pending' ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => onSelectWithdrawal(item, 'reject')}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                          title="Reject Withdrawal"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onSelectWithdrawal(item, 'approve')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Approve Payout
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 font-semibold uppercase px-2 py-1 bg-slate-800 rounded">
+                        {item.status}
+                      </span>
+                    )}
                   </td>
                 </tr>
               );
