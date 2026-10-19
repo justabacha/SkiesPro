@@ -10,15 +10,23 @@ export function useAdminUsers() {
   const [isLedgerLoading, setIsLedgerLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await adminApiClient.getUsers({
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         status: statusFilter || undefined,
         role: roleFilter || undefined,
       });
@@ -28,13 +36,14 @@ export function useAdminUsers() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, statusFilter, roleFilter]);
+  }, [debouncedSearch, statusFilter, roleFilter]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   const selectUser = useCallback(async (id: string) => {
+    setSelectedUser(null); // Clear stale user state immediately
     setIsDrawerLoading(true);
     setError(null);
     try {

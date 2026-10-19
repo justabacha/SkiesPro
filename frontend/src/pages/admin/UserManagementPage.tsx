@@ -4,7 +4,15 @@ import { UserTable } from '@/components/admin/UserTable';
 import { UserDetailDrawer } from '@/components/admin/UserDetailDrawer';
 import { UserStatusModal } from '@/components/admin/UserStatusModal';
 import { UserSummary } from '@/services/admin/adminApiClient';
+import { FilterTabs } from '@/shared/components';
 import { Search, RefreshCw, Users, AlertCircle } from 'lucide-react';
+
+const USER_STATUS_TABS = [
+  { id: '', label: 'All Statuses' },
+  { id: 'active', label: 'Active' },
+  { id: 'suspended', label: 'Suspended' },
+  { id: 'banned', label: 'Banned' },
+] as const;
 
 export const UserManagementPage: React.FC = () => {
   const {
@@ -79,18 +87,13 @@ export const UserManagementPage: React.FC = () => {
           />
         </div>
 
-        {/* Dropdown Filters */}
-        <div className="flex w-full md:w-auto items-center gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-blue-500/80"
-          >
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-            <option value="banned">Banned</option>
-          </select>
+        {/* Filter Tabs & Role Dropdown */}
+        <div className="flex flex-wrap w-full md:w-auto items-center gap-3">
+          <FilterTabs
+            tabs={USER_STATUS_TABS}
+            activeTab={statusFilter}
+            onChange={setStatusFilter}
+          />
 
           <select
             value={roleFilter}
