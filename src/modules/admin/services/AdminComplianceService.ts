@@ -1,10 +1,10 @@
 import { AdminRepository } from '../repositories/AdminRepository.js';
 import { WalletRepository } from '../../wallet/repositories/walletRepository.js';
-import { LedgerService } from '../../wallet/services/ledgerService.js';
 import { WalletService } from '../../wallet/services/walletService.js';
 import { pgPool } from '../../../config/database.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
+import { normalizeMsisdn } from '../../payments/adapters/mpesa/DarajaB2CAdapter.js';
 
 export class AdminComplianceService {
   private readonly repo: AdminRepository;
@@ -44,9 +44,8 @@ export class AdminComplianceService {
 
       const adminRepoTx = new AdminRepository(client);
       const walletRepoTx = new WalletRepository(client);
-      const ledgerServiceTx = new LedgerService(client);
 
-      const withdrawal = await adminRepoTx.getWithdrawalById(id);
+      const withdrawal = await adminRepoTx.getWithdrawalByIdForUpdate(id);
       if (!withdrawal) {
         throw new Error('Withdrawal not found');
       }
@@ -54,12 +53,30 @@ export class AdminComplianceService {
         throw new Error(`Cannot approve withdrawal with status '${withdrawal.status}' (already resolved)`);
       }
 
-      const amount = new Decimal(withdrawal.amount);
       const userId = withdrawal.user_id;
+      const rawPhone = await adminRepoTx.getUserPhone(userId);
+      if (!rawPhone) {
+        throw new Error('User phone number is missing or not configured');
+      }
+
+      let normalizedPhone: string;
+      try {
+        normalizedPhone = normalizeMsisdn(rawPhone);
+      } catch (err: any) {
+        throw new Error(`Invalid user phone number format: ${rawPhone}`);
+      }
 
       const wallet = await walletRepoTx.findByUserIdForUpdate(userId, 'real');
       if (!wallet) {
         throw new Error('Wallet not found for withdrawal user');
+      }
+
+      const amount = new Decimal(withdrawal.amount);
+      const fee = new Decimal(withdrawal.fee);
+      const netAmount = amount.minus(fee);
+
+      if (netAmount.lessThanOrEqualTo(0)) {
+        throw new Error('Invalid withdrawal fee configuration (net amount must be positive)');
       }
 
       const lockedBefore = new Decimal(wallet.locked_balance);
@@ -67,40 +84,20 @@ export class AdminComplianceService {
         throw new Error('Locked balance is less than withdrawal amount');
       }
 
-      const balanceBefore = new Decimal(wallet.balance);
-      if (balanceBefore.lessThan(amount)) {
-        throw new Error('Total balance is less than withdrawal amount');
-      }
+      const originatorConversationId = uuidv4();
+      const payload = {
+        amount: amount.toString(),
+        netAmount: netAmount.toString(),
+        recipientPhone: normalizedPhone,
+        remarks: 'Withdrawal payout',
+        occasion: id,
+      };
 
-      const lockedAfter = lockedBefore.minus(amount);
-      const balanceAfter = balanceBefore.minus(amount);
-      const transactionId = uuidv4();
-
-      await walletRepoTx.updateBalance(
-        userId,
-        'real',
-        wallet.id,
-        balanceAfter,
-        lockedAfter,
-        wallet.version
-      );
-
-      await ledgerServiceTx.recordEntry({
-        transactionId,
-        walletId: wallet.id,
-        entryType: 'debit',
-        amount,
-        balanceBefore,
-        balanceAfter,
-        referenceType: 'withdrawal',
-        referenceId: id,
-        description: `Withdrawal payout approved: KES ${amount.toString()}`,
-      });
-
-      const item = await adminRepoTx.updateWithdrawalStatus(id, 'approved', note, reviewedBy);
+      await adminRepoTx.insertB2COutboxRow(id, originatorConversationId, payload);
+      const item = await adminRepoTx.updateWithdrawalStatus(id, 'dispatched', note, reviewedBy);
 
       await client.query('COMMIT');
-      return { id, status: 'approved', reviewedBy, note, item };
+      return { id, status: 'dispatched', reviewedBy, note, item };
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

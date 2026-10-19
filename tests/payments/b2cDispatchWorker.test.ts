@@ -9,7 +9,7 @@ process.env.MPESA_ENVIRONMENT = 'mock';
 
 const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;
 
-describe('B2CDispatchWorker Integration Tests (Slice 2)', () => {
+describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
   let testUserId: string;
   let testWithdrawalIds: string[] = [];
   let testIdempotencyKeys: string[] = [];
@@ -323,5 +323,29 @@ describe('B2CDispatchWorker Integration Tests (Slice 2)', () => {
     const { config } = require('../../src/config/app.js');
     expect(config.enableB2cWorker).toBeDefined();
     expect(typeof config.enableB2cWorker).toBe('boolean');
+  });
+
+  test('11. Worker respects enableB2cDisbursement=false flag (skips dispatch, reverts to pending)', async () => {
+    if (skipDatabaseTests) return;
+
+    const fixture = await createOutboxFixture();
+    const { config } = require('../../src/config/app.js');
+    const originalSetting = config.enableB2cDisbursement;
+    config.enableB2cDisbursement = false;
+
+    try {
+      const mockAdapter = new MpesaB2CMockAdapter('success');
+      const worker = new B2CDispatchWorker(pgPool, mockAdapter, 10000, 5);
+
+      await worker.processBatch();
+
+      const res = await pgPool.query(`SELECT * FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+      const row = res.rows[0];
+
+      expect(row.status).toBe('pending');
+      expect(row.attempt_count).toBe(0);
+    } finally {
+      config.enableB2cDisbursement = originalSetting;
+    }
   });
 });

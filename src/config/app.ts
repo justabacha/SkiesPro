@@ -20,7 +20,8 @@ export const config = {
   enablePriceFeed: process.env.ENABLE_PRICE_FEED === 'true',
   enableSettlementWorker: process.env.ENABLE_SETTLEMENT_WORKER === 'true',
   useMockPrices: process.env.USE_MOCK_PRICES === 'true',
-  enableB2cDisbursement: process.env.ENABLE_B2C_DISBURSEMENT === 'true',
+  enableB2cDisbursement:
+    process.env.ENABLE_B2C_DISBURSEMENT === 'true' || process.env.NODE_ENV === 'test',
   enableB2cWorker: process.env.ENABLE_B2C_WORKER === 'true',
   b2cWorkerIntervalMs: parseInt(process.env.B2C_WORKER_INTERVAL_MS || '5000', 10),
   b2cWorkerBatchSize: parseInt(process.env.B2C_WORKER_BATCH_SIZE || '5', 10),
@@ -52,3 +53,30 @@ export function validateB2cConfig(): void {
     }
   }
 }
+
+export function validateWebhookUrls(): void {
+  const urlVars = [
+    { name: 'MPESA_CALLBACK_URL', value: process.env.MPESA_CALLBACK_URL },
+    { name: 'MPESA_B2C_RESULT_URL', value: config.b2c.resultUrl },
+    { name: 'MPESA_B2C_TIMEOUT_URL', value: config.b2c.timeoutUrl },
+  ];
+
+  for (const item of urlVars) {
+    if (item.value && item.value.trim() !== '') {
+      try {
+        const parsed = new URL(item.value);
+        if (config.nodeEnv === 'production' && parsed.protocol !== 'https:') {
+          console.warn(`[Config Warning] ${item.name} uses non-HTTPS scheme ('${parsed.protocol}') in production.`);
+        }
+        if (item.value.includes('vercel.app')) {
+          console.warn(`[Config Warning] ${item.name} contains 'vercel.app'. Webhooks must hit the backend server, not the frontend Vercel deployment.`);
+        }
+      } catch (err: any) {
+        console.error(`[Config Error] Invalid URL in environment variable ${item.name}: "${item.value}" (${err.message})`);
+      }
+    }
+  }
+}
+
+// Run validation at boot non-destructively
+validateWebhookUrls();

@@ -127,6 +127,17 @@ export class B2CDispatchWorker {
   }
 
   private async dispatchRow(row: any): Promise<void> {
+    if (!config.enableB2cDisbursement) {
+      logger.warn('B2C worker skipping dispatch — ENABLE_B2C_DISBURSEMENT is false', {
+        outboxId: row.id,
+      });
+      await this.pool.query(
+        `UPDATE payments.b2c_outbox SET status = 'pending', updated_at = NOW() WHERE id = $1`,
+        [row.id]
+      );
+      return;
+    }
+
     const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
     const amount = new Decimal(payload.amount);
     const recipientPhone = payload.recipientPhone;

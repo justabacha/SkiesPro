@@ -419,6 +419,35 @@ export class AdminRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
+  async getWithdrawalByIdForUpdate(id: string): Promise<any | null> {
+    const result = await this.query<any>(
+      `SELECT * FROM payments.withdrawals WHERE id = $1 FOR UPDATE`,
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async getUserPhone(userId: string): Promise<string | null> {
+    const result = await this.query<{ phone: string | null }>(
+      `SELECT phone FROM app_auth.users WHERE id = $1`,
+      [userId]
+    );
+    return result.rows[0]?.phone || null;
+  }
+
+  async insertB2COutboxRow(
+    withdrawalId: string,
+    originatorConversationId: string,
+    payload: Record<string, unknown>
+  ): Promise<void> {
+    await this.query(
+      `INSERT INTO payments.b2c_outbox (
+         withdrawal_id, originator_conversation_id, status, next_attempt_at, payload, created_at, updated_at
+       ) VALUES ($1, $2, 'pending', NOW(), $3::jsonb, NOW(), NOW())`,
+      [withdrawalId, originatorConversationId, JSON.stringify(payload)]
+    );
+  }
+
   async updateWithdrawalStatus(
     id: string,
     status: string,
