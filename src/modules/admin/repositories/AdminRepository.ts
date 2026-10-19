@@ -777,4 +777,24 @@ export class AdminRepository extends BaseRepository {
 
     return result.rows[0] || null;
   }
+
+  async getPendingAdminActions(): Promise<any[]> {
+    const result = await this.query<any>(
+      `SELECT a.id,
+              a.action_type,
+              a.admin_id as actor_id,
+              u.email as actor_email,
+              'user' as target_entity,
+              a.target_user_id as target_id,
+              a.details,
+              COALESCE(NULLIF(a.details->>'amount', '')::numeric / 130.0, 0) as amount_usd,
+              'pending' as status,
+              a.created_at
+       FROM admin.admin_actions a
+       LEFT JOIN app_auth.users u ON a.admin_id = u.id
+       WHERE a.requires_approval = true AND a.approved_at IS NULL
+       ORDER BY a.created_at DESC`
+    );
+    return result.rows;
+  }
 }

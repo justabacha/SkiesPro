@@ -4,7 +4,15 @@ import { KycQueueTable } from '@/components/admin/KycQueueTable';
 import { KycDocumentViewer } from '@/components/admin/KycDocumentViewer';
 import { KycDecisionModal } from '@/components/admin/KycDecisionModal';
 import { KycApplication } from '@/services/admin/adminApiClient';
+import { FilterTabs } from '@/shared/components';
 import { FileCheck, RefreshCw, AlertCircle } from 'lucide-react';
+
+const KYC_TABS = [
+  { id: 'pending', label: 'Pending Review' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'all', label: 'All Documents' },
+] as const;
 
 export const KycReviewPage: React.FC = () => {
   const {
@@ -61,31 +69,15 @@ export const KycReviewPage: React.FC = () => {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-800">
-        {([
-          ['pending', 'Pending Review'],
-          ['approved', 'Approved'],
-          ['rejected', 'Rejected'],
-          ['all', 'All Documents'],
-        ] as const).map(([status, label]) => (
-          <button
-            key={status}
-            onClick={() => {
-              selectStatusFilter(status);
-              clearSelectedKyc();
-              setDecisionStatus(null);
-            }}
-            aria-pressed={statusFilter === status}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
-              statusFilter === status
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FilterTabs
+        tabs={KYC_TABS}
+        activeTab={statusFilter}
+        onChange={(status) => {
+          selectStatusFilter(status);
+          clearSelectedKyc();
+          setDecisionStatus(null);
+        }}
+      />
 
       {/* Queue Table */}
       <KycQueueTable

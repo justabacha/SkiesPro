@@ -246,6 +246,11 @@ export class AdminController {
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
+  async listPendingActions(req: Request, res: Response): Promise<void> {
+    const result = await this.wallets.listPendingActions();
+    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+  }
+
   async verifyAuditChain(req: Request, res: Response): Promise<void> {
     const result = await this.audit.verifyChain();
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });

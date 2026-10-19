@@ -105,4 +105,8 @@ export class AdminWalletService {
       approvedBy,
     };
   }
+
+  async listPendingActions(): Promise<any[]> {
+    return this.repo.getPendingAdminActions();
+  }
 }

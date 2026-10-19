@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserSummary } from '@/services/admin/adminApiClient';
 import { safeFormatDate } from '@/shared/utils/safeFormatters';
+import { TableLoading, TableEmpty } from '@/shared/components';
 import { Eye, UserX, ShieldAlert } from 'lucide-react';
 
 interface UserTableProps {
@@ -57,21 +58,16 @@ export const UserTable: React.FC<UserTableProps> = ({
   onChangeStatus,
 }) => {
   if (isLoading) {
-    return (
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-        <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
-        Loading user directory...
-      </div>
-    );
+    return <TableLoading message="Loading user directory..." />;
   }
 
   if (users.length === 0) {
     return (
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-12 text-center text-slate-400">
-        <ShieldAlert className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-        <p className="text-base font-semibold text-slate-300">No users found</p>
-        <p className="text-xs text-slate-500 mt-1">Try adjusting your search query or filters.</p>
-      </div>
+      <TableEmpty
+        icon={ShieldAlert}
+        title="No users found"
+        description="Try adjusting your search query or filters."
+      />
     );
   }
 

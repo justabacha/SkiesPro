@@ -1,6 +1,7 @@
 import React from 'react';
 import { AuditLogItem } from '@/services/admin/adminApiClient';
 import { safeFormatDate } from '@/shared/utils/safeFormatters';
+import { TableLoading, TableEmpty } from '@/shared/components';
 import { ShieldCheck } from 'lucide-react';
 
 interface AuditLogsTableProps {
@@ -10,21 +11,16 @@ interface AuditLogsTableProps {
 
 export const AuditLogsTable: React.FC<AuditLogsTableProps> = ({ logs, isLoading }) => {
   if (isLoading) {
-    return (
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-        <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
-        Loading immutable audit log ledger...
-      </div>
-    );
+    return <TableLoading message="Loading immutable audit log ledger..." />;
   }
 
   if (logs.length === 0) {
     return (
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-12 text-center text-slate-400">
-        <ShieldCheck className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-        <p className="text-base font-semibold text-slate-300">No Audit Trail Records</p>
-        <p className="text-xs text-slate-500 mt-1">No administrative events recorded matching current filter parameters.</p>
-      </div>
+      <TableEmpty
+        icon={ShieldCheck}
+        title="No Audit Trail Records"
+        description="No administrative events recorded matching current filter parameters."
+      />
     );
   }
 

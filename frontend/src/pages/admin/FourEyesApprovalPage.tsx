@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { adminApiClient, PendingAction } from '@/services/admin/adminApiClient';
 import { FourEyesActionCard } from '@/components/admin/FourEyesActionCard';
+import { TableLoading, TableEmpty } from '@/shared/components';
 import { CheckSquare, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export const FourEyesApprovalPage: React.FC = () => {
@@ -12,9 +13,8 @@ export const FourEyesApprovalPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch pending 4-eyes actions
-      await adminApiClient.getPendingWithdrawals(); // Fallback/reuse or custom getApprovals if available
-      setPendingActions([]);
+      const actions = await adminApiClient.getPendingActions();
+      setPendingActions(actions);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -67,21 +67,25 @@ export const FourEyesApprovalPage: React.FC = () => {
       )}
 
       {/* Action Cards List */}
-      {pendingActions.length > 0 ? (
+      {isLoading ? (
+        <TableLoading message="Loading pending 4-eyes approval queue..." />
+      ) : pendingActions.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {pendingActions.map((action) => (
             <FourEyesActionCard key={action.id} action={action} onApprove={handleApproveAction} />
           ))}
         </div>
       ) : (
-        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-12 text-center text-slate-400">
-          <CheckCircle2 className="w-10 h-10 text-emerald-500/80 mx-auto mb-3" />
-          <p className="text-base font-semibold text-slate-200">Four-Eyes Queue Clear</p>
-          <p className="text-xs text-slate-500 mt-1">There are no high-value administrative operations pending 2nd approval.</p>
-        </div>
+        <TableEmpty
+          icon={CheckCircle2}
+          iconClassName="w-10 h-10 text-emerald-500/80 mx-auto mb-3"
+          title="Four-Eyes Queue Clear"
+          description="There are no high-value administrative operations pending 2nd approval."
+        />
       )}
     </div>
   );
 };
 
 export default FourEyesApprovalPage;
+

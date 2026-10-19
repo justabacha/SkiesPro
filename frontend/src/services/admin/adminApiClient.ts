@@ -399,6 +399,16 @@ class AdminApiClient {
     return res.data;
   }
 
+  async getPendingActions(totp_code?: string): Promise<PendingAction[]> {
+    const headers: Record<string, string> = {};
+    if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
+    const res = await apiClient.get<ApiResponse<PendingAction[]>>(
+      `/api/v1/admin/actions/pending`,
+      { headers }
+    );
+    return Array.isArray(res.data) ? res.data : [];
+  }
+
   // --- Risk & Asset Config ---
   async getRiskDashboard(totp_code?: string): Promise<RiskMetrics> {
     const headers: Record<string, string> = {};

@@ -1,6 +1,7 @@
 import React from 'react';
 import { WithdrawalRequest } from '@/services/admin/adminApiClient';
 import { safeFormatNumber, safeFormatDate } from '@/shared/utils/safeFormatters';
+import { TableLoading, TableEmpty } from '@/shared/components';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 interface PendingWithdrawalsTableProps {
@@ -15,21 +16,17 @@ export const PendingWithdrawalsTable: React.FC<PendingWithdrawalsTableProps> = (
   onSelectWithdrawal,
 }) => {
   if (isLoading) {
-    return (
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-        <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
-        Loading pending withdrawal requests...
-      </div>
-    );
+    return <TableLoading message="Loading pending withdrawal requests..." />;
   }
 
   if (withdrawals.length === 0) {
     return (
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-12 text-center text-slate-400">
-        <CheckCircle2 className="w-10 h-10 text-emerald-500/80 mx-auto mb-3" />
-        <p className="text-base font-semibold text-slate-200">No Pending Withdrawals</p>
-        <p className="text-xs text-slate-500 mt-1">All payout transactions have been processed.</p>
-      </div>
+      <TableEmpty
+        icon={CheckCircle2}
+        iconClassName="w-10 h-10 text-emerald-500/80 mx-auto mb-3"
+        title="No Pending Withdrawals"
+        description="All payout transactions have been processed."
+      />
     );
   }
 

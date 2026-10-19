@@ -234,6 +234,12 @@ router.post(
   validate,
   (req: Request, res: Response) => controller.adjustWallet(req, res)
 );
+router.get(
+  '/actions/pending',
+  requireAdminRole(['super_admin']),
+  requireAdminMFA,
+  (req: Request, res: Response) => controller.listPendingActions(req, res)
+);
 router.put(
   '/actions/:id/approve',
   requireAdminRole(['super_admin']),

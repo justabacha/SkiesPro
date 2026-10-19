@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { useAdminReports } from '@/hooks/admin/useAdminReports';
 import { safeFormatNumber } from '@/shared/utils/safeFormatters';
+import { FilterTabs } from '@/shared/components';
 import { BarChart3, RefreshCw, TrendingUp, DollarSign, Users, Activity, AlertCircle } from 'lucide-react';
+
+const REPORT_TABS = [
+  { id: 'revenue', label: 'Daily Revenue', icon: DollarSign },
+  { id: 'volume', label: 'Trade Volume', icon: TrendingUp },
+  { id: 'users', label: 'User Registrations', icon: Users },
+  { id: 'settlement', label: 'Settlement Latency', icon: Activity },
+] as const;
 
 export const ReportsDashboardPage: React.FC = () => {
   const {
@@ -52,48 +60,12 @@ export const ReportsDashboardPage: React.FC = () => {
       )}
 
       {/* Tab Controls */}
-      <div className="flex border-b border-slate-800 bg-slate-900/60 rounded-xl p-1 gap-1">
-        <button
-          onClick={() => setActiveReportTab('revenue')}
-          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
-            activeReportTab === 'revenue'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <DollarSign className="w-4 h-4" /> Daily Revenue
-        </button>
-        <button
-          onClick={() => setActiveReportTab('volume')}
-          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
-            activeReportTab === 'volume'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" /> Trade Volume
-        </button>
-        <button
-          onClick={() => setActiveReportTab('users')}
-          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
-            activeReportTab === 'users'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Users className="w-4 h-4" /> User Registrations
-        </button>
-        <button
-          onClick={() => setActiveReportTab('settlement')}
-          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
-            activeReportTab === 'settlement'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Activity className="w-4 h-4" /> Settlement Latency
-        </button>
-      </div>
+      <FilterTabs
+        variant="pills"
+        tabs={REPORT_TABS}
+        activeTab={activeReportTab}
+        onChange={setActiveReportTab}
+      />
 
       {/* Analytics Card Body */}
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-6 shadow-2xl">

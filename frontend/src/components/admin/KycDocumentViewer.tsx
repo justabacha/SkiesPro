@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { KycApplication } from '@/services/admin/adminApiClient';
-import { safeFormatDate } from '@/shared/utils/safeFormatters';
+import { safeFormatDate, formatDocumentType } from '@/shared/utils/safeFormatters';
 import { X, FileText, UserCheck, CheckCircle2, XCircle } from 'lucide-react';
 
 interface KycDocumentViewerProps {
@@ -16,7 +16,45 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
   onClose,
   onOpenDecisionModal,
 }) => {
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setImageErrors({});
+  }, [application?.id, isOpen]);
+
+  const handleImageError = (key: string) => {
+    setImageErrors((prev) => ({ ...prev, [key]: true }));
+  };
+
   if (!isOpen || !application) return null;
+
+  const renderImageSlot = (
+    url: string | undefined,
+    altText: string,
+    key: string,
+    fallbackText: string
+  ) => {
+    const hasError = imageErrors[key];
+    if (url && !hasError) {
+      return (
+        <img
+          src={url}
+          alt={altText}
+          onError={() => handleImageError(key)}
+          className="w-full h-full object-contain"
+        />
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5 p-4 text-center text-slate-500 font-sans">
+        <FileText className="w-8 h-8 text-slate-600" />
+        <span className="text-xs font-medium text-slate-400">
+          {hasError ? 'Document Image Unavailable' : fallbackText}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
@@ -47,14 +85,11 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 ID Document (Front)
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {application.id_front_url ? (
-                  <img
-                    src={application.id_front_url}
-                    alt="ID Front"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-xs text-slate-500 font-mono">Image Not Available / Mock View</div>
+                {renderImageSlot(
+                  application.id_front_url,
+                  'ID Front',
+                  'id_front',
+                  'Document Image Unavailable'
                 )}
               </div>
             </div>
@@ -66,14 +101,11 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 ID Document (Back)
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {application.id_back_url ? (
-                  <img
-                    src={application.id_back_url}
-                    alt="ID Back"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-xs text-slate-500 font-mono">Image Not Available / Mock View</div>
+                {renderImageSlot(
+                  application.id_back_url,
+                  'ID Back',
+                  'id_back',
+                  'Document Image Unavailable'
                 )}
               </div>
             </div>
@@ -85,14 +117,11 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 Biometric Selfie
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {application.selfie_url ? (
-                  <img
-                    src={application.selfie_url}
-                    alt="Selfie"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-xs text-slate-500 font-mono">Selfie Not Available / Mock View</div>
+                {renderImageSlot(
+                  application.selfie_url,
+                  'Selfie',
+                  'selfie',
+                  'Selfie Not Available'
                 )}
               </div>
             </div>
@@ -104,14 +133,11 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 Proof of Address
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {application.proof_of_address_url ? (
-                  <img
-                    src={application.proof_of_address_url}
-                    alt="Proof of Address"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-xs text-slate-500 font-mono">Proof of Address Not Provided</div>
+                {renderImageSlot(
+                  application.proof_of_address_url,
+                  'Proof of Address',
+                  'proof_of_address',
+                  'Proof of Address Not Provided'
                 )}
               </div>
             </div>
@@ -121,7 +147,7 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
           <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-4 space-y-2 text-xs">
             <div className="flex justify-between">
               <span className="text-slate-400">Document Type</span>
-              <span className="text-slate-200 font-semibold">{application.doc_type}</span>
+              <span className="text-slate-200 font-semibold">{formatDocumentType(application.doc_type)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Document Number</span>
@@ -157,3 +183,4 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
     </div>
   );
 };
+

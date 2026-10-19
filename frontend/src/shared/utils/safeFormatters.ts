@@ -23,3 +23,25 @@ export const safeFormatDate = (
   if (options?.utc) return d.toUTCString();
   return d.toLocaleString();
 };
+
+/**
+ * Safe helper function for formatting KYC document types into human-readable strings.
+ */
+export const formatDocumentType = (docType?: string): string => {
+  if (!docType) return 'National ID';
+  const knownMap: Record<string, string> = {
+    national_id: 'National ID',
+    proof_of_address: 'Proof of Address',
+    passport: 'Passport',
+    driving_license: 'Driving License',
+    drivers_license: "Driver's License",
+    selfie: 'Biometric Selfie',
+  };
+  const key = docType.toLowerCase().trim();
+  if (knownMap[key]) return knownMap[key];
+
+  return key
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
