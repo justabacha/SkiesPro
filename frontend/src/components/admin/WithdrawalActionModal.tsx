@@ -8,6 +8,7 @@ interface WithdrawalActionModalProps {
   withdrawal: WithdrawalRequest | null;
   actionType: 'approve' | 'reject' | null;
   isOpen: boolean;
+  isLoading?: boolean;
   onClose: () => void;
   onConfirmApprove: (id: string, totpCode?: string) => Promise<void>;
   onConfirmReject: (id: string, reason: string, totpCode?: string) => Promise<void>;
@@ -17,6 +18,7 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
   withdrawal,
   actionType,
   isOpen,
+  isLoading = false,
   onClose,
   onConfirmApprove,
   onConfirmReject,
@@ -40,12 +42,17 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
   };
 
   const handleMfaConfirm = async (totpCode: string) => {
-    if (actionType === 'approve') {
-      await onConfirmApprove(withdrawal.id, totpCode);
-    } else {
-      await onConfirmReject(withdrawal.id, reason, totpCode);
+    try {
+      if (actionType === 'approve') {
+        await onConfirmApprove(withdrawal.id, totpCode);
+      } else {
+        await onConfirmReject(withdrawal.id, reason, totpCode);
+      }
+      onClose();
+    } catch (err) {
+      setError((err as Error).message || 'Withdrawal action failed.');
+      setIsMfaOpen(false);
     }
-    onClose();
   };
 
   return (
@@ -54,7 +61,8 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
         <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-6 relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 transition-colors"
+            disabled={isLoading}
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -95,9 +103,10 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
                 <textarea
                   rows={3}
                   value={reason}
+                  disabled={isLoading}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="Specify why withdrawal is being rejected..."
-                  className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-rose-500/80"
+                  className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-rose-500/80 disabled:opacity-50"
                 />
               </div>
             )}
@@ -112,19 +121,24 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+                disabled={isLoading}
+                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className={`px-5 py-2 text-xs font-bold rounded-lg transition-colors shadow-lg ${
+                disabled={isLoading}
+                className={`px-5 py-2 text-xs font-bold rounded-lg transition-colors shadow-lg flex items-center gap-2 ${
                   actionType === 'approve'
                     ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
                     : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
-                }`}
+                } ${isLoading ? 'opacity-55 cursor-not-allowed' : ''}`}
               >
-                Proceed to MFA Confirmation
+                {isLoading && (
+                  <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                )}
+                {isLoading ? 'Processing...' : 'Proceed to MFA Confirmation'}
               </button>
             </div>
           </form>
@@ -136,7 +150,7 @@ export const WithdrawalActionModal: React.FC<WithdrawalActionModalProps> = ({
         onClose={() => setIsMfaOpen(false)}
         onConfirm={handleMfaConfirm}
         title="Finance Withdrawal MFA Verification"
-        description={`Confirm ${actionType.toUpperCase()} request for KES ${safeFormatNumber(amountVal)}? Enter TOTP code.`}
+        description={`Confirm ${actionType.toUpperCase()} request for KES {safeFormatNumber(amountVal)}? Enter TOTP code.`}
       />
     </>
   );

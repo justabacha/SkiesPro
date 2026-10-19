@@ -82,12 +82,17 @@ export class AdminController {
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
-  async listPendingWithdrawals(req: Request, res: Response): Promise<void> {
-    const result = await this.compliance.listPendingWithdrawals({
+  async listWithdrawals(req: Request, res: Response): Promise<void> {
+    const result = await this.compliance.listWithdrawals({
       page: Number(req.query.page || 1),
       perPage: Number(req.query.per_page || 20),
+      status: typeof req.query.status === 'string' ? req.query.status : 'pending',
     });
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+  }
+
+  async listPendingWithdrawals(req: Request, res: Response): Promise<void> {
+    return this.listWithdrawals(req, res);
   }
 
   async getWithdrawalById(req: Request, res: Response): Promise<void> {

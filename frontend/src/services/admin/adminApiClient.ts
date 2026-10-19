@@ -320,14 +320,19 @@ class AdminApiClient {
   }
 
   // --- Finance & Withdrawals ---
-  async getPendingWithdrawals(totp_code?: string) {
+  async getWithdrawals(totp_code?: string, status: string = 'pending') {
     const headers: Record<string, string> = {};
     if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
+    const query = this.formatQuery({ status });
     const res = await apiClient.get<ApiResponse<{ rows: WithdrawalRequest[]; total: number }>>(
-      `/api/v1/admin/withdrawals/pending`,
+      `/api/v1/admin/withdrawals${query}`,
       { headers }
     );
     return res.data?.rows || [];
+  }
+
+  async getPendingWithdrawals(totp_code?: string) {
+    return this.getWithdrawals(totp_code, 'pending');
   }
 
   async getWithdrawalById(id: string, totp_code?: string) {

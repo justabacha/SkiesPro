@@ -91,6 +91,18 @@ router.put(
 );
 
 router.get(
+  '/withdrawals',
+  requireAdminRole(['finance', 'admin', 'super_admin']),
+  requireAdminMFA,
+  [
+    query('status').optional().isIn(['pending', 'approved', 'rejected', 'dispatched', 'completed', 'failed', 'all']),
+    query('page').optional().isInt({ min: 1 }),
+    query('per_page').optional().isInt({ min: 1 }),
+  ],
+  validate,
+  (req: Request, res: Response) => controller.listWithdrawals(req, res)
+);
+router.get(
   '/withdrawals/pending',
   requireAdminRole(['finance', 'admin', 'super_admin']),
   requireAdminMFA,

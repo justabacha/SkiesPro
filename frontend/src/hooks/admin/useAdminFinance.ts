@@ -5,25 +5,30 @@ export function useAdminFinance() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [pendingApprovals, setPendingApprovals] = useState<PendingAction[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchWithdrawals = useCallback(async (totp_code?: string) => {
+  const fetchWithdrawals = useCallback(async (status: string = statusFilter, totp_code?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const list = await adminApiClient.getPendingWithdrawals(totp_code);
+      const list = await adminApiClient.getWithdrawals(totp_code, status);
       setWithdrawals(list);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
-    fetchWithdrawals();
-  }, [fetchWithdrawals]);
+    fetchWithdrawals(statusFilter);
+  }, [fetchWithdrawals, statusFilter]);
+
+  const selectStatusFilter = useCallback((status: string) => {
+    setStatusFilter(status);
+  }, []);
 
   const selectWithdrawal = useCallback(async (id: string, totp_code?: string) => {
     setIsLoading(true);
@@ -44,7 +49,7 @@ export function useAdminFinance() {
       setError(null);
       try {
         const res = await adminApiClient.approveWithdrawal(id, { totp_code });
-        await fetchWithdrawals(totp_code);
+        await fetchWithdrawals(statusFilter, totp_code);
         setSelectedWithdrawal(null);
         return res;
       } catch (err) {
@@ -54,7 +59,7 @@ export function useAdminFinance() {
         setIsLoading(false);
       }
     },
-    [fetchWithdrawals]
+    [fetchWithdrawals, statusFilter]
   );
 
   const rejectWithdrawal = useCallback(
@@ -63,7 +68,7 @@ export function useAdminFinance() {
       setError(null);
       try {
         const res = await adminApiClient.rejectWithdrawal(id, { reason, totp_code });
-        await fetchWithdrawals(totp_code);
+        await fetchWithdrawals(statusFilter, totp_code);
         setSelectedWithdrawal(null);
         return res;
       } catch (err) {
@@ -73,7 +78,7 @@ export function useAdminFinance() {
         setIsLoading(false);
       }
     },
-    [fetchWithdrawals]
+    [fetchWithdrawals, statusFilter]
   );
 
   const adjustWallet = useCallback(
@@ -120,6 +125,8 @@ export function useAdminFinance() {
     withdrawals,
     selectedWithdrawal,
     pendingApprovals,
+    statusFilter,
+    selectStatusFilter,
     isLoading,
     error,
     fetchWithdrawals,

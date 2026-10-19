@@ -354,30 +354,68 @@ export class AdminRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
-  async listPendingWithdrawals(
+  async listWithdrawals(
     page: number,
-    perPage: number
+    perPage: number,
+    status = 'pending'
   ): Promise<{ rows: any[]; total: number }> {
     const limit = Math.min(perPage || 20, 100);
     const offset = ((page || 1) - 1) * limit;
 
-    const totalResult = await this.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM payments.withdrawals WHERE status = 'pending'`
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      conditions.push(`w.status = $${params.length}`);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countResult = await this.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count FROM payments.withdrawals w ${whereClause}`,
+      params
     );
 
     const rowsResult = await this.query<any>(
-      `SELECT * FROM payments.withdrawals WHERE status = 'pending' ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      `SELECT
+         w.*,
+         u.email AS user_email,
+         u.display_name AS user_display_name,
+         u.phone AS phone_number
+       FROM payments.withdrawals w
+       LEFT JOIN app_auth.users u ON w.user_id = u.id
+       ${whereClause}
+       ORDER BY w.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset]
     );
 
     return {
       rows: rowsResult.rows,
-      total: totalResult.rows[0]?.count || 0,
+      total: countResult.rows[0]?.count || 0,
     };
   }
 
+  async listPendingWithdrawals(
+    page: number,
+    perPage: number
+  ): Promise<{ rows: any[]; total: number }> {
+    return this.listWithdrawals(page, perPage, 'pending');
+  }
+
   async getWithdrawalById(id: string): Promise<any | null> {
-    const result = await this.query<any>('SELECT * FROM payments.withdrawals WHERE id = $1', [id]);
+    const result = await this.query<any>(
+      `SELECT
+         w.*,
+         u.email AS user_email,
+         u.display_name AS user_display_name,
+         u.phone AS phone_number
+       FROM payments.withdrawals w
+       LEFT JOIN app_auth.users u ON w.user_id = u.id
+       WHERE w.id = $1`,
+      [id]
+    );
     return result.rows[0] || null;
   }
 

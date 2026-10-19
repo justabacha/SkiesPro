@@ -5,12 +5,22 @@ import { WithdrawalActionModal } from '@/components/admin/WithdrawalActionModal'
 import { WalletAdjustmentModal } from '@/components/admin/WalletAdjustmentModal';
 import { HasRole } from '@/components/admin/HasRole';
 import { WithdrawalRequest } from '@/services/admin/adminApiClient';
+import { FilterTabs } from '@/shared/components';
 import { Wallet, RefreshCw, PlusCircle, AlertCircle } from 'lucide-react';
+
+const WITHDRAWAL_TABS = [
+  { id: 'pending', label: 'Pending' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'all', label: 'All Withdrawals' },
+] as const;
 
 export const FinanceOverviewPage: React.FC = () => {
   const {
     withdrawals,
     selectedWithdrawal,
+    statusFilter,
+    selectStatusFilter,
     isLoading,
     error,
     fetchWithdrawals,
@@ -59,7 +69,7 @@ export const FinanceOverviewPage: React.FC = () => {
           </HasRole>
 
           <button
-            onClick={() => fetchWithdrawals()}
+            onClick={() => fetchWithdrawals(statusFilter)}
             disabled={isLoading}
             className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors border border-slate-700"
           >
@@ -76,14 +86,25 @@ export const FinanceOverviewPage: React.FC = () => {
         </div>
       )}
 
+      {/* Filter Tabs */}
+      <FilterTabs
+        tabs={WITHDRAWAL_TABS}
+        activeTab={statusFilter}
+        onChange={(status) => {
+          selectStatusFilter(status);
+          clearSelectedWithdrawal();
+          setWithdrawalAction(null);
+        }}
+      />
+
       {/* Pending Withdrawals Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider">
-            Pending M-Pesa Withdrawal Queue
+            M-Pesa Withdrawal Queue ({statusFilter})
           </h2>
           <span className="text-xs text-slate-400 font-mono">
-            {withdrawals.length} request(s) awaiting approval
+            {withdrawals.length} request(s) matching filter
           </span>
         </div>
 
@@ -99,15 +120,18 @@ export const FinanceOverviewPage: React.FC = () => {
         withdrawal={selectedWithdrawal}
         actionType={withdrawalAction}
         isOpen={!!selectedWithdrawal && !!withdrawalAction}
+        isLoading={isLoading}
         onClose={() => {
           clearSelectedWithdrawal();
           setWithdrawalAction(null);
         }}
         onConfirmApprove={async (id, totpCode) => {
           await approveWithdrawal(id, totpCode);
+          setWithdrawalAction(null);
         }}
         onConfirmReject={async (id, reason, totpCode) => {
           await rejectWithdrawal(id, reason, totpCode);
+          setWithdrawalAction(null);
         }}
       />
 

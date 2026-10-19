@@ -19,8 +19,12 @@ export class AdminComplianceService {
     return this.repo.reviewKyc(id, action, note, reviewedBy);
   }
 
+  async listWithdrawals(filters: { page: number; perPage: number; status?: string }) {
+    return this.repo.listWithdrawals(filters.page, filters.perPage, filters.status || 'pending');
+  }
+
   async listPendingWithdrawals(filters: { page: number; perPage: number }) {
-    return this.repo.listPendingWithdrawals(filters.page, filters.perPage);
+    return this.listWithdrawals({ ...filters, status: 'pending' });
   }
 
   async getWithdrawalById(id: string) {
