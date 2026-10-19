@@ -24,6 +24,7 @@ describe('B2C Payout Adapter & Components (Slice 1)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     process.env = { ...originalEnv };
+    process.env.MPESA_CALLBACK_TOKEN = 'test_secret_token_123';
     process.env.MPESA_ENVIRONMENT = 'sandbox';
     process.env.MPESA_CONSUMER_KEY = 'test_consumer_key';
     process.env.MPESA_CONSUMER_SECRET = 'test_consumer_secret';

@@ -201,6 +201,57 @@ export class WalletService {
     });
   }
 
+  async finalizeWithdrawalDebit(
+    userId: string,
+    accountType: AccountType,
+    amount: Decimal,
+    referenceType: LedgerReferenceType,
+    referenceId: string,
+    description: string
+  ): Promise<WalletRow> {
+    return this.withTransaction(async (client) => {
+      const walletRepo = new WalletRepository(client);
+      const ledgerService = new LedgerService(client);
+
+      const wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
+      if (!wallet) throw new Error('Wallet not found');
+
+      const lockedBefore = new Decimal(wallet.locked_balance);
+      const balanceBefore = new Decimal(wallet.balance);
+
+      if (lockedBefore.lessThan(amount) || balanceBefore.lessThan(amount)) {
+        throw new Error('Insufficient locked or total balance for withdrawal finalization');
+      }
+
+      const lockedAfter = lockedBefore.minus(amount);
+      const balanceAfter = balanceBefore.minus(amount);
+      const transactionId = uuidv4();
+
+      const updatedWallet = await walletRepo.updateBalance(
+        userId,
+        accountType,
+        wallet.id,
+        balanceAfter,
+        lockedAfter,
+        wallet.version
+      );
+
+      await ledgerService.recordEntry({
+        transactionId,
+        walletId: wallet.id,
+        entryType: 'debit',
+        amount,
+        balanceBefore,
+        balanceAfter,
+        referenceType,
+        referenceId,
+        description,
+      });
+
+      return updatedWallet;
+    });
+  }
+
   async lockFunds(
     userId: string,
     accountType: AccountType,

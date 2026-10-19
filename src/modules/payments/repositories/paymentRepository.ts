@@ -138,6 +138,53 @@ export class PaymentRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
+  async findOutboxByOriginatorConversationIdForUpdate(originatorConversationId: string): Promise<any | null> {
+    const result = await this.query<any>(
+      'SELECT * FROM payments.b2c_outbox WHERE originator_conversation_id = $1 FOR UPDATE',
+      [originatorConversationId]
+    );
+    return result.rows[0] || null;
+  }
+
+  async updateOutboxStatus(
+    id: string,
+    status: string,
+    conversationId?: string | null,
+    lastError?: string | null,
+    nextAttemptAt?: Date | null
+  ): Promise<any> {
+    const result = await this.query<any>(
+      `UPDATE payments.b2c_outbox
+       SET status = $1::text,
+           conversation_id = COALESCE($2::text, conversation_id),
+           last_error = COALESCE($3::text, last_error),
+           next_attempt_at = COALESCE($4::timestamptz, next_attempt_at),
+           processed_at = CASE WHEN $1::text IN ('sent', 'failed', 'dead') THEN NOW() ELSE processed_at END,
+           updated_at = NOW()
+       WHERE id = $5
+       RETURNING *`,
+      [status, conversationId || null, lastError || null, nextAttemptAt || null, id]
+    );
+    return result.rows[0];
+  }
+
+  async updateWithdrawalStatusAndRef(
+    id: string,
+    status: string,
+    gatewayReference?: string | null
+  ): Promise<WithdrawalRow> {
+    const result = await this.query<WithdrawalRow>(
+      `UPDATE payments.withdrawals
+       SET status = $1::text,
+           gateway_reference = COALESCE($2::text, gateway_reference),
+           completed_at = CASE WHEN $1::text = 'completed' THEN NOW() ELSE completed_at END
+       WHERE id = $3
+       RETURNING *`,
+      [status, gatewayReference || null, id]
+    );
+    return result.rows[0];
+  }
+
   async logWebhook(
     gatewayId: number,
     headers: any,

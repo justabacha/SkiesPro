@@ -57,3 +57,21 @@ This document tracks required manual actions, environment variable additions, an
   - Do NOT enable `ENABLE_B2C_WORKER=true` or `ENABLE_B2C_DISBURSEMENT=true` in Render or local `.env` until Slice 4 (callback handler) has been completed and verified. Enabling them now will cause the worker to dispatch real Daraja sandbox B2C calls to an endpoint whose callback route does not yet exist, leaving withdrawals stuck in `dispatched` with locked funds.
 - **Historical Record Note**:
   - Pre-existing pre-B2C withdrawal `235d9ef4-8cde-42c9-be63-9accc9ac09d0` (already set to `'approved'` from pre-B2C verification) has been left as-is intentionally as a historical record. All future approvals follow the `dispatched` $\rightarrow$ `completed` lifecycle.
+
+---
+
+## Slice 4: Callback Handler (Result + Timeout) & Wallet Finalization
+- **Live Callback URLs**: `MPESA_B2C_RESULT_URL` and `MPESA_B2C_TIMEOUT_URL` in Render must point to:
+  - `https://skiespro-api-njuw.onrender.com/api/v1/payments/mpesa/b2c/result?token=<MPESA_CALLBACK_TOKEN>`
+  - `https://skiespro-api-njuw.onrender.com/api/v1/payments/mpesa/b2c/timeout?token=<MPESA_CALLBACK_TOKEN>`
+  - Confirm no `vercel.app` domain in either URL.
+- **Post-Slice 4 Manual E2E Testing Protocol**:
+  1. Ensure all `MPESA_B2C_*` env vars are populated in Render with active sandbox credentials from Daraja portal.
+  2. Confirm Render backend is active (not sleeping).
+  3. Set `ENABLE_B2C_WORKER=true` and `ENABLE_B2C_DISBURSEMENT=true` temporarily in Render.
+  4. Initiate a withdrawal (e.g. 1500 KES) to a valid sandbox M-Pesa phone.
+  5. Approve via Admin UI. Verify: withdrawal status $\rightarrow$ `dispatched`, outbox $\rightarrow$ `pending`.
+  6. Worker claims outbox item $\rightarrow$ status $\rightarrow$ `sent`. Verify outbox `conversation_id` is set.
+  7. Wait for Safaricom Daraja callback (5–30s). Verify: withdrawal status $\rightarrow$ `completed`, `gateway_reference` set, outbox `processed_at` populated.
+  8. Verify user wallet: `balance` $-1500$, `locked_balance` $-1500$, debit ledger entry present.
+  9. Immediately reset both flags back to `false` after testing until Slice 5 is ready.

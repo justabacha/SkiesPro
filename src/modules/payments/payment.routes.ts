@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { body } from 'express-validator';
 import { PaymentController } from './controllers/paymentController.js';
+import { B2CCallbackController } from './controllers/b2cCallbackController.js';
 import { authenticate } from '../../shared/middleware/authMiddleware.js';
 import { rateLimit } from '../../shared/middleware/rateLimit.js';
 
 const router = Router();
 const controller = new PaymentController();
+const b2cCallbackController = new B2CCallbackController();
 
 // Public Callback Routes (Exempt from JWT)
 router.post('/deposit/callback', (req: Request, res: Response) =>
@@ -14,6 +16,14 @@ router.post('/deposit/callback', (req: Request, res: Response) =>
 
 router.post('/mpesa/callback', (req: Request, res: Response) =>
   controller.handleMpesaCallback(req, res)
+);
+
+router.post('/mpesa/b2c/result', (req: Request, res: Response) =>
+  b2cCallbackController.handleResultCallback(req, res)
+);
+
+router.post('/mpesa/b2c/timeout', (req: Request, res: Response) =>
+  b2cCallbackController.handleTimeoutCallback(req, res)
 );
 
 // Protected Routes (Require JWT)
