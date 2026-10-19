@@ -129,7 +129,41 @@ if (config.enableSettlementWorker) {
     });
 }
 
+let activeB2cWorker: any = null;
+
+// Automatically start B2C dispatch worker if enabled
+if (config.enableB2cWorker) {
+  import('./modules/payments/workers/b2cDispatchWorker.js')
+    .then((m) => {
+      activeB2cWorker = new m.B2CDispatchWorker();
+      return activeB2cWorker.start();
+    })
+    .catch((err) => {
+      logger.error('Failed to start B2C dispatch worker', { error: err.message });
+    });
+}
+
+const handleShutdown = async (signal: string) => {
+  logger.info(`Received ${signal}, initiating graceful shutdown...`);
+  if (activeB2cWorker) {
+    try {
+      await activeB2cWorker.stop();
+    } catch (err: any) {
+      logger.error('Error stopping B2C dispatch worker', { error: err.message });
+    }
+  }
+  server.close(() => {
+    logger.info('HTTP server closed cleanly');
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(0);
+    }
+  });
+};
+
 if (process.env.NODE_ENV !== 'test') {
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
+
   server.listen(PORT, () => {
     logger.info(`Server started on port ${PORT} in ${config.nodeEnv} mode`);
   });

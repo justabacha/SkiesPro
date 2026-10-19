@@ -23,7 +23,11 @@ export class MpesaB2CMockAdapter implements IB2CPayoutGateway {
   }
 
   async initiateB2CPayout(req: B2CPayoutRequest): Promise<B2CPayoutResponse> {
-    if (!req.amount || !Decimal.isDecimal(req.amount)) {
+    const isDecimal =
+      req.amount &&
+      (Decimal.isDecimal(req.amount) || typeof (req.amount as any).isInteger === 'function');
+
+    if (!req.amount || !isDecimal) {
       throw new B2CPayoutError('Amount must be a Decimal instance');
     }
 
@@ -35,9 +39,7 @@ export class MpesaB2CMockAdapter implements IB2CPayoutGateway {
 
     normalizeMsisdn(req.recipientPhone);
 
-    const mode =
-      (process.env.MPESA_B2C_MOCK_MODE as 'success' | 'failure' | 'timeout') ||
-      this.mockMode;
+    const mode = this.mockMode;
 
     if (mode === 'failure') {
       throw new B2CPayoutError('Mock B2C payout failure', '500.001.1001', {
@@ -70,9 +72,7 @@ export class MpesaB2CMockAdapter implements IB2CPayoutGateway {
   }
 
   async queryB2CStatus(conversationId: string): Promise<B2CStatusResponse> {
-    const mode =
-      (process.env.MPESA_B2C_MOCK_MODE as 'success' | 'failure' | 'timeout') ||
-      this.mockMode;
+    const mode = this.mockMode;
 
     if (mode === 'failure') {
       return {

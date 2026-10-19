@@ -94,7 +94,11 @@ export class DarajaB2CAdapter implements IB2CPayoutGateway {
   }
 
   async initiateB2CPayout(req: B2CPayoutRequest): Promise<B2CPayoutResponse> {
-    if (!req.amount || !Decimal.isDecimal(req.amount)) {
+    const isDecimal =
+      req.amount &&
+      (Decimal.isDecimal(req.amount) || typeof (req.amount as any).isInteger === 'function');
+
+    if (!req.amount || !isDecimal) {
       throw new B2CPayoutError('Amount must be a Decimal instance');
     }
 

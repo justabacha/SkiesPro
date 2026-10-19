@@ -22,6 +22,8 @@ export const config = {
   useMockPrices: process.env.USE_MOCK_PRICES === 'true',
   enableB2cDisbursement: process.env.ENABLE_B2C_DISBURSEMENT === 'true',
   enableB2cWorker: process.env.ENABLE_B2C_WORKER === 'true',
+  b2cWorkerIntervalMs: parseInt(process.env.B2C_WORKER_INTERVAL_MS || '5000', 10),
+  b2cWorkerBatchSize: parseInt(process.env.B2C_WORKER_BATCH_SIZE || '5', 10),
   b2c: {
     shortcode: process.env.MPESA_B2C_SHORTCODE || '',
     initiatorName: process.env.MPESA_B2C_INITIATOR_NAME || '',
