@@ -20,4 +20,33 @@ export const config = {
   enablePriceFeed: process.env.ENABLE_PRICE_FEED === 'true',
   enableSettlementWorker: process.env.ENABLE_SETTLEMENT_WORKER === 'true',
   useMockPrices: process.env.USE_MOCK_PRICES === 'true',
+  enableB2cDisbursement: process.env.ENABLE_B2C_DISBURSEMENT === 'true',
+  enableB2cWorker: process.env.ENABLE_B2C_WORKER === 'true',
+  b2c: {
+    shortcode: process.env.MPESA_B2C_SHORTCODE || '',
+    initiatorName: process.env.MPESA_B2C_INITIATOR_NAME || '',
+    securityCredential: process.env.MPESA_B2C_SECURITY_CREDENTIAL || '',
+    commandId: process.env.MPESA_B2C_COMMAND_ID || 'BusinessPayment',
+    resultUrl: process.env.MPESA_B2C_RESULT_URL || '',
+    timeoutUrl: process.env.MPESA_B2C_TIMEOUT_URL || '',
+  },
 };
+
+export function validateB2cConfig(): void {
+  if (config.enableB2cDisbursement) {
+    const requiredVars = [
+      { name: 'MPESA_B2C_SHORTCODE', value: config.b2c.shortcode },
+      { name: 'MPESA_B2C_INITIATOR_NAME', value: config.b2c.initiatorName },
+      { name: 'MPESA_B2C_SECURITY_CREDENTIAL', value: config.b2c.securityCredential },
+      { name: 'MPESA_B2C_RESULT_URL', value: config.b2c.resultUrl },
+      { name: 'MPESA_B2C_TIMEOUT_URL', value: config.b2c.timeoutUrl },
+    ];
+
+    const missing = requiredVars.filter((v) => !v.value).map((v) => v.name);
+    if (missing.length > 0) {
+      throw new Error(
+        `ENABLE_B2C_DISBURSEMENT is true but missing required env vars: ${missing.join(', ')}`
+      );
+    }
+  }
+}
