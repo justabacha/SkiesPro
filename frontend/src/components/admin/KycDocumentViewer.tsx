@@ -28,34 +28,6 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
 
   if (!isOpen || !application) return null;
 
-  const renderImageSlot = (
-    url: string | undefined,
-    altText: string,
-    key: string,
-    fallbackText: string
-  ) => {
-    const hasError = imageErrors[key];
-    if (url && !hasError) {
-      return (
-        <img
-          src={url}
-          alt={altText}
-          onError={() => handleImageError(key)}
-          className="w-full h-full object-contain"
-        />
-      );
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center gap-1.5 p-4 text-center text-slate-500 font-sans">
-        <FileText className="w-8 h-8 text-slate-600" />
-        <span className="text-xs font-medium text-slate-400">
-          {hasError ? 'Document Image Unavailable' : fallbackText}
-        </span>
-      </div>
-    );
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-3xl bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col h-full overflow-hidden">
@@ -85,11 +57,18 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 ID Document (Front)
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {renderImageSlot(
-                  application.id_front_url,
-                  'ID Front',
-                  'id_front',
-                  'Document Image Unavailable'
+                {application.id_front_url && !imageErrors.id_front ? (
+                  <img
+                    src={application.id_front_url}
+                    alt="ID Front"
+                    onError={() => handleImageError('id_front')}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1.5 p-4 text-center text-slate-500 font-sans">
+                    <FileText className="w-8 h-8 text-slate-600" />
+                    <span className="text-xs font-medium text-slate-400">Document Image Unavailable</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -101,11 +80,18 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 ID Document (Back)
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {renderImageSlot(
-                  application.id_back_url,
-                  'ID Back',
-                  'id_back',
-                  'Document Image Unavailable'
+                {application.id_back_url && !imageErrors.id_back ? (
+                  <img
+                    src={application.id_back_url}
+                    alt="ID Back"
+                    onError={() => handleImageError('id_back')}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1.5 p-4 text-center text-slate-500 font-sans">
+                    <FileText className="w-8 h-8 text-slate-600" />
+                    <span className="text-xs font-medium text-slate-400">Document Image Unavailable</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -117,11 +103,18 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 Biometric Selfie
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {renderImageSlot(
-                  application.selfie_url,
-                  'Selfie',
-                  'selfie',
-                  'Selfie Not Available'
+                {application.selfie_url && !imageErrors.selfie ? (
+                  <img
+                    src={application.selfie_url}
+                    alt="Selfie"
+                    onError={() => handleImageError('selfie')}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1.5 p-4 text-center text-slate-500 font-sans">
+                    <FileText className="w-8 h-8 text-slate-600" />
+                    <span className="text-xs font-medium text-slate-400">Document Image Unavailable</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -133,11 +126,18 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
                 Proof of Address
               </div>
               <div className="h-48 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center relative">
-                {renderImageSlot(
-                  application.proof_of_address_url,
-                  'Proof of Address',
-                  'proof_of_address',
-                  'Proof of Address Not Provided'
+                {application.proof_of_address_url && !imageErrors.proof_of_address ? (
+                  <img
+                    src={application.proof_of_address_url}
+                    alt="Proof of Address"
+                    onError={() => handleImageError('proof_of_address')}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1.5 p-4 text-center text-slate-500 font-sans">
+                    <FileText className="w-8 h-8 text-slate-600" />
+                    <span className="text-xs font-medium text-slate-400">Document Image Unavailable</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -183,4 +183,3 @@ export const KycDocumentViewer: React.FC<KycDocumentViewerProps> = ({
     </div>
   );
 };
-
