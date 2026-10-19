@@ -33,6 +33,7 @@ export class AdminController {
       perPage: Number(req.query.per_page || 20),
       status: typeof req.query.status === 'string' ? req.query.status : undefined,
       search: typeof req.query.search === 'string' ? req.query.search : undefined,
+      role: typeof req.query.role === 'string' ? req.query.role : undefined,
     });
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }

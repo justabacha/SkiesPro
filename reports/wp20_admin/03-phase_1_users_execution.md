@@ -35,6 +35,15 @@ Phase 1 implementation has successfully addressed all findings identified in `re
 
 ---
 
+## Role Filter Fix
+
+- **Pipeline Trace & Resolution**:
+  - **Controller (`AdminController.ts`)**: Updated `listUsers` to extract `req.query.role` and pass it to the service layer.
+  - **Service (`AdminUserService.ts`)**: Updated `listUsers` filter parameters to accept and pass `role`.
+  - **Repository (`AdminRepository.ts`)**: Added `role` filter handling to `listUsers`. Included `assigned_roleJoin` in both the pagination `COUNT(*)` query and rows query, and added condition checking (`COALESCE(assigned_role.role, 'TRADER') = $n` or `assigned_role.role = $n`) to correctly filter users by their assigned role from `app_auth.user_roles` and `app_auth.roles`.
+
+---
+
 ## 2. Verification & Typecheck Results
 
 1. **Frontend Typecheck**: `npm --prefix frontend run typecheck` (`tsc --noEmit`) -> **0 Errors**.

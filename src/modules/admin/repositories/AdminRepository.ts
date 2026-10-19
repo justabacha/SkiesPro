@@ -80,6 +80,7 @@ export class AdminRepository extends BaseRepository {
   async listUsers(filters: {
     status?: string;
     search?: string;
+    role?: string;
     page: number;
     perPage: number;
   }): Promise<{ rows: any[]; total: number }> {
@@ -100,9 +101,21 @@ export class AdminRepository extends BaseRepository {
       );
     }
 
+    if (filters.role) {
+      params.push(filters.role.toUpperCase());
+      if (filters.role.toLowerCase() === 'trader') {
+        conditions.push(`COALESCE(assigned_role.role, 'TRADER') = $${params.length}`);
+      } else {
+        conditions.push(`assigned_role.role = $${params.length}`);
+      }
+    }
+
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const countResult = await this.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM app_auth.users u ${whereClause}`,
+      `SELECT COUNT(*)::int AS count
+       FROM app_auth.users u
+       ${assignedRoleJoin}
+       ${whereClause}`,
       params
     );
 
