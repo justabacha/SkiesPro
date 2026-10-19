@@ -7,6 +7,7 @@ interface KycDecisionModalProps {
   application: KycApplication | null;
   decisionStatus: 'approved' | 'rejected' | null;
   isOpen: boolean;
+  isLoading?: boolean;
   onClose: () => void;
   onConfirm: (id: string, status: 'approved' | 'rejected', notes: string, totpCode?: string) => Promise<void>;
 }
@@ -15,6 +16,7 @@ export const KycDecisionModal: React.FC<KycDecisionModalProps> = ({
   application,
   decisionStatus,
   isOpen,
+  isLoading = false,
   onClose,
   onConfirm,
 }) => {
@@ -35,8 +37,13 @@ export const KycDecisionModal: React.FC<KycDecisionModalProps> = ({
   };
 
   const handleMfaConfirm = async (totpCode: string) => {
-    await onConfirm(application.id, decisionStatus, notes, totpCode);
-    onClose();
+    try {
+      await onConfirm(application.id, decisionStatus, notes, totpCode);
+      onClose();
+    } catch (err) {
+      setError((err as Error).message || 'KYC decision submission failed.');
+      setIsMfaOpen(false);
+    }
   };
 
   return (
@@ -45,6 +52,7 @@ export const KycDecisionModal: React.FC<KycDecisionModalProps> = ({
         <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-6 relative">
           <button
             onClick={onClose}
+            disabled={isLoading}
             className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -83,13 +91,14 @@ export const KycDecisionModal: React.FC<KycDecisionModalProps> = ({
               <textarea
                 rows={4}
                 value={notes}
+                disabled={isLoading}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={
                   decisionStatus === 'approved'
                     ? 'State document verification status (e.g. ID card matched selfie, proof of address valid)...'
                     : 'Specify reason for rejection (e.g. Blurry ID photo, expired document)...'
                 }
-                className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500/80"
+                className="w-full p-3 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500/80 disabled:opacity-50"
               />
             </div>
 
@@ -97,19 +106,24 @@ export const KycDecisionModal: React.FC<KycDecisionModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+                disabled={isLoading}
+                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className={`px-5 py-2 text-xs font-bold rounded-lg transition-colors shadow-lg ${
+                disabled={isLoading}
+                className={`px-5 py-2 text-xs font-bold rounded-lg transition-colors shadow-lg flex items-center gap-2 ${
                   decisionStatus === 'approved'
                     ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
                     : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
-                }`}
+                } ${isLoading ? 'opacity-55 cursor-not-allowed' : ''}`}
               >
-                Proceed to MFA Confirmation
+                {isLoading && (
+                  <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                )}
+                {isLoading ? 'Processing...' : 'Proceed to MFA Confirmation'}
               </button>
             </div>
           </form>

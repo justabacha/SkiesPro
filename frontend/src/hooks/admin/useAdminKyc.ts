@@ -37,8 +37,8 @@ export function useAdminKyc() {
   );
 
   useEffect(() => {
-    void fetchPendingKyc('pending');
-  }, [fetchPendingKyc]);
+    void fetchPendingKyc(statusFilter);
+  }, [fetchPendingKyc, statusFilter]);
 
   const selectStatusFilter = useCallback(
     (status: KycStatusFilter) => {

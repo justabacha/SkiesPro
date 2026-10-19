@@ -99,6 +99,7 @@ export const KycReviewPage: React.FC = () => {
         application={selectedKyc}
         decisionStatus={decisionStatus}
         isOpen={!!decisionStatus}
+        isLoading={isLoading}
         onClose={() => setDecisionStatus(null)}
         onConfirm={async (id, status, notes, totpCode) => {
           await reviewKyc(id, status, notes, totpCode);
