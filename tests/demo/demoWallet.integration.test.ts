@@ -35,6 +35,10 @@ describe('Demo wallet isolation integration', () => {
     );
   });
 
+  beforeEach(async () => {
+    await pgPool.query("DELETE FROM pricing.price_ticks WHERE source = 'demo'");
+  });
+
   afterAll(async () => {
     await pgPool.query('DELETE FROM trading.demo_trade_idempotency WHERE user_id = $1', [userId]);
     await pgPool.query('DELETE FROM wallet.demo_wallet_reset_events WHERE user_id = $1', [userId]);

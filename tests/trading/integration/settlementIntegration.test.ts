@@ -76,8 +76,20 @@ describe('Trade Settlement Integration', () => {
     await pgPool.query(
       `INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, payout_rate, is_active, max_exposure)
        VALUES ($1, '100', '50000', 60, 3600, '0.60', TRUE, '1000000')
-       ON CONFLICT (asset_symbol) DO UPDATE SET is_active = TRUE`,
+       ON CONFLICT (asset_symbol) DO UPDATE SET is_active = TRUE, payout_rate = '0.60'`,
       [testSymbol]
+    );
+  });
+
+  beforeEach(async () => {
+    await pgPool.query('DELETE FROM events.event_outbox WHERE aggregate_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
+    await pgPool.query('DELETE FROM trading.contract_events WHERE contract_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)', [testUserId]);
+    await pgPool.query('DELETE FROM trading.binary_contracts WHERE user_id = $1', [testUserId]);
+    await pgPool.query('DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)', [testUserId]);
+    await pgPool.query('DELETE FROM pricing.price_ticks WHERE symbol = $1', [testSymbol]);
+    await pgPool.query(
+      `UPDATE wallet.wallets SET balance = 100000, locked_balance = 0 WHERE user_id = $1`,
+      [testUserId]
     );
   });
 
