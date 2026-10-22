@@ -50,6 +50,12 @@ This document tracks required manual actions, environment variable additions, an
   - Keep `ENABLE_B2C_WORKER=false` in Render and local `.env` until Slice 4 callback handlers are ready to process asynchronous Safaricom responses.
   - Keep `ENABLE_B2C_DISBURSEMENT=false` until Slice 4.
 
+### Test #8 (CRITICAL invariant) — hardened in Slice 5 Correction 2
+The "no DB transaction held open during external API call" test originally used `FOR UPDATE NOWAIT`,
+which is race-sensitive under variable database latency. Replaced with polling for status = 'processing'
+(proving claim transaction commit) followed by FOR UPDATE NOWAIT check during a 5000ms window.
+This invariant test must NEVER be flaky — if it ever fails again, treat as P0 worker bug.
+
 ---
 
 ## Slice 3: Refactor approveWithdrawal to Enqueue Outbox + Dispatch
@@ -75,3 +81,50 @@ This document tracks required manual actions, environment variable additions, an
   7. Wait for Safaricom Daraja callback (5–30s). Verify: withdrawal status $\rightarrow$ `completed`, `gateway_reference` set, outbox `processed_at` populated.
   8. Verify user wallet: `balance` $-1500$, `locked_balance` $-1500$, debit ledger entry present.
   9. Immediately reset both flags back to `false` after testing until Slice 5 is ready.
+
+---
+
+## Slice 5: Reconciliation, Ops Recovery, Admin UI
+
+### Database
+- Apply `migrations/039_b2c_ops_recovery.sql` via `npm run migrate`.
+
+### New env vars (Render + local .env)
+- `ENABLE_B2C_RECONCILIATION=false` (keep false until Slice 6 auto-recovery; flag-only mode is safe but adds log noise)
+- `ENABLE_B2C_RECONCILIATION_INTERVAL_MS=300000` (5 min; optional override)
+
+### Operational Notes
+- Reconciliation job in Slice 5 ONLY flags stuck rows for manual review. No auto-recovery.
+- Stuck withdrawals > 2h: flagged in UI with "Review" indicator.
+- Stuck withdrawals > 24h: reason escalated.
+- Ops uses one of three recovery actions (super_admin + MFA required):
+  - **Retry** (from `failed`): re-locks funds + re-dispatches. Max 3 attempts.
+  - **Force Complete** (from `dispatched`): enter M-Pesa receipt after confirming with Daraja. Finalizes wallet debit.
+  - **Force Refund** (from `dispatched`): refunds locked funds after confirming Daraja failed. Logs warning to monitor for late payout.
+- Do NOT use Force Complete or Force Refund without confirming with Daraja first.
+
+### Deferred to Slice 6
+- Auto-recovery via Daraja Transaction Status API (async — requires new status-result callback endpoint + env `MPESA_B2C_STATUS_RESULT_URL`)
+- Late-success anomaly detection (failed withdrawal that Daraja actually paid → double-pay scenario)
+- Ledger Completeness (available_before/locked_before columns on ledger_entries)
+
+---
+
+## CRITICAL tech debt: Tests run against production database
+
+`npm test` uses `DATABASE_URL` from `.env`, which points to the LIVE Supabase database
+(`aws-0-us-east-1.pooler.supabase.com:6543`). There is no separate test database.
+
+Implications:
+- Every test run writes users/wallets/withdrawals to production
+- Test data has been mixed with real data
+- Historical withdrawal `235d9ef4-8cde-42c9-be63-9accc9ac09d0` is real and must never be touched by tests
+- Unique constraint `app_auth_users_phone_idx` causes re-run failures if cleanup incomplete
+
+Mitigation (added in Slice 5 correction):
+- Tests now use dynamic phone numbers + proper teardown
+- Full suite passes 2x consecutively
+
+**Long-term fix (deferred)**: Provision a dedicated test database (Supabase free tier project, or local Docker Postgres). Point `TEST_DATABASE_URL` at it. Update test setup to use `TEST_DATABASE_URL` if set. This is a launch-blocking change for any future scaling and should land before public beta.
+
+

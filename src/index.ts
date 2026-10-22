@@ -9,6 +9,7 @@ import { requestLogger } from './shared/middleware/logger.js';
 import routes from './infrastructure/routes.js';
 import { logger } from './shared/middleware/logger.js';
 import { attachWebSocketServer } from './infrastructure/websocket/wsServer.js';
+import { pgPool } from './config/database.js';
 
 const app: Application = express();
 
@@ -130,6 +131,7 @@ if (config.enableSettlementWorker) {
 }
 
 let activeB2cWorker: any = null;
+let activeB2cReconciliationJob: any = null;
 
 // Automatically start B2C dispatch worker if enabled
 if (config.enableB2cWorker) {
@@ -143,6 +145,22 @@ if (config.enableB2cWorker) {
     });
 }
 
+// Automatically start B2C reconciliation job if enabled
+if (config.enableB2cReconciliation) {
+  import('./modules/payments/jobs/b2cReconciliation.job.js')
+    .then((m) => {
+      activeB2cReconciliationJob = new m.B2CReconciliationJob(
+        pgPool,
+        config.b2cReconciliationIntervalMs,
+        () => config.enableB2cReconciliation
+      );
+      return activeB2cReconciliationJob.start();
+    })
+    .catch((err) => {
+      logger.error('Failed to start B2C reconciliation job', { error: err.message });
+    });
+}
+
 const handleShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, initiating graceful shutdown...`);
   if (activeB2cWorker) {
@@ -150,6 +168,13 @@ const handleShutdown = async (signal: string) => {
       await activeB2cWorker.stop();
     } catch (err: any) {
       logger.error('Error stopping B2C dispatch worker', { error: err.message });
+    }
+  }
+  if (activeB2cReconciliationJob) {
+    try {
+      await activeB2cReconciliationJob.stop();
+    } catch (err: any) {
+      logger.error('Error stopping B2C reconciliation job', { error: err.message });
     }
   }
   server.close(() => {

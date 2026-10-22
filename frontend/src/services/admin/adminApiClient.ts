@@ -86,13 +86,25 @@ export interface WithdrawalRequest {
   user_id: string;
   user_email?: string;
   user_display_name?: string;
-  amount_kes: number;
+  amount_kes?: number | string;
   amount?: number | string;
   net_amount?: number | string;
+  fee?: number | string;
   amount_usd?: number;
   phone_number: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'failed';
+  status: 'pending' | 'approved' | 'dispatched' | 'completed' | 'failed' | 'rejected';
+  gateway_reference?: string | null;
+  gatewayReference?: string | null;
+  needs_manual_review?: boolean;
+  needsManualReview?: boolean;
+  manual_review_reason?: string | null;
+  manualReviewReason?: string | null;
+  retry_count?: number;
+  retryCount?: number;
+  reviewed_by?: string | null;
+  review_note?: string | null;
   created_at: string;
+  completed_at?: string | null;
   tx_hash?: string;
   rejection_reason?: string;
 }
@@ -362,6 +374,39 @@ class AdminApiClient {
     const res = await apiClient.put<ApiResponse<unknown>>(
       `/api/v1/admin/withdrawals/${id}/reject`,
       payload,
+      { headers }
+    );
+    return res.data;
+  }
+
+  async retryWithdrawal(id: string, totp_code?: string) {
+    const headers: Record<string, string> = {};
+    if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
+    const res = await apiClient.post<ApiResponse<WithdrawalRequest>>(
+      `/api/v1/admin/withdrawals/${id}/retry`,
+      {},
+      { headers }
+    );
+    return res.data;
+  }
+
+  async forceCompleteWithdrawal(id: string, mpesaReceipt: string, note?: string, totp_code?: string) {
+    const headers: Record<string, string> = {};
+    if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
+    const res = await apiClient.post<ApiResponse<WithdrawalRequest>>(
+      `/api/v1/admin/withdrawals/${id}/force-complete`,
+      { mpesaReceipt, note },
+      { headers }
+    );
+    return res.data;
+  }
+
+  async forceRefundWithdrawal(id: string, reason: string, totp_code?: string) {
+    const headers: Record<string, string> = {};
+    if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
+    const res = await apiClient.post<ApiResponse<WithdrawalRequest>>(
+      `/api/v1/admin/withdrawals/${id}/force-refund`,
+      { reason },
       { headers }
     );
     return res.data;

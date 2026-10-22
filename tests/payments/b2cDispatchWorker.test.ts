@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Decimal } from 'decimal.js';
 import { pgPool } from '../../src/config/database.js';
 import { B2CDispatchWorker } from '../../src/modules/payments/workers/b2cDispatchWorker.js';
 import { MpesaB2CMockAdapter } from '../../src/modules/payments/adapters/mpesa/MpesaB2CMockAdapter.js';
@@ -8,6 +9,11 @@ process.env.PAYMENT_GATEWAY_MODE = 'MOCK';
 process.env.MPESA_ENVIRONMENT = 'mock';
 
 const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;
+
+function generateUniquePhone(): string {
+  const random8 = Math.floor(10000000 + Math.random() * 90000000);
+  return `2547${random8}`;
+}
 
 describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
   let testUserId: string;
@@ -19,17 +25,18 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
     if (skipDatabaseTests) return;
 
     testUserId = uuidv4();
+    const phone = generateUniquePhone();
     await pgPool.query(
       `INSERT INTO app_auth.users (
         id, email, password_hash, display_name, phone,
         is_verified, is_active, kyc_status, status,
         mfa_enabled, failed_login_attempts, created_at, updated_at
        ) VALUES (
-        $1, $2, 'hash', 'B2C Tester', '254712345678',
+        $1, $2, 'hash', 'B2C Tester', $3,
         true, true, 'verified', 'active',
         false, 0, NOW(), NOW()
        )`,
-      [testUserId, `b2cworker_${Date.now()}@example.com`]
+      [testUserId, `b2cworker_${Date.now()}@example.com`, phone]
     );
   });
 
@@ -83,7 +90,8 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
     );
 
     const payload = opts?.payload || {
-      amount: '980',
+      amount: '1000',
+      netAmount: '980',
       recipientPhone: '0712345678',
       remarks: 'Withdrawal payout',
       occasion: 'Weekly',
@@ -255,10 +263,10 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
 
     const fixture = await createOutboxFixture();
 
-    // Custom gateway adapter that delays 1000ms during initiateB2CPayout
+    // Custom gateway adapter that delays 5000ms during initiateB2CPayout
     const delayedGateway: IB2CPayoutGateway = {
       initiateB2CPayout: async (req) => {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         return {
           conversationId: `AG_delayed_${Date.now()}`,
           originatorConversationId: req.originatorConversationId,
@@ -277,10 +285,20 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
     // Start worker processBatch in background
     const batchPromise = worker.processBatch();
 
-    // Wait 500ms so worker's claim transaction has committed and worker is inside initiateB2CPayout (external API phase)
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Deterministic wait: poll until status becomes 'processing' (proves claim transaction committed)
+    let isProcessing = false;
+    for (let i = 0; i < 30; i++) {
+      const check = await pgPool.query(`SELECT status FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+      if (check.rows[0]?.status === 'processing') {
+        isProcessing = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    expect(isProcessing).toBe(true);
 
-    // Execute SELECT ... FOR UPDATE NOWAIT on the claimed row using a fresh DB client
+    // Worker is now inside initiateB2CPayout (5000ms window).
+    // Execute SELECT ... FOR UPDATE NOWAIT on the claimed row using a fresh DB client.
     const testClient = await pgPool.connect();
     let lockAcquired = false;
     try {
@@ -300,7 +318,7 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
 
     await batchPromise;
 
-    // Assert that the lock was successfully acquired during external API call because claim transaction already committed!
+    // Assert that the lock was successfully acquired during external API call because claim transaction committed!
     expect(lockAcquired).toBe(true);
   });
 
@@ -347,5 +365,69 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
     } finally {
       config.enableB2cDisbursement = originalSetting;
     }
+  });
+
+  test('12. Worker dispatches netAmount (post-fee) to gateway, not amount', async () => {
+    if (skipDatabaseTests) return;
+
+    const withdrawalAmount = new Decimal('1500');
+    const fee = new Decimal('30');
+    const netAmount = withdrawalAmount.minus(fee); // 1470
+
+    const fixture = await createOutboxFixture({
+      payload: {
+        amount: withdrawalAmount.toString(),
+        netAmount: netAmount.toString(),
+        recipientPhone: '254712345678',
+        remarks: 'Withdrawal payout',
+      },
+    });
+
+    await pgPool.query("DELETE FROM payments.b2c_outbox WHERE status = 'pending' AND id <> $1", [fixture.outboxId]);
+
+    let capturedAmount: Decimal | null = null;
+    const captureGateway: IB2CPayoutGateway = {
+      initiateB2CPayout: async (req) => {
+        capturedAmount = req.amount;
+        return {
+          conversationId: `AG_test_${Date.now()}`,
+          originatorConversationId: req.originatorConversationId,
+          responseCode: '0',
+          responseDescription: 'Success',
+          raw: {},
+        };
+      },
+      queryB2CStatus: async (convId) => ({ conversationId: convId, status: 'completed', raw: {} }),
+    };
+
+    const worker = new B2CDispatchWorker(pgPool, captureGateway, 10000, 1);
+    await worker.processBatch();
+
+    expect(capturedAmount).not.toBeNull();
+    expect(capturedAmount!.equals(new Decimal('1470'))).toBe(true);
+  });
+
+  test('13. Worker throws on corrupt payload (missing netAmount)', async () => {
+    if (skipDatabaseTests) return;
+
+    const fixture = await createOutboxFixture({
+      payload: {
+        amount: '1500',
+        recipientPhone: '254712345678',
+        remarks: 'Withdrawal payout',
+        // missing netAmount
+      },
+    });
+
+    await pgPool.query("DELETE FROM payments.b2c_outbox WHERE status = 'pending' AND id <> $1", [fixture.outboxId]);
+
+    const mockAdapter = new MpesaB2CMockAdapter('success');
+    const worker = new B2CDispatchWorker(pgPool, mockAdapter, 10000, 1);
+    await worker.processBatch();
+
+    const res = await pgPool.query(`SELECT * FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+    const row = res.rows[0];
+
+    expect(row.last_error).toContain('netAmount missing');
   });
 });

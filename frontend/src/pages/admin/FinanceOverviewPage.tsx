@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAdminFinance } from '@/hooks/admin/useAdminFinance';
-import { PendingWithdrawalsTable } from '@/components/admin/PendingWithdrawalsTable';
-import { WithdrawalActionModal } from '@/components/admin/WithdrawalActionModal';
+import { PendingWithdrawalsTable, ActionVariant } from '@/components/admin/PendingWithdrawalsTable';
+import { WithdrawalActionModal, ActionType } from '@/components/admin/WithdrawalActionModal';
 import { WalletAdjustmentModal } from '@/components/admin/WalletAdjustmentModal';
 import { HasRole } from '@/components/admin/HasRole';
 import { WithdrawalRequest } from '@/services/admin/adminApiClient';
@@ -10,7 +10,11 @@ import { Wallet, RefreshCw, PlusCircle, AlertCircle } from 'lucide-react';
 
 const WITHDRAWAL_TABS = [
   { id: 'pending', label: 'Pending' },
-  { id: 'approved', label: 'Approved' },
+  { id: 'dispatched', label: 'Dispatched' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'failed', label: 'Failed' },
+  { id: 'needs_review', label: 'Needs Review' },
+  { id: 'approved', label: 'Approved (Legacy)' },
   { id: 'rejected', label: 'Rejected' },
   { id: 'all', label: 'All Withdrawals' },
 ] as const;
@@ -28,16 +32,23 @@ export const FinanceOverviewPage: React.FC = () => {
     clearSelectedWithdrawal,
     approveWithdrawal,
     rejectWithdrawal,
+    retryWithdrawal,
+    forceCompleteWithdrawal,
+    forceRefundWithdrawal,
     adjustWallet,
   } = useAdminFinance();
 
-  const [withdrawalAction, setWithdrawalAction] = useState<'approve' | 'reject' | null>(null);
+  const [withdrawalAction, setWithdrawalAction] = useState<ActionType | null>(null);
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
 
-  const handleSelectWithdrawal = (item: WithdrawalRequest, action: 'approve' | 'reject') => {
+  const handleSelectWithdrawal = (item: WithdrawalRequest, action: ActionVariant) => {
     selectWithdrawal(item.id);
     setWithdrawalAction(action);
   };
+
+  const displayedWithdrawals = statusFilter === 'needs_review'
+    ? withdrawals.filter(w => w.needs_manual_review || w.needsManualReview)
+    : withdrawals;
 
   return (
     <div className="space-y-6">
@@ -51,7 +62,7 @@ export const FinanceOverviewPage: React.FC = () => {
             <div>
               <h1 className="text-xl font-bold text-slate-100">Finance & Wallet Operations</h1>
               <p className="text-xs text-slate-400">
-                Manage pending M-Pesa withdrawals, monitor liquidity, and execute manual balance adjustments.
+                Manage pending M-Pesa withdrawals, monitor lifecycle dispatches, handle recovery retries, and execute manual overrides.
               </p>
             </div>
           </div>
@@ -104,12 +115,12 @@ export const FinanceOverviewPage: React.FC = () => {
             M-Pesa Withdrawal Queue ({statusFilter})
           </h2>
           <span className="text-xs text-slate-400 font-mono">
-            {withdrawals.length} request(s) matching filter
+            {displayedWithdrawals.length} request(s) matching filter
           </span>
         </div>
 
         <PendingWithdrawalsTable
-          withdrawals={withdrawals}
+          withdrawals={displayedWithdrawals}
           isLoading={isLoading}
           onSelectWithdrawal={handleSelectWithdrawal}
         />
@@ -131,6 +142,18 @@ export const FinanceOverviewPage: React.FC = () => {
         }}
         onConfirmReject={async (id, reason, totpCode) => {
           await rejectWithdrawal(id, reason, totpCode);
+          setWithdrawalAction(null);
+        }}
+        onConfirmRetry={async (id, totpCode) => {
+          await retryWithdrawal(id, totpCode);
+          setWithdrawalAction(null);
+        }}
+        onConfirmForceComplete={async (id, mpesaReceipt, note, totpCode) => {
+          await forceCompleteWithdrawal(id, mpesaReceipt, note, totpCode);
+          setWithdrawalAction(null);
+        }}
+        onConfirmForceRefund={async (id, reason, totpCode) => {
+          await forceRefundWithdrawal(id, reason, totpCode);
           setWithdrawalAction(null);
         }}
       />

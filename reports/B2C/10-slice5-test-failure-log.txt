@@ -1,0 +1,15 @@
+Test Suites: 4 failed, 50 passed, 54 total
+Tests:       35 failed, 332 passed, 367 total
+Snapshots:   0 total
+Time:        114.83 s, estimated 125 s
+Ran all test suites.
+
+Failing Test Suites:
+1. FAIL tests/payments/withdrawal.test.ts (12 failed)
+2. FAIL tests/payments/b2cCallback.test.ts (10 failed)
+3. FAIL tests/admin/b2cRecoveryRoutes.test.ts (5 failed)
+4. FAIL tests/payments/b2cOpsRecovery.test.ts (8 failed)
+
+Total failing tests: 35
+Total passing tests: 332
+Total tests: 367

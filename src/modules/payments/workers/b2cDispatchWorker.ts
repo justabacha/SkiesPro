@@ -138,19 +138,28 @@ export class B2CDispatchWorker {
       return;
     }
 
-    const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
-    const amount = new Decimal(payload.amount);
-    const recipientPhone = payload.recipientPhone;
-
-    logger.info('B2C Dispatch Worker processing payout dispatch', {
-      outboxId: row.id,
-      withdrawalId: row.withdrawal_id,
-      originatorConversationId: row.originator_conversation_id,
-      recipientPhone: maskPhone(recipientPhone),
-      amount: amount.toString(),
-    });
-
     try {
+      const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload;
+      if (!payload || typeof payload !== 'object') {
+        throw new Error('Invalid outbox payload: expected object');
+      }
+      const recipientPhone = payload.recipientPhone;
+      if (!recipientPhone) {
+        throw new Error('Invalid outbox payload: recipientPhone missing');
+      }
+      if (!payload.netAmount) {
+        throw new Error('Invalid outbox payload: netAmount missing');
+      }
+      const amount = new Decimal(payload.netAmount);
+
+      logger.info('B2C Dispatch Worker processing payout dispatch', {
+        outboxId: row.id,
+        withdrawalId: row.withdrawal_id,
+        originatorConversationId: row.originator_conversation_id,
+        recipientPhone: maskPhone(recipientPhone),
+        amount: amount.toString(),
+      });
+
       const req: B2CPayoutRequest = {
         originatorConversationId: row.originator_conversation_id,
         amount,

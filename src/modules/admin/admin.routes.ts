@@ -131,6 +131,45 @@ router.put(
   (req: Request, res: Response) => controller.rejectWithdrawal(req, res)
 );
 
+router.post(
+  '/withdrawals/:id/retry',
+  requireAdminRole(['super_admin']),
+  requireAdminMFA,
+  (req: Request, res: Response) => controller.retryWithdrawal(req, res)
+);
+router.post(
+  '/withdrawals/:id/force-complete',
+  requireAdminRole(['super_admin']),
+  requireAdminMFA,
+  [
+    body('mpesaReceipt')
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('M-Pesa receipt code is required')
+      .isLength({ min: 10, max: 16 })
+      .withMessage('M-Pesa receipt code must be 10-16 characters'),
+  ],
+  validate,
+  (req: Request, res: Response) => controller.forceCompleteWithdrawal(req, res)
+);
+router.post(
+  '/withdrawals/:id/force-refund',
+  requireAdminRole(['super_admin']),
+  requireAdminMFA,
+  [
+    body('reason')
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Reason is required')
+      .isLength({ max: 500 })
+      .withMessage('Reason must not exceed 500 characters'),
+  ],
+  validate,
+  (req: Request, res: Response) => controller.forceRefundWithdrawal(req, res)
+);
+
 router.get(
   '/risk/dashboard',
   requireAdminRole(['risk_manager', 'admin', 'super_admin']),

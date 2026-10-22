@@ -365,7 +365,9 @@ export class AdminRepository extends BaseRepository {
     const conditions: string[] = [];
     const params: any[] = [];
 
-    if (status && status !== 'all') {
+    if (status === 'needs_review' || status === 'needs_manual_review') {
+      conditions.push(`o.needs_manual_review = true`);
+    } else if (status && status !== 'all') {
       params.push(status);
       conditions.push(`w.status = $${params.length}`);
     }
@@ -373,7 +375,16 @@ export class AdminRepository extends BaseRepository {
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const countResult = await this.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM payments.withdrawals w ${whereClause}`,
+      `SELECT COUNT(*)::int AS count
+       FROM payments.withdrawals w
+       LEFT JOIN LATERAL (
+         SELECT needs_manual_review
+         FROM payments.b2c_outbox
+         WHERE withdrawal_id = w.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) o ON true
+       ${whereClause}`,
       params
     );
 
@@ -382,9 +393,19 @@ export class AdminRepository extends BaseRepository {
          w.*,
          u.email AS user_email,
          u.display_name AS user_display_name,
-         u.phone AS phone_number
+         u.phone AS phone_number,
+         o.needs_manual_review,
+         o.manual_review_reason,
+         o.retry_count
        FROM payments.withdrawals w
        LEFT JOIN app_auth.users u ON w.user_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT needs_manual_review, manual_review_reason, retry_count
+         FROM payments.b2c_outbox
+         WHERE withdrawal_id = w.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) o ON true
        ${whereClause}
        ORDER BY w.created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -410,9 +431,19 @@ export class AdminRepository extends BaseRepository {
          w.*,
          u.email AS user_email,
          u.display_name AS user_display_name,
-         u.phone AS phone_number
+         u.phone AS phone_number,
+         o.needs_manual_review,
+         o.manual_review_reason,
+         o.retry_count
        FROM payments.withdrawals w
        LEFT JOIN app_auth.users u ON w.user_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT needs_manual_review, manual_review_reason, retry_count
+         FROM payments.b2c_outbox
+         WHERE withdrawal_id = w.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) o ON true
        WHERE w.id = $1`,
       [id]
     );

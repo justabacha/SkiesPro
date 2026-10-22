@@ -120,6 +120,53 @@ export class AdminController {
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
+  async retryWithdrawal(req: Request, res: Response): Promise<void> {
+    const user = req as AdminAuthenticatedRequest;
+    try {
+      const result = await this.compliance.retryWithdrawal(req.params.id, user.user.sub);
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error: any) {
+      const isConflict =
+        error.message.includes('Cannot retry') ||
+        error.message.includes('limit') ||
+        error.message.includes('Insufficient');
+      res.status(isConflict ? 409 : 400).json({ error: error.message });
+    }
+  }
+
+  async forceCompleteWithdrawal(req: Request, res: Response): Promise<void> {
+    const user = req as AdminAuthenticatedRequest;
+    try {
+      const result = await this.compliance.forceCompleteWithdrawal(
+        req.params.id,
+        user.user.sub,
+        req.body.mpesaReceipt,
+        req.body.note
+      );
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error: any) {
+      const isConflict =
+        error.message.includes('Cannot force-complete') || error.message.includes('outbox');
+      res.status(isConflict ? 409 : 400).json({ error: error.message });
+    }
+  }
+
+  async forceRefundWithdrawal(req: Request, res: Response): Promise<void> {
+    const user = req as AdminAuthenticatedRequest;
+    try {
+      const result = await this.compliance.forceRefundWithdrawal(
+        req.params.id,
+        user.user.sub,
+        req.body.reason
+      );
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error: any) {
+      const isConflict =
+        error.message.includes('Cannot force-refund') || error.message.includes('outbox');
+      res.status(isConflict ? 409 : 400).json({ error: error.message });
+    }
+  }
+
   async getRiskDashboard(req: Request, res: Response): Promise<void> {
     const result = await this.risk.getDashboard();
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });

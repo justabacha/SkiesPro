@@ -81,6 +81,63 @@ export function useAdminFinance() {
     [fetchWithdrawals, statusFilter]
   );
 
+  const retryWithdrawal = useCallback(
+    async (id: string, totp_code?: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await adminApiClient.retryWithdrawal(id, totp_code);
+        await fetchWithdrawals(statusFilter, totp_code);
+        setSelectedWithdrawal(null);
+        return res;
+      } catch (err) {
+        setError((err as Error).message);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchWithdrawals, statusFilter]
+  );
+
+  const forceCompleteWithdrawal = useCallback(
+    async (id: string, mpesaReceipt: string, note?: string, totp_code?: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await adminApiClient.forceCompleteWithdrawal(id, mpesaReceipt, note, totp_code);
+        await fetchWithdrawals(statusFilter, totp_code);
+        setSelectedWithdrawal(null);
+        return res;
+      } catch (err) {
+        setError((err as Error).message);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchWithdrawals, statusFilter]
+  );
+
+  const forceRefundWithdrawal = useCallback(
+    async (id: string, reason: string, totp_code?: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await adminApiClient.forceRefundWithdrawal(id, reason, totp_code);
+        await fetchWithdrawals(statusFilter, totp_code);
+        setSelectedWithdrawal(null);
+        return res;
+      } catch (err) {
+        setError((err as Error).message);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [fetchWithdrawals, statusFilter]
+  );
+
   const adjustWallet = useCallback(
     async (payload: {
       user_id: string;
@@ -134,6 +191,9 @@ export function useAdminFinance() {
     clearSelectedWithdrawal: () => setSelectedWithdrawal(null),
     approveWithdrawal,
     rejectWithdrawal,
+    retryWithdrawal,
+    forceCompleteWithdrawal,
+    forceRefundWithdrawal,
     adjustWallet,
     approveAction,
     setPendingApprovals,

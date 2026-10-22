@@ -146,6 +146,47 @@ export class PaymentRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
+  async findLatestOutboxByWithdrawalIdForUpdate(withdrawalId: string): Promise<any | null> {
+    const result = await this.query<any>(
+      'SELECT * FROM payments.b2c_outbox WHERE withdrawal_id = $1 ORDER BY created_at DESC LIMIT 1 FOR UPDATE',
+      [withdrawalId]
+    );
+    return result.rows[0] || null;
+  }
+
+  async resetOutboxForRetry(id: string, newOriginatorId: string, payload?: Record<string, unknown>): Promise<any> {
+    const result = await this.query<any>(
+      `UPDATE payments.b2c_outbox
+       SET status = 'pending',
+           attempt_count = 0,
+           next_attempt_at = NOW(),
+           originator_conversation_id = $2,
+           retry_count = retry_count + 1,
+           needs_manual_review = false,
+           manual_review_reason = NULL,
+           last_error = NULL,
+           processed_at = NULL,
+           conversation_id = NULL,
+           payload = COALESCE($3::jsonb, payload),
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, newOriginatorId, payload ? JSON.stringify(payload) : null]
+    );
+    return result.rows[0];
+  }
+
+  async clearManualReviewFlag(id: string): Promise<void> {
+    await this.query(
+      `UPDATE payments.b2c_outbox
+       SET needs_manual_review = false,
+           manual_review_reason = NULL,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [id]
+    );
+  }
+
   async updateOutboxStatus(
     id: string,
     status: string,
