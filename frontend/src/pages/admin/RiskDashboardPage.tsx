@@ -3,6 +3,7 @@ import { useAdminRisk } from '@/hooks/admin/useAdminRisk';
 import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { AssetConfigModal } from '@/components/admin/AssetConfigModal';
 import { SymbolExposure } from '@/services/admin/adminApiClient';
+import { TableLoading, TableEmpty } from '@/shared/components';
 import { TrendingUp, RefreshCw, Sliders, AlertCircle } from 'lucide-react';
 
 export const RiskDashboardPage: React.FC = () => {
@@ -38,9 +39,17 @@ export const RiskDashboardPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-rose-400 text-xs">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center justify-between gap-3 text-rose-400 text-xs">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => fetchRiskData()}
+            className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded border border-rose-500/30 text-xs font-semibold transition-colors shrink-0"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -85,69 +94,79 @@ export const RiskDashboardPage: React.FC = () => {
           Symbol Exposure & Payout Rates
         </h2>
 
-        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-950/60 border-b border-slate-800/80 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                  <th className="py-3.5 px-4">Asset Pair</th>
-                  <th className="py-3.5 px-4">Payout Rate</th>
-                  <th className="py-3.5 px-4">Call / Put Volume</th>
-                  <th className="py-3.5 px-4">Net Exposure</th>
-                  <th className="py-3.5 px-4">Min / Max Stake</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/50 text-xs">
-                {exposures.map((item) => (
-                  <tr key={item.symbol} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-100">{item.display_name || item.symbol}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">{item.symbol}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-blue-400">
-                      {item.payout_rate}%
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-semibold">C: KES {safeFormatNumber(item.open_call_volume)}</span>
-                        <span className="text-slate-600">|</span>
-                        <span className="text-rose-400 font-semibold">P: KES {safeFormatNumber(item.open_put_volume)}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-slate-200">
-                      KES {safeFormatNumber(item.net_exposure)}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-400 font-mono">
-                      {safeFormatNumber(item.min_stake)} / {safeFormatNumber(item.max_stake)}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${
-                          item.is_active
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        }`}
-                      >
-                        {item.is_active ? 'Active' : 'Disabled'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedAsset(item)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors"
-                      >
-                        <Sliders className="w-3.5 h-3.5 text-blue-400" />
-                        Configure
-                      </button>
-                    </td>
+        {isLoading ? (
+          <TableLoading message="Loading asset exposure and payout configurations..." />
+        ) : exposures.length > 0 ? (
+          <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-950/60 border-b border-slate-800/80 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                    <th className="py-3.5 px-4">Asset Pair</th>
+                    <th className="py-3.5 px-4">Payout Rate</th>
+                    <th className="py-3.5 px-4">Call / Put Volume</th>
+                    <th className="py-3.5 px-4">Net Exposure</th>
+                    <th className="py-3.5 px-4">Min / Max Stake</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50 text-xs">
+                  {exposures.map((item) => (
+                    <tr key={item.symbol} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-100">{item.display_name || item.symbol}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{item.symbol}</div>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-blue-400">
+                        {item.payout_rate}%
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-400 font-semibold">C: KES {safeFormatNumber(item.open_call_volume)}</span>
+                          <span className="text-slate-600">|</span>
+                          <span className="text-rose-400 font-semibold">P: KES {safeFormatNumber(item.open_put_volume)}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-slate-200">
+                        KES {safeFormatNumber(item.net_exposure)}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-400 font-mono">
+                        {safeFormatNumber(item.min_stake)} / {safeFormatNumber(item.max_stake)}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${
+                            item.is_active
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}
+                        >
+                          {item.is_active ? 'Active' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => setSelectedAsset(item)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <Sliders className="w-3.5 h-3.5 text-blue-400" />
+                          Configure
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        ) : (
+          <TableEmpty
+            icon={TrendingUp}
+            title="No Active Asset Exposure Found"
+            description="There are currently no active trading asset exposures or configured pairs."
+          />
+        )}
       </div>
 
       {/* Asset Config Modal */}

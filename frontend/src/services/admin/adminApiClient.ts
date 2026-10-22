@@ -474,23 +474,22 @@ class AdminApiClient {
   async getRiskDashboard(totp_code?: string): Promise<RiskMetrics> {
     const headers: Record<string, string> = {};
     if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
-    const res = await apiClient.get<ApiResponse<{ open_contracts?: number; settled_contracts?: number; total_exposure?: number }>>(
+    const res = await apiClient.get<ApiResponse<RiskMetrics>>(
       `/api/v1/admin/risk/dashboard`,
       { headers }
     );
-    const d = res.data || {};
-    const openPositions = Number(d.open_contracts || 0);
-    const totalExposure = Number(d.total_exposure || 0);
+    const d = res.data || ({} as RiskMetrics);
+    const winLossRatio = Number(d.platform_win_loss_ratio ?? 0);
     return {
-      total_open_positions: openPositions,
-      total_payout_exposure_kes: totalExposure,
-      platform_win_loss_ratio: 0.5,
-      daily_volume_kes: totalExposure,
-      active_traders_24h: 0,
-      high_risk_flagged_users: 0,
-      open_contracts: openPositions,
-      settled_contracts: Number(d.settled_contracts || 0),
-      total_exposure: totalExposure,
+      total_open_positions: Number(d.total_open_positions ?? d.open_contracts ?? 0),
+      total_payout_exposure_kes: Number(d.total_payout_exposure_kes ?? d.total_exposure ?? 0),
+      platform_win_loss_ratio: winLossRatio > 1 ? winLossRatio / 100 : winLossRatio,
+      daily_volume_kes: Number(d.daily_volume_kes ?? 0),
+      active_traders_24h: Number(d.active_traders_24h ?? 0),
+      high_risk_flagged_users: Number(d.high_risk_flagged_users ?? 0),
+      open_contracts: Number(d.open_contracts ?? d.total_open_positions ?? 0),
+      settled_contracts: Number(d.settled_contracts ?? 0),
+      total_exposure: Number(d.total_exposure ?? d.total_payout_exposure_kes ?? 0),
     };
   }
 
