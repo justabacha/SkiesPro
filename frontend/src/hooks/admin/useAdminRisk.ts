@@ -12,8 +12,8 @@ export function useAdminRisk() {
     setError(null);
     try {
       const [m, exp] = await Promise.all([
-        adminApiClient.getRiskDashboard(totp_code).catch(() => null),
-        adminApiClient.getRiskExposure(totp_code).catch(() => []),
+        adminApiClient.getRiskDashboard(totp_code),
+        adminApiClient.getRiskExposure(totp_code),
       ]);
       setMetrics(m);
       setExposures(exp);

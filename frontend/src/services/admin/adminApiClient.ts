@@ -479,11 +479,10 @@ class AdminApiClient {
       { headers }
     );
     const d = res.data || ({} as RiskMetrics);
-    const winLossRatio = Number(d.platform_win_loss_ratio ?? 0);
     return {
       total_open_positions: Number(d.total_open_positions ?? d.open_contracts ?? 0),
       total_payout_exposure_kes: Number(d.total_payout_exposure_kes ?? d.total_exposure ?? 0),
-      platform_win_loss_ratio: winLossRatio > 1 ? winLossRatio / 100 : winLossRatio,
+      platform_win_loss_ratio: Number(d.platform_win_loss_ratio ?? 0),
       daily_volume_kes: Number(d.daily_volume_kes ?? 0),
       active_traders_24h: Number(d.active_traders_24h ?? 0),
       high_risk_flagged_users: Number(d.high_risk_flagged_users ?? 0),

@@ -74,7 +74,7 @@ export const RiskDashboardPage: React.FC = () => {
         <div className="p-5 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl">
           <div className="text-xs text-slate-400 font-medium mb-1">Trader Win Ratio</div>
           <div className="text-2xl font-extrabold text-amber-400">
-            {metrics ? `${((metrics.platform_win_loss_ratio || 0) * 100).toFixed(1)}%` : '0%'}
+            {metrics ? `${(metrics.platform_win_loss_ratio || 0).toFixed(1)}%` : '0%'}
           </div>
           <div className="text-[10px] text-slate-500 mt-1">Platform win vs loss percentage</div>
         </div>

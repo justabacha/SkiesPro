@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { logger } from '../../../shared/middleware/logger.js';
 import { AdminUserService } from '../services/AdminUserService.js';
 import { AdminWalletService } from '../services/AdminWalletService.js';
 import { AdminRiskService } from '../services/AdminRiskService.js';
@@ -168,13 +169,23 @@ export class AdminController {
   }
 
   async getRiskDashboard(req: Request, res: Response): Promise<void> {
-    const result = await this.risk.getDashboard();
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.risk.getDashboard();
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error: any) {
+      logger.error('Risk dashboard fetch failed', { error: error.message, code: error.code });
+      res.status(500).json({ error: 'Internal server error', code: 'RISK_FETCH_FAILED' });
+    }
   }
 
   async getRiskExposure(req: Request, res: Response): Promise<void> {
-    const result = await this.risk.getExposure();
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.risk.getExposure();
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error: any) {
+      logger.error('Risk exposure fetch failed', { error: error.message, code: error.code });
+      res.status(500).json({ error: 'Internal server error', code: 'RISK_FETCH_FAILED' });
+    }
   }
 
   async updateAssetConfig(req: Request, res: Response): Promise<void> {

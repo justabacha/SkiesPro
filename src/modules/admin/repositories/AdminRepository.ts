@@ -531,7 +531,7 @@ export class AdminRepository extends BaseRepository {
     const result = await this.query<any>(`
       SELECT
         ac.asset_symbol AS symbol,
-        COALESCE(a.display_name, ac.asset_symbol) AS display_name,
+        COALESCE(a.name, ac.asset_symbol) AS display_name,
         CASE WHEN ac.payout_rate <= 1 THEN ac.payout_rate * 100 ELSE ac.payout_rate END::float AS payout_rate,
         ac.min_stake::float AS min_stake,
         ac.max_stake_per_trade::float AS max_stake,
@@ -543,7 +543,7 @@ export class AdminRepository extends BaseRepository {
       FROM trading.asset_config ac
       LEFT JOIN trading.assets a ON ac.asset_symbol = a.symbol
       LEFT JOIN trading.binary_contracts c ON ac.asset_symbol = c.asset_symbol AND c.status = 'active'
-      GROUP BY ac.asset_symbol, a.display_name, ac.payout_rate, ac.min_stake, ac.max_stake_per_trade, ac.is_active
+      GROUP BY ac.asset_symbol, a.name, ac.payout_rate, ac.min_stake, ac.max_stake_per_trade, ac.is_active
       ORDER BY exposure DESC, ac.asset_symbol ASC
     `);
     return result.rows;
