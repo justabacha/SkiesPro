@@ -185,7 +185,7 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
     expect(response.body.error).toContain('reason is required');
   });
 
-  it('Missing/Invalid TOTP: Rejection without valid TOTP returns 401 and stays pending', async () => {
+  it('Bad TOTP returns 400 with INVALID_TOTP code', async () => {
     if (skipDatabaseTests) return;
 
     const actionId = await createPendingAction();
@@ -193,13 +193,60 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
     const response = await supertest(app)
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
-      .send({ reason: 'Invalid TOTP test' });
+      .send({ reason: 'Bad TOTP test', totp_code: '000000' });
 
-    expect(response.status).toBe(401);
-    expect(response.body.error).toBeDefined();
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('INVALID_TOTP');
 
     const dbRes = await pgPool.query('SELECT status FROM admin.admin_actions WHERE id = $1', [actionId]);
     expect(dbRes.rows[0].status).toBe('pending');
+  });
+
+  it('Missing TOTP returns 400 with INVALID_TOTP code', async () => {
+    if (skipDatabaseTests) return;
+
+    const actionId = await createPendingAction();
+
+    const response = await supertest(app)
+      .put(`/api/v1/admin/actions/${actionId}/reject`)
+      .set('Authorization', `Bearer ${superAdminToken}`)
+      .send({ reason: 'Missing TOTP test' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('INVALID_TOTP');
+  });
+
+  it('Session remains valid after bad TOTP submission', async () => {
+    if (skipDatabaseTests) return;
+
+    const actionId = await createPendingAction();
+
+    const badRes = await supertest(app)
+      .put(`/api/v1/admin/actions/${actionId}/reject`)
+      .set('Authorization', `Bearer ${superAdminToken}`)
+      .send({ reason: 'Bad TOTP', totp_code: '000000' });
+
+    expect(badRes.status).toBe(400);
+    expect(badRes.body.code).toBe('INVALID_TOTP');
+
+    const meRes = await supertest(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${superAdminToken}`);
+
+    expect(meRes.status).toBe(200);
+  });
+
+  it('Genuine session error with invalid/expired JWT returns 401', async () => {
+    if (skipDatabaseTests) return;
+
+    const actionId = await createPendingAction();
+
+    const response = await supertest(app)
+      .put(`/api/v1/admin/actions/${actionId}/reject`)
+      .set('Authorization', `Bearer invalid.jwt.token`)
+      .send({ reason: 'Expired session', totp_code: '123456' });
+
+    expect(response.status).toBe(401);
   });
 
   it('Already Resolved (Conflict): Attempting to reject an already approved or rejected action returns 409', async () => {
@@ -237,19 +284,5 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
       .send({ reason: 'Unauthorized attempt', totp_code: financeAdminMfaToken });
 
     expect(response.status).toBe(403);
-  });
-
-  it('Missing TOTP: Super admin request without TOTP returns 401', async () => {
-    if (skipDatabaseTests) return;
-
-    const actionId = await createPendingAction();
-
-    const response = await supertest(app)
-      .put(`/api/v1/admin/actions/${actionId}/reject`)
-      .set('Authorization', `Bearer ${superAdminToken}`)
-      .send({ reason: 'Missing TOTP' });
-
-    expect(response.status).toBe(401);
-    expect(response.body.error).toBeDefined();
   });
 });

@@ -71,7 +71,15 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
       setTotpCode('');
       if (onActionResolved) onActionResolved();
     } catch (err: any) {
-      setRejectError(err.message || 'Failed to reject action.');
+      const code = err.code || err.response?.data?.code;
+      const errorMsg = err.message || err.response?.data?.error;
+      if (code === 'INVALID_TOTP') {
+        setRejectError('Invalid TOTP code. Please check your authenticator and try again.');
+      } else if (errorMsg) {
+        setRejectError(errorMsg);
+      } else {
+        setRejectError('Failed to reject action.');
+      }
     } finally {
       setIsSubmitting(false);
     }

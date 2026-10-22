@@ -309,32 +309,41 @@ export class AdminController {
       const providedTotp = totp_code || headerTotp;
 
       if (!reason || typeof reason !== 'string' || reason.trim() === '') {
-        res.status(400).json({ error: 'reason is required' });
+        res.status(400).json({ error: 'reason is required', code: 'VALIDATION_ERROR' });
         return;
       }
 
       if (!providedTotp) {
-        res.status(401).json({ error: 'TOTP code is required' });
+        res.status(400).json({ error: 'TOTP code is required', code: 'INVALID_TOTP' });
         return;
       }
 
       const result = await this.wallets.rejectAction(id, adminId, reason, providedTotp);
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
     } catch (error: any) {
+      const msg = error.message || '';
+
       if (
-        error.message.includes('Invalid') ||
-        error.message.includes('TOTP') ||
-        error.message.includes('MFA') ||
-        error.message.includes('code')
+        msg.includes('Invalid or missing TOTP') ||
+        msg.includes('Invalid TOTP') ||
+        msg.includes('Invalid MFA') ||
+        msg.includes('TOTP code is required')
       ) {
-        res.status(401).json({ error: error.message });
+        res.status(400).json({ error: msg, code: 'INVALID_TOTP' });
         return;
       }
-      if (error.message.includes('not found') || error.message.includes('Cannot reject')) {
-        res.status(409).json({ error: error.message });
+
+      if (msg.includes('reason is required')) {
+        res.status(400).json({ error: msg, code: 'VALIDATION_ERROR' });
         return;
       }
-      res.status(500).json({ error: 'Internal server error' });
+
+      if (msg.includes('not found') || msg.includes('Cannot reject')) {
+        res.status(409).json({ error: msg, code: 'CONFLICT' });
+        return;
+      }
+
+      res.status(500).json({ error: 'Internal server error', code: 'INTERNAL_ERROR' });
     }
   }
 

@@ -127,4 +127,12 @@ Mitigation (added in Slice 5 correction):
 
 **Long-term fix (deferred)**: Provision a dedicated test database (Supabase free tier project, or local Docker Postgres). Point `TEST_DATABASE_URL` at it. Update test setup to use `TEST_DATABASE_URL` if set. This is a launch-blocking change for any future scaling and should land before public beta.
 
+---
+
+## Tech Debt: 401 Misuse Audit
+Endpoints returning 401 for non-session errors should be changed to 400 (validation) or 403 (authorization). Audit findings:
+- [`src/modules/admin/controllers/AdminController.ts:317`](file:///C:/SkiesPro/src/modules/admin/controllers/AdminController.ts#L317) — `PUT /actions/:id/reject` — previously returned 401 for missing/invalid TOTP — corrected to 400 (`INVALID_TOTP`).
+- [`src/modules/admin/controllers/AdminController.ts:330`](file:///C:/SkiesPro/src/modules/admin/controllers/AdminController.ts#L330) — `PUT /actions/:id/reject` — previously returned 401 for invalid TOTP error message — corrected to 400 (`INVALID_TOTP`).
+
+
 
