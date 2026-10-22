@@ -47,9 +47,12 @@ export class B2CCallbackService {
       const adminRepoTx = new AdminRepository(client);
       const walletServiceTx = new WalletService(client);
 
-      const outbox = await paymentRepoTx.findOutboxByOriginatorConversationIdForUpdate(originatorConvId);
+      const outbox =
+        await paymentRepoTx.findOutboxByOriginatorConversationIdForUpdate(originatorConvId);
       if (!outbox) {
-        logger.warn('B2C result callback received for unknown OriginatorConversationID', { originatorConvId });
+        logger.warn('B2C result callback received for unknown OriginatorConversationID', {
+          originatorConvId,
+        });
         await client.query('COMMIT');
         return;
       }
@@ -66,16 +69,21 @@ export class B2CCallbackService {
 
       const withdrawal = await adminRepoTx.getWithdrawalByIdForUpdate(outbox.withdrawal_id);
       if (!withdrawal) {
-        logger.warn('Withdrawal not found for B2C outbox row', { withdrawalId: outbox.withdrawal_id });
+        logger.warn('Withdrawal not found for B2C outbox row', {
+          withdrawalId: outbox.withdrawal_id,
+        });
         await client.query('COMMIT');
         return;
       }
 
       if (withdrawal.status !== 'dispatched') {
-        logger.warn('B2C result callback received for withdrawal not in dispatched state, skipping', {
-          withdrawalId: withdrawal.id,
-          status: withdrawal.status,
-        });
+        logger.warn(
+          'B2C result callback received for withdrawal not in dispatched state, skipping',
+          {
+            withdrawalId: withdrawal.id,
+            status: withdrawal.status,
+          }
+        );
         await client.query('COMMIT');
         return;
       }
@@ -112,21 +120,33 @@ export class B2CCallbackService {
         await walletServiceTx.unlockFunds(withdrawal.user_id, 'real', amount);
 
         await paymentRepoTx.updateWithdrawalStatusAndRef(withdrawal.id, 'failed', transactionId);
-        await paymentRepoTx.updateOutboxStatus(outbox.id, 'failed', conversationId, resultDesc, null);
-
-        logger.info('B2C payout failed, funds unlocked to available balance (no ledger entry — mirrors reject path; ledger completeness tracked for Slice 6)', {
-          withdrawalId: withdrawal.id,
-          outboxId: outbox.id,
-          resultCode,
+        await paymentRepoTx.updateOutboxStatus(
+          outbox.id,
+          'failed',
+          conversationId,
           resultDesc,
-          amount: amount.toString(),
-        });
+          null
+        );
+
+        logger.info(
+          'B2C payout failed, funds unlocked to available balance (no ledger entry — mirrors reject path; ledger completeness tracked for Slice 6)',
+          {
+            withdrawalId: withdrawal.id,
+            outboxId: outbox.id,
+            resultCode,
+            resultDesc,
+            amount: amount.toString(),
+          }
+        );
       }
 
       await client.query('COMMIT');
     } catch (error: any) {
       await client.query('ROLLBACK');
-      logger.error('Error handling B2C result callback', { error: error.message, originatorConvId });
+      logger.error('Error handling B2C result callback', {
+        error: error.message,
+        originatorConvId,
+      });
       throw error;
     } finally {
       client.release();
@@ -134,7 +154,8 @@ export class B2CCallbackService {
   }
 
   async handleTimeoutCallback(payload: DarajaB2CTimeoutPayload): Promise<void> {
-    const originatorConvId = payload?.Result?.OriginatorConversationID || payload?.OriginatorConversationID;
+    const originatorConvId =
+      payload?.Result?.OriginatorConversationID || payload?.OriginatorConversationID;
 
     if (!originatorConvId) {
       logger.warn('B2C timeout callback missing OriginatorConversationID', { payload });
@@ -146,10 +167,13 @@ export class B2CCallbackService {
       await client.query('BEGIN');
 
       const paymentRepoTx = new PaymentRepository(client);
-      const outbox = await paymentRepoTx.findOutboxByOriginatorConversationIdForUpdate(originatorConvId);
+      const outbox =
+        await paymentRepoTx.findOutboxByOriginatorConversationIdForUpdate(originatorConvId);
 
       if (!outbox) {
-        logger.warn('B2C timeout callback received for unknown OriginatorConversationID', { originatorConvId });
+        logger.warn('B2C timeout callback received for unknown OriginatorConversationID', {
+          originatorConvId,
+        });
         await client.query('COMMIT');
         return;
       }
@@ -183,7 +207,10 @@ export class B2CCallbackService {
       await client.query('COMMIT');
     } catch (error: any) {
       await client.query('ROLLBACK');
-      logger.error('Error handling B2C timeout callback', { error: error.message, originatorConvId });
+      logger.error('Error handling B2C timeout callback', {
+        error: error.message,
+        originatorConvId,
+      });
       throw error;
     } finally {
       client.release();

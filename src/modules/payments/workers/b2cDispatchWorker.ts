@@ -3,10 +3,7 @@ import { Decimal } from 'decimal.js';
 import { pgPool } from '../../../config/database.js';
 import { config } from '../../../config/app.js';
 import { logger } from '../../../shared/middleware/logger.js';
-import {
-  IB2CPayoutGateway,
-  B2CPayoutRequest,
-} from '../adapters/mpesa/IB2CPayoutGateway.js';
+import { IB2CPayoutGateway, B2CPayoutRequest } from '../adapters/mpesa/IB2CPayoutGateway.js';
 import { getB2CGateway } from '../adapters/mpesa/B2CGatewayFactory.js';
 
 function maskPhone(phone: string): string {

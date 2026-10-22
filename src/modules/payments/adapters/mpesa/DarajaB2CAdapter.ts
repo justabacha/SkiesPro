@@ -149,16 +149,12 @@ export class DarajaB2CAdapter implements IB2CPayoutGateway {
     });
 
     try {
-      const response = await axios.post(
-        `${this.baseUrl}/mpesa/b2c/v1/paymentrequest`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          timeout: 30000,
-        }
-      );
+      const response = await axios.post(`${this.baseUrl}/mpesa/b2c/v1/paymentrequest`, payload, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        timeout: 30000,
+      });
 
       const data = response.data;
       const responseCode = String(data.ResponseCode ?? data.responseCode ?? '');
@@ -171,8 +167,7 @@ export class DarajaB2CAdapter implements IB2CPayoutGateway {
             data.originatorConversationId ||
             req.originatorConversationId,
           responseCode,
-          responseDescription:
-            data.ResponseDescription || data.responseDescription || 'Success',
+          responseDescription: data.ResponseDescription || data.responseDescription || 'Success',
           raw: data,
         };
       }
@@ -245,8 +240,7 @@ export class DarajaB2CAdapter implements IB2CPayoutGateway {
           conversationId,
           status: 'pending',
           resultCode: 0,
-          resultDescription:
-            data.ResponseDescription || 'Transaction status query accepted',
+          resultDescription: data.ResponseDescription || 'Transaction status query accepted',
           raw: data,
         };
       }
@@ -255,8 +249,7 @@ export class DarajaB2CAdapter implements IB2CPayoutGateway {
         conversationId,
         status: 'failed',
         resultCode: Number(responseCode) || 999,
-        resultDescription:
-          data.ResponseDescription || 'Transaction status query failed',
+        resultDescription: data.ResponseDescription || 'Transaction status query failed',
         raw: data,
       };
     } catch (error: any) {
@@ -266,9 +259,7 @@ export class DarajaB2CAdapter implements IB2CPayoutGateway {
       });
 
       throw new B2CPayoutError(
-        error.response?.data?.errorMessage ||
-          error.message ||
-          'Daraja B2C status query failed',
+        error.response?.data?.errorMessage || error.message || 'Daraja B2C status query failed',
         error.response?.status,
         error.response?.data
       );

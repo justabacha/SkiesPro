@@ -33,7 +33,16 @@ export class AuthService {
   }
 
   private normalizeRoles(roles: string[]): string[] {
-    return [...new Set(roles.map((role) => role.trim().toLowerCase().replace(/[\s-]+/g, '_')))];
+    return [
+      ...new Set(
+        roles.map((role) =>
+          role
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, '_')
+        )
+      ),
+    ];
   }
 
   private primaryRole(roles: string[]): string {

@@ -26,7 +26,10 @@ export const config = {
   b2cWorkerIntervalMs: parseInt(process.env.B2C_WORKER_INTERVAL_MS || '5000', 10),
   b2cWorkerBatchSize: parseInt(process.env.B2C_WORKER_BATCH_SIZE || '5', 10),
   enableB2cReconciliation: process.env.ENABLE_B2C_RECONCILIATION === 'true',
-  b2cReconciliationIntervalMs: parseInt(process.env.ENABLE_B2C_RECONCILIATION_INTERVAL_MS || '300000', 10),
+  b2cReconciliationIntervalMs: parseInt(
+    process.env.ENABLE_B2C_RECONCILIATION_INTERVAL_MS || '300000',
+    10
+  ),
   b2c: {
     shortcode: process.env.MPESA_B2C_SHORTCODE || '',
     initiatorName: process.env.MPESA_B2C_INITIATOR_NAME || '',
@@ -68,13 +71,19 @@ export function validateWebhookUrls(): void {
       try {
         const parsed = new URL(item.value);
         if (config.nodeEnv === 'production' && parsed.protocol !== 'https:') {
-          console.warn(`[Config Warning] ${item.name} uses non-HTTPS scheme ('${parsed.protocol}') in production.`);
+          console.warn(
+            `[Config Warning] ${item.name} uses non-HTTPS scheme ('${parsed.protocol}') in production.`
+          );
         }
         if (item.value.includes('vercel.app')) {
-          console.warn(`[Config Warning] ${item.name} contains 'vercel.app'. Webhooks must hit the backend server, not the frontend Vercel deployment.`);
+          console.warn(
+            `[Config Warning] ${item.name} contains 'vercel.app'. Webhooks must hit the backend server, not the frontend Vercel deployment.`
+          );
         }
       } catch (err: any) {
-        console.error(`[Config Error] Invalid URL in environment variable ${item.name}: "${item.value}" (${err.message})`);
+        console.error(
+          `[Config Error] Invalid URL in environment variable ${item.name}: "${item.value}" (${err.message})`
+        );
       }
     }
   }

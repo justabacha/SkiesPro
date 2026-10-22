@@ -2,16 +2,16 @@ import { Decimal } from 'decimal.js';
 
 export interface B2CPayoutRequest {
   originatorConversationId: string; // internal UUID for idempotency (mapped to Daraja OriginatorConversationID)
-  amount: Decimal;                  // payout amount (will be net_amount from caller)
-  recipientPhone: string;           // user's M-Pesa MSISDN
+  amount: Decimal; // payout amount (will be net_amount from caller)
+  recipientPhone: string; // user's M-Pesa MSISDN
   remarks: string;
   occasion?: string;
 }
 
 export interface B2CPayoutResponse {
-  conversationId: string;           // Daraja's ConversationID
+  conversationId: string; // Daraja's ConversationID
   originatorConversationId: string; // echoed
-  responseCode: string;             // "0" = accepted by Daraja (async result follows)
+  responseCode: string; // "0" = accepted by Daraja (async result follows)
   responseDescription: string;
   raw: unknown;
 }

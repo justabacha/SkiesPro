@@ -138,7 +138,9 @@ export class PaymentRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
-  async findOutboxByOriginatorConversationIdForUpdate(originatorConversationId: string): Promise<any | null> {
+  async findOutboxByOriginatorConversationIdForUpdate(
+    originatorConversationId: string
+  ): Promise<any | null> {
     const result = await this.query<any>(
       'SELECT * FROM payments.b2c_outbox WHERE originator_conversation_id = $1 FOR UPDATE',
       [originatorConversationId]
@@ -154,7 +156,11 @@ export class PaymentRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
-  async resetOutboxForRetry(id: string, newOriginatorId: string, payload?: Record<string, unknown>): Promise<any> {
+  async resetOutboxForRetry(
+    id: string,
+    newOriginatorId: string,
+    payload?: Record<string, unknown>
+  ): Promise<any> {
     const result = await this.query<any>(
       `UPDATE payments.b2c_outbox
        SET status = 'pending',

@@ -449,6 +449,17 @@ class AdminApiClient {
     return res.data;
   }
 
+  async rejectAction(id: string, payload: { reason: string; totp_code?: string }) {
+    const headers: Record<string, string> = {};
+    if (payload.totp_code) headers['X-Admin-MFA-Token'] = payload.totp_code;
+    const res = await apiClient.put<ApiResponse<unknown>>(
+      `/api/v1/admin/actions/${id}/reject`,
+      payload,
+      { headers }
+    );
+    return res.data;
+  }
+
   async getPendingActions(totp_code?: string): Promise<PendingAction[]> {
     const headers: Record<string, string> = {};
     if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;

@@ -52,7 +52,9 @@ export class AdminComplianceService {
         throw new Error('Withdrawal not found');
       }
       if (withdrawal.status !== 'pending') {
-        throw new Error(`Cannot approve withdrawal with status '${withdrawal.status}' (already resolved)`);
+        throw new Error(
+          `Cannot approve withdrawal with status '${withdrawal.status}' (already resolved)`
+        );
       }
 
       const userId = withdrawal.user_id;
@@ -125,11 +127,7 @@ export class AdminComplianceService {
       }
 
       // Unlock/refund locked funds back to available balance
-      await walletServiceTx.unlockFunds(
-        withdrawal.user_id,
-        'real',
-        new Decimal(withdrawal.amount)
-      );
+      await walletServiceTx.unlockFunds(withdrawal.user_id, 'real', new Decimal(withdrawal.amount));
 
       const item = await adminRepoTx.updateWithdrawalStatus(id, 'rejected', reason, reviewedBy);
 
@@ -166,7 +164,9 @@ export class AdminComplianceService {
         throw new Error('Associated B2C outbox record not found');
       }
       if (outbox.status !== 'failed') {
-        throw new Error(`Cannot retry withdrawal: outbox status is '${outbox.status}' (must be 'failed')`);
+        throw new Error(
+          `Cannot retry withdrawal: outbox status is '${outbox.status}' (must be 'failed')`
+        );
       }
       if ((outbox.retry_count || 0) >= 3) {
         throw new Error('Maximum retry limit (3) reached for this withdrawal');
@@ -219,11 +219,20 @@ export class AdminComplianceService {
       await paymentRepoTx.resetOutboxForRetry(outbox.id, newOriginatorConversationId, payload);
       const nextRetryCount = (outbox.retry_count || 0) + 1;
       const reviewNote = `Retry: dispatched by ${reviewedBy} (attempt ${nextRetryCount})`;
-      const updatedWithdrawal = await adminRepoTx.updateWithdrawalStatus(id, 'dispatched', reviewNote, reviewedBy);
+      const updatedWithdrawal = await adminRepoTx.updateWithdrawalStatus(
+        id,
+        'dispatched',
+        reviewNote,
+        reviewedBy
+      );
 
       await client.query('COMMIT');
 
-      logger.info('B2C withdrawal retried', { withdrawalId: id, retryCount: nextRetryCount, reviewedBy });
+      logger.info('B2C withdrawal retried', {
+        withdrawalId: id,
+        retryCount: nextRetryCount,
+        reviewedBy,
+      });
 
       return {
         id,
@@ -239,7 +248,12 @@ export class AdminComplianceService {
     }
   }
 
-  async forceCompleteWithdrawal(id: string, reviewedBy: string, mpesaReceipt: string, note?: string) {
+  async forceCompleteWithdrawal(
+    id: string,
+    reviewedBy: string,
+    mpesaReceipt: string,
+    note?: string
+  ) {
     if (!mpesaReceipt || typeof mpesaReceipt !== 'string' || !mpesaReceipt.trim()) {
       throw new Error('M-Pesa receipt code is required for force completion');
     }
@@ -269,7 +283,8 @@ export class AdminComplianceService {
       }
 
       const amount = new Decimal(withdrawal.amount);
-      const completionNote = `Manual completion by ops: ${mpesaReceipt}` + (note ? ` (${note})` : '');
+      const completionNote =
+        `Manual completion by ops: ${mpesaReceipt}` + (note ? ` (${note})` : '');
 
       // Finalize debit
       await walletServiceTx.finalizeWithdrawalDebit(
@@ -288,7 +303,11 @@ export class AdminComplianceService {
 
       await client.query('COMMIT');
 
-      logger.warn('B2C withdrawal force-completed by ops', { withdrawalId: id, reviewedBy, mpesaReceipt });
+      logger.warn('B2C withdrawal force-completed by ops', {
+        withdrawalId: id,
+        reviewedBy,
+        mpesaReceipt,
+      });
 
       return { id, status: 'completed', mpesaReceipt };
     } catch (error) {
@@ -339,8 +358,17 @@ export class AdminComplianceService {
 
       await client.query('COMMIT');
 
-      logger.warn('B2C withdrawal force-refunded by ops — monitor for late Daraja payout', { withdrawalId: id, reviewedBy, reason });
-      logger.error('B2C force refund monitor late payout warning', { event: 'b2c_force_refund_monitor_late_payout', withdrawalId: id, reviewedBy, reason });
+      logger.warn('B2C withdrawal force-refunded by ops — monitor for late Daraja payout', {
+        withdrawalId: id,
+        reviewedBy,
+        reason,
+      });
+      logger.error('B2C force refund monitor late payout warning', {
+        event: 'b2c_force_refund_monitor_late_payout',
+        withdrawalId: id,
+        reviewedBy,
+        reason,
+      });
 
       return { id, status: 'failed', reason };
     } catch (error) {

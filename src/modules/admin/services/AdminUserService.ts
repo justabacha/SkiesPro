@@ -7,7 +7,13 @@ export class AdminUserService {
     this.repo = new AdminRepository();
   }
 
-  async listUsers(filters: { page: number; perPage: number; status?: string; search?: string; role?: string }) {
+  async listUsers(filters: {
+    page: number;
+    perPage: number;
+    status?: string;
+    search?: string;
+    role?: string;
+  }) {
     return this.repo.listUsers(filters);
   }
 

@@ -5,9 +5,9 @@ export class AdminWalletService {
   private readonly repo: AdminRepository;
   private readonly audit: AdminAuditService;
 
-  constructor() {
-    this.repo = new AdminRepository();
-    this.audit = new AdminAuditService();
+  constructor(repo?: AdminRepository, audit?: AdminAuditService) {
+    this.repo = repo || new AdminRepository();
+    this.audit = audit || new AdminAuditService();
   }
 
   static requiresSecondApproval(amount: number): boolean {
@@ -87,7 +87,22 @@ export class AdminWalletService {
     actionId: string,
     approvedBy: string
   ): Promise<{ status: string; actionId: string; approvedBy: string }> {
-    const action = await this.repo.approveAdminAction(actionId, approvedBy);
+    const action = await this.repo.getAdminActionForUpdate(actionId);
+    if (!action) {
+      throw new Error('Action not found');
+    }
+    const currentStatus =
+      action.status ||
+      (action.approved_at ? 'approved' : action.rejected_at ? 'rejected' : 'pending');
+    if (currentStatus !== 'pending') {
+      throw new Error(`Cannot approve action with status '${currentStatus}'`);
+    }
+
+    const updated = await this.repo.approveAdminAction(actionId, approvedBy);
+    if (!updated) {
+      throw new Error('Cannot approve action');
+    }
+
     await this.audit.createEntry({
       actorId: approvedBy,
       action: 'admin_action_approved',
@@ -95,7 +110,7 @@ export class AdminWalletService {
       entityId: actionId,
       details: {
         approved_by: approvedBy,
-        action_type: action?.action_type,
+        action_type: updated.action_type,
       },
     });
 
@@ -103,6 +118,52 @@ export class AdminWalletService {
       status: 'approved',
       actionId,
       approvedBy,
+    };
+  }
+
+  async rejectAction(
+    id: string,
+    adminId: string,
+    reason: string
+  ): Promise<{ status: string; actionId: string; rejectedBy: string; reason: string }> {
+    if (!reason || reason.trim() === '') {
+      throw new Error('Rejection reason is required');
+    }
+
+    const action = await this.repo.getAdminActionForUpdate(id);
+    if (!action) {
+      throw new Error('Action not found');
+    }
+
+    const currentStatus =
+      action.status ||
+      (action.approved_at ? 'approved' : action.rejected_at ? 'rejected' : 'pending');
+    if (currentStatus !== 'pending') {
+      throw new Error(`Cannot reject action with status '${currentStatus}'`);
+    }
+
+    const updated = await this.repo.rejectAdminAction(id, adminId, reason.trim());
+    if (!updated) {
+      throw new Error('Cannot reject action');
+    }
+
+    await this.audit.createEntry({
+      actorId: adminId,
+      action: 'admin_action_rejected',
+      affectedEntity: 'admin_action',
+      entityId: id,
+      details: {
+        rejected_by: adminId,
+        rejection_reason: reason.trim(),
+        action_type: action.action_type,
+      },
+    });
+
+    return {
+      status: 'rejected',
+      actionId: id,
+      rejectedBy: adminId,
+      reason: reason.trim(),
     };
   }
 

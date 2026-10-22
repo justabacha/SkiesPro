@@ -299,6 +299,29 @@ export class AdminController {
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
+  async rejectAction(req: Request, res: Response): Promise<void> {
+    const authReq = req as AdminAuthenticatedRequest;
+    try {
+      const id = req.params.id;
+      const adminId = authReq.user?.sub || (authReq.user as any)?.id;
+      const { reason } = req.body || {};
+
+      if (!reason || typeof reason !== 'string' || reason.trim() === '') {
+        res.status(400).json({ error: 'reason is required' });
+        return;
+      }
+
+      const result = await this.wallets.rejectAction(id, adminId, reason);
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error: any) {
+      if (error.message.includes('not found') || error.message.includes('Cannot reject')) {
+        res.status(409).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
   async listPendingActions(req: Request, res: Response): Promise<void> {
     const result = await this.wallets.listPendingActions();
     res.status(200).json({ data: result, meta: { request_id: req.correlationId } });

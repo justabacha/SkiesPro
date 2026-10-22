@@ -109,7 +109,12 @@ export class UserRepository extends BaseRepository {
        END, LOWER(r.name)`,
       [userId]
     );
-    return result.rows.map((row) => String(row.name).trim().toLowerCase().replace(/[\s-]+/g, '_'));
+    return result.rows.map((row) =>
+      String(row.name)
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_')
+    );
   }
 
   async assignRole(userId: string, roleName: string): Promise<void> {

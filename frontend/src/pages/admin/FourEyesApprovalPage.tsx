@@ -31,6 +31,11 @@ export const FourEyesApprovalPage: React.FC = () => {
     setPendingActions((prev) => prev.filter((a) => a.id !== id));
   };
 
+  const handleRejectAction = async (id: string, payload: { reason: string; totpCode?: string }) => {
+    await adminApiClient.rejectAction(id, { reason: payload.reason, totp_code: payload.totpCode });
+    setPendingActions((prev) => prev.filter((a) => a.id !== id));
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -72,7 +77,12 @@ export const FourEyesApprovalPage: React.FC = () => {
       ) : pendingActions.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {pendingActions.map((action) => (
-            <FourEyesActionCard key={action.id} action={action} onApprove={handleApproveAction} />
+            <FourEyesActionCard
+              key={action.id}
+              action={action}
+              onApprove={handleApproveAction}
+              onReject={handleRejectAction}
+            />
           ))}
         </div>
       ) : (
@@ -88,4 +98,3 @@ export const FourEyesApprovalPage: React.FC = () => {
 };
 
 export default FourEyesApprovalPage;
-

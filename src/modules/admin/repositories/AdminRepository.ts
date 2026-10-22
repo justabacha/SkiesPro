@@ -856,12 +856,34 @@ export class AdminRepository extends BaseRepository {
   async approveAdminAction(actionId: string, approvedBy: string): Promise<any> {
     const result = await this.query<any>(
       `UPDATE admin.admin_actions
-       SET approved_by = $1, approved_at = NOW()
-       WHERE id = $2
+       SET approved_by = $1, approved_at = NOW(), status = 'approved'
+       WHERE id = $2 AND status = 'pending'
        RETURNING *`,
       [approvedBy, actionId]
     );
 
+    return result.rows[0] || null;
+  }
+
+  async getAdminActionForUpdate(id: string): Promise<any | null> {
+    const result = await this.query<any>(
+      `SELECT * FROM admin.admin_actions WHERE id = $1 FOR UPDATE`,
+      [id]
+    );
+    return result.rows[0] || null;
+  }
+
+  async rejectAdminAction(id: string, adminId: string, reason: string): Promise<any> {
+    const result = await this.query<any>(
+      `UPDATE admin.admin_actions
+       SET status = 'rejected',
+           rejected_by = $1,
+           rejection_reason = $2,
+           rejected_at = NOW()
+       WHERE id = $3 AND status = 'pending'
+       RETURNING *`,
+      [adminId, reason, id]
+    );
     return result.rows[0] || null;
   }
 
@@ -899,11 +921,11 @@ export class AdminRepository extends BaseRepository {
               a.target_user_id as target_id,
               a.details,
               COALESCE(NULLIF(a.details->>'amount', '')::numeric / 130.0, 0) as amount_usd,
-              'pending' as status,
+              a.status,
               a.created_at
        FROM admin.admin_actions a
        LEFT JOIN app_auth.users u ON a.admin_id = u.id
-       WHERE a.requires_approval = true AND a.approved_at IS NULL
+       WHERE a.requires_approval = true AND a.status = 'pending' AND a.approved_at IS NULL AND a.rejected_at IS NULL
        ORDER BY a.created_at DESC`
     );
     return result.rows;

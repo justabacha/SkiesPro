@@ -95,7 +95,9 @@ router.get(
   requireAdminRole(['finance', 'admin', 'super_admin']),
   requireAdminMFA,
   [
-    query('status').optional().isIn(['pending', 'approved', 'rejected', 'dispatched', 'completed', 'failed', 'all']),
+    query('status')
+      .optional()
+      .isIn(['pending', 'approved', 'rejected', 'dispatched', 'completed', 'failed', 'all']),
     query('page').optional().isInt({ min: 1 }),
     query('per_page').optional().isInt({ min: 1 }),
   ],
@@ -296,6 +298,12 @@ router.put(
   requireAdminRole(['super_admin']),
   requireAdminMFA,
   (req: Request, res: Response) => controller.approveAction(req, res)
+);
+router.put(
+  '/actions/:id/reject',
+  requireAdminRole(['super_admin']),
+  requireAdminMFA,
+  (req: Request, res: Response) => controller.rejectAction(req, res)
 );
 
 export default router;
