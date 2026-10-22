@@ -50,6 +50,10 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
       setRejectError('Reason for rejection is required.');
       return;
     }
+    if (totpCode.length !== 6) {
+      setRejectError('A valid 6-digit TOTP code is required.');
+      return;
+    }
 
     setIsSubmitting(true);
     setRejectError(null);
@@ -59,7 +63,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
       } else {
         await adminApiClient.rejectAction(action.id, {
           reason: rejectionReason.trim(),
-          totp_code: totpCode || undefined,
+          totp_code: totpCode,
         });
       }
       setIsRejectModalOpen(false);
@@ -209,7 +213,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  TOTP / MFA Code (Required for Super Admin)
+                  TOTP Code (6 Digits Required) <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -219,6 +223,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
+                    required
                     className="w-full pl-10 pr-4 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-rose-500/80 text-center font-mono tracking-widest text-sm"
                   />
                 </div>
@@ -234,7 +239,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || !rejectionReason.trim()}
+                  disabled={isSubmitting || !rejectionReason.trim() || totpCode.length !== 6}
                   className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-lg shadow-rose-600/20"
                 >
                   {isSubmitting ? 'Rejecting...' : 'Confirm Rejection'}

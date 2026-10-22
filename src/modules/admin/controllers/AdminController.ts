@@ -304,16 +304,32 @@ export class AdminController {
     try {
       const id = req.params.id;
       const adminId = authReq.user?.sub || (authReq.user as any)?.id;
-      const { reason } = req.body || {};
+      const { reason, totp_code } = req.body || {};
+      const headerTotp = req.header('X-Admin-MFA-Token');
+      const providedTotp = totp_code || headerTotp;
 
       if (!reason || typeof reason !== 'string' || reason.trim() === '') {
         res.status(400).json({ error: 'reason is required' });
         return;
       }
 
-      const result = await this.wallets.rejectAction(id, adminId, reason);
+      if (!providedTotp) {
+        res.status(401).json({ error: 'TOTP code is required' });
+        return;
+      }
+
+      const result = await this.wallets.rejectAction(id, adminId, reason, providedTotp);
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
     } catch (error: any) {
+      if (
+        error.message.includes('Invalid') ||
+        error.message.includes('TOTP') ||
+        error.message.includes('MFA') ||
+        error.message.includes('code')
+      ) {
+        res.status(401).json({ error: error.message });
+        return;
+      }
       if (error.message.includes('not found') || error.message.includes('Cannot reject')) {
         res.status(409).json({ error: error.message });
         return;

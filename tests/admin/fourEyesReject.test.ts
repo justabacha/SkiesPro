@@ -95,25 +95,19 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
       await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
       try {
         await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
-      } catch (e) {
-        // Ignore FK constraint from audit_logs
-      }
+      } catch (e) {}
     }
     if (superAdminId) {
       await pgPool.query('DELETE FROM app_auth.user_roles WHERE user_id = $1', [superAdminId]);
       try {
         await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [superAdminId]);
-      } catch (e) {
-        // Ignore FK constraint from audit_logs
-      }
+      } catch (e) {}
     }
     if (financeAdminId) {
       await pgPool.query('DELETE FROM app_auth.user_roles WHERE user_id = $1', [financeAdminId]);
       try {
         await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [financeAdminId]);
-      } catch (e) {
-        // Ignore FK constraint from audit_logs
-      }
+      } catch (e) {}
     }
   });
 
@@ -141,7 +135,7 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
       .set('X-Admin-MFA-Token', superAdminMfaToken)
-      .send({ reason: 'Compliance risk threshold exceeded' });
+      .send({ reason: 'Compliance risk threshold exceeded', totp_code: superAdminMfaToken });
 
     expect(response.status).toBe(200);
     expect(response.body.data).toMatchObject({
@@ -168,7 +162,7 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
       .set('X-Admin-MFA-Token', superAdminMfaToken)
-      .send({ reason: 'Duplicate request cancelled' });
+      .send({ reason: 'Duplicate request cancelled', totp_code: superAdminMfaToken });
 
     // Verify wallet balance is untouched
     const wRes = await pgPool.query('SELECT balance, locked_balance FROM wallet.wallets WHERE user_id = $1', [testUserId]);
@@ -185,10 +179,27 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
       .set('X-Admin-MFA-Token', superAdminMfaToken)
-      .send({});
+      .send({ totp_code: superAdminMfaToken });
 
     expect(response.status).toBe(400);
     expect(response.body.error).toContain('reason is required');
+  });
+
+  it('Missing/Invalid TOTP: Rejection without valid TOTP returns 401 and stays pending', async () => {
+    if (skipDatabaseTests) return;
+
+    const actionId = await createPendingAction();
+
+    const response = await supertest(app)
+      .put(`/api/v1/admin/actions/${actionId}/reject`)
+      .set('Authorization', `Bearer ${superAdminToken}`)
+      .send({ reason: 'Invalid TOTP test' });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBeDefined();
+
+    const dbRes = await pgPool.query('SELECT status FROM admin.admin_actions WHERE id = $1', [actionId]);
+    expect(dbRes.rows[0].status).toBe('pending');
   });
 
   it('Already Resolved (Conflict): Attempting to reject an already approved or rejected action returns 409', async () => {
@@ -201,14 +212,14 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
       .set('X-Admin-MFA-Token', superAdminMfaToken)
-      .send({ reason: 'Initial rejection' });
+      .send({ reason: 'Initial rejection', totp_code: superAdminMfaToken });
 
     // Attempt to reject again
     const response = await supertest(app)
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
       .set('X-Admin-MFA-Token', superAdminMfaToken)
-      .send({ reason: 'Second rejection attempt' });
+      .send({ reason: 'Second rejection attempt', totp_code: superAdminMfaToken });
 
     expect(response.status).toBe(409);
     expect(response.body.error).toContain('Cannot reject action');
@@ -223,12 +234,12 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${financeAdminToken}`)
       .set('X-Admin-MFA-Token', financeAdminMfaToken)
-      .send({ reason: 'Unauthorized attempt' });
+      .send({ reason: 'Unauthorized attempt', totp_code: financeAdminMfaToken });
 
     expect(response.status).toBe(403);
   });
 
-  it('Missing MFA: Super admin request without MFA step up returns 403', async () => {
+  it('Missing TOTP: Super admin request without TOTP returns 401', async () => {
     if (skipDatabaseTests) return;
 
     const actionId = await createPendingAction();
@@ -236,9 +247,9 @@ describe('4-Eyes Reject/Cancel Path Integration Tests (Phase 4)', () => {
     const response = await supertest(app)
       .put(`/api/v1/admin/actions/${actionId}/reject`)
       .set('Authorization', `Bearer ${superAdminToken}`)
-      .send({ reason: 'Missing MFA' });
+      .send({ reason: 'Missing TOTP' });
 
-    expect(response.status).toBe(403);
-    expect(response.body.code).toBe('MFA_STEP_UP_REQUIRED');
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBeDefined();
   });
 });

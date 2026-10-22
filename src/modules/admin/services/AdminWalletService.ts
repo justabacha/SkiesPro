@@ -1,5 +1,8 @@
 import { AdminAuditService } from './AdminAuditService.js';
 import { AdminRepository } from '../repositories/AdminRepository.js';
+import { TokenService } from '../../auth/services/tokenService.js';
+import { MfaService } from '../../auth/services/mfaService.js';
+import { MfaRepository } from '../../auth/repositories/mfaRepository.js';
 
 export class AdminWalletService {
   private readonly repo: AdminRepository;
@@ -124,10 +127,39 @@ export class AdminWalletService {
   async rejectAction(
     id: string,
     adminId: string,
-    reason: string
+    reason: string,
+    totpCode?: string
   ): Promise<{ status: string; actionId: string; rejectedBy: string; reason: string }> {
     if (!reason || reason.trim() === '') {
       throw new Error('Rejection reason is required');
+    }
+
+    if (!totpCode) {
+      throw new Error('TOTP code is required');
+    }
+
+    const tokenService = new TokenService();
+    const mfaService = new MfaService();
+    const mfaRepo = new MfaRepository();
+
+    let isAuthorized = false;
+    const stepUpPayload = tokenService.validateAdminMfaToken(totpCode);
+    if (stepUpPayload && stepUpPayload.sub === adminId) {
+      isAuthorized = true;
+    } else {
+      try {
+        const mfa = await mfaRepo.findByUserId(adminId);
+        if (mfa && mfa.is_enabled) {
+          const secret = mfaService.decrypt(mfa.secret_encrypted);
+          isAuthorized = await mfaService.verifyToken(totpCode, secret);
+        }
+      } catch (e) {
+        isAuthorized = false;
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new Error('Invalid or missing TOTP code');
     }
 
     const action = await this.repo.getAdminActionForUpdate(id);

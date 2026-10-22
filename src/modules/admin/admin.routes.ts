@@ -302,7 +302,6 @@ router.put(
 router.put(
   '/actions/:id/reject',
   requireAdminRole(['super_admin']),
-  requireAdminMFA,
   (req: Request, res: Response) => controller.rejectAction(req, res)
 );
 
