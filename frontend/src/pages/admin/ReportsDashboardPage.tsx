@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminReports } from '@/hooks/admin/useAdminReports';
-import { safeFormatNumber } from '@/shared/utils/safeFormatters';
+import { safeFormatNumber, formatDateEAT } from '@/shared/utils/safeFormatters';
 import { FilterTabs, TableEmpty } from '@/shared/components';
 import { BarChart3, RefreshCw, TrendingUp, DollarSign, Users, Activity, AlertCircle } from 'lucide-react';
 
@@ -36,7 +36,7 @@ export const ReportsDashboardPage: React.FC = () => {
             <div>
               <h1 className="text-xl font-bold text-slate-100">Reports & Business Analytics</h1>
               <p className="text-xs text-slate-400">
-                Visualize revenue metrics, trade volumes, registration growth, and worker settlement latency.
+                Visualize revenue metrics, trade volumes, registration growth, and worker settlement latency (all dates in EAT).
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const ReportsDashboardPage: React.FC = () => {
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-6 shadow-2xl">
         {activeReportTab === 'revenue' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Daily Revenue Breakdown</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Daily Revenue Breakdown (EAT)</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading revenue metrics">
                 {[1, 2, 3].map((item) => (
@@ -92,7 +92,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {dailyRevenue.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{item.date}</span>
+                    <span className="font-mono text-slate-400">{formatDateEAT(item.date)}</span>
                     <div className="flex items-center gap-6">
                       <span className="font-bold text-emerald-400">KES {safeFormatNumber(item.revenue_kes)}</span>
                       <span className="text-slate-300 font-medium">${safeFormatNumber(item.revenue_usd)} USD</span>
@@ -112,7 +112,7 @@ export const ReportsDashboardPage: React.FC = () => {
 
         {activeReportTab === 'volume' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Trading Volume Analytics</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Trading Volume Analytics (EAT)</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading trade volume metrics">
                 {[1, 2, 3].map((item) => (
@@ -123,7 +123,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {tradeVolume.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{item.date}</span>
+                    <span className="font-mono text-slate-400">{formatDateEAT(item.date)}</span>
                     <div className="flex items-center gap-6">
                       <span className="font-bold text-blue-400">KES {safeFormatNumber(item.volume_kes)}</span>
                       <span className="text-slate-400">{safeFormatNumber(item.trade_count)} trades</span>
@@ -143,7 +143,7 @@ export const ReportsDashboardPage: React.FC = () => {
 
         {activeReportTab === 'users' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">User Acquisition & Growth</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">User Acquisition & Growth (EAT)</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading registration metrics">
                 {[1, 2, 3].map((item) => (
@@ -154,7 +154,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {userRegistrations.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{item.date}</span>
+                    <span className="font-mono text-slate-400">{formatDateEAT(item.date)}</span>
                     <span className="font-bold text-indigo-400">+{item.count} new registrations</span>
                   </div>
                 ))}
@@ -171,7 +171,7 @@ export const ReportsDashboardPage: React.FC = () => {
 
         {activeReportTab === 'settlement' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Worker Settlement Latency (ms)</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Worker Settlement Latency (ms) (EAT)</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading settlement metrics">
                 {[1, 2, 3].map((item) => (
@@ -182,7 +182,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {settlementPerformance.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{item.timestamp}</span>
+                    <span className="font-mono text-slate-400">{formatDateEAT(item.timestamp)}</span>
                     <div className="flex items-center gap-6">
                       <span className="font-bold text-amber-400">{item.avg_latency_ms} ms avg</span>
                       <span className="text-slate-400">{item.processed_count} processed</span>
