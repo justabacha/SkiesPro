@@ -17,6 +17,7 @@ const USER_STATUS_TABS = [
 export const UserManagementPage: React.FC = () => {
   const {
     users,
+    selectedUserId,
     selectedUser,
     ledger,
     isLoading,
@@ -123,7 +124,7 @@ export const UserManagementPage: React.FC = () => {
       <UserDetailDrawer
         user={selectedUser}
         ledger={ledger}
-        isOpen={!!selectedUser}
+        isOpen={!!selectedUserId || !!selectedUser}
         isDrawerLoading={isDrawerLoading}
         isLedgerLoading={isLedgerLoading}
         onClose={clearSelectedUser}

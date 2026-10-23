@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SymbolExposure, AssetConfig } from '@/services/admin/adminApiClient';
+import { apiClient } from '@/shared/services/apiClient';
 import { MfaStepUpModal } from './MfaStepUpModal';
 import { TrendingUp, AlertCircle, X } from 'lucide-react';
 
@@ -50,14 +51,36 @@ export const AssetConfigModal: React.FC<AssetConfigModalProps> = ({
   };
 
   const handleMfaConfirm = async (totpCode: string) => {
-    await onConfirm(asset.symbol, {
-      payout_rate: payoutRate,
-      min_stake: minStake,
-      max_stake: maxStake,
-      is_active: isActive,
-      totp_code: totpCode,
-    });
-    onClose();
+    try {
+      // Step A (Exchange): Exchange 6-digit TOTP code for signed JWT step-up token
+      const stepUpRes = await apiClient.post<any>('/api/v1/auth/admin-mfa/step-up', {
+        totp_code: totpCode,
+      });
+      const mfaToken =
+        stepUpRes?.data?.admin_mfa_token ||
+        stepUpRes?.admin_mfa_token ||
+        stepUpRes?.data?.data?.admin_mfa_token;
+
+      if (!mfaToken) {
+        throw new Error('Failed to obtain administrator MFA step-up token.');
+      }
+
+      // Step B (Action): Execute update with signed JWT step-up token
+      await onConfirm(asset.symbol, {
+        payout_rate: payoutRate,
+        min_stake: minStake,
+        max_stake: maxStake,
+        is_active: isActive,
+        totp_code: mfaToken,
+      });
+
+      setIsMfaOpen(false);
+      onClose();
+    } catch (err: any) {
+      const errorMsg = err.message || 'MFA step-up verification failed.';
+      setError(errorMsg);
+      throw err;
+    }
   };
 
   return (

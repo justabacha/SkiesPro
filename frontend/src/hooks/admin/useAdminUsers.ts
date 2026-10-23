@@ -3,6 +3,7 @@ import { adminApiClient, UserSummary, UserDetail, UserLedgerEntry } from '@/serv
 
 export function useAdminUsers() {
   const [users, setUsers] = useState<UserSummary[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [ledger, setLedger] = useState<UserLedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -43,7 +44,8 @@ export function useAdminUsers() {
   }, [fetchUsers]);
 
   const selectUser = useCallback(async (id: string) => {
-    setSelectedUser(null); // Clear stale user state immediately
+    setSelectedUserId(id);
+    setSelectedUser(null);
     setIsDrawerLoading(true);
     setError(null);
     try {
@@ -57,6 +59,7 @@ export function useAdminUsers() {
   }, []);
 
   const clearSelectedUser = useCallback(() => {
+    setSelectedUserId(null);
     setSelectedUser(null);
     setLedger([]);
     setIsDrawerLoading(false);
@@ -102,6 +105,7 @@ export function useAdminUsers() {
 
   return {
     users,
+    selectedUserId,
     selectedUser,
     ledger,
     isLoading,
