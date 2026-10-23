@@ -814,22 +814,27 @@ export class AdminRepository extends BaseRepository {
 
     if (filters.status) {
       params.push(filters.status);
-      conditions.push(`status = $${params.length}`);
+      conditions.push(`t.status = $${params.length}`);
     }
 
     if (filters.priority) {
       params.push(filters.priority);
-      conditions.push(`priority = $${params.length}`);
+      conditions.push(`t.priority = $${params.length}`);
     }
 
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const countResult = await this.query<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM admin.support_tickets ${whereClause}`,
+      `SELECT COUNT(*)::int AS count FROM admin.support_tickets t ${whereClause}`,
       params
     );
 
     const rowsResult = await this.query<any>(
-      `SELECT * FROM admin.support_tickets ${whereClause} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      `SELECT t.*, u.email AS user_email, u.display_name AS user_name
+       FROM admin.support_tickets t
+       LEFT JOIN app_auth.users u ON t.user_id = u.id
+       ${whereClause}
+       ORDER BY t.created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset]
     );
 
@@ -840,7 +845,13 @@ export class AdminRepository extends BaseRepository {
   }
 
   async getSupportTicketById(id: string): Promise<any | null> {
-    const result = await this.query<any>('SELECT * FROM admin.support_tickets WHERE id = $1', [id]);
+    const result = await this.query<any>(
+      `SELECT t.*, u.email AS user_email, u.display_name AS user_name
+       FROM admin.support_tickets t
+       LEFT JOIN app_auth.users u ON t.user_id = u.id
+       WHERE t.id = $1`,
+      [id]
+    );
     return result.rows[0] || null;
   }
 

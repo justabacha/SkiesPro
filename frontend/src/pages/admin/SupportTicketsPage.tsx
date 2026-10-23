@@ -3,6 +3,15 @@ import { useAdminSupport } from '@/hooks/admin/useAdminSupport';
 import { safeFormatDate } from '@/shared/utils/safeFormatters';
 import { TicketDetailDrawer } from '@/components/admin/TicketDetailDrawer';
 import { Headphones, RefreshCw, MessageSquare, AlertCircle } from 'lucide-react';
+import { FilterTabs, TableEmpty, TableLoading } from '@/shared/components';
+
+const TICKET_STATUS_TABS = [
+  { id: '', label: 'All' },
+  { id: 'open', label: 'Open' },
+  { id: 'in_progress', label: 'In Progress' },
+  { id: 'resolved', label: 'Resolved' },
+  { id: 'closed', label: 'Closed' },
+] as const;
 
 export const SupportTicketsPage: React.FC = () => {
   const {
@@ -14,6 +23,10 @@ export const SupportTicketsPage: React.FC = () => {
     setStatusFilter,
     priorityFilter,
     setPriorityFilter,
+    page,
+    pageSize,
+    totalTickets,
+    setPage,
     fetchTickets,
     selectTicket,
     clearSelectedTicket,
@@ -56,19 +69,12 @@ export const SupportTicketsPage: React.FC = () => {
       )}
 
       {/* Filter Bar */}
-      <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 flex items-center gap-4">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-cyan-500/80"
-        >
-          <option value="">All Statuses</option>
-          <option value="open">Open</option>
-          <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-          <option value="closed">Closed</option>
-        </select>
-
+      <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 space-y-4">
+        <FilterTabs
+          tabs={TICKET_STATUS_TABS}
+          activeTab={statusFilter}
+          onChange={setStatusFilter}
+        />
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value)}
@@ -83,73 +89,111 @@ export const SupportTicketsPage: React.FC = () => {
       </div>
 
       {/* Tickets List */}
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-950/60 border-b border-slate-800/80 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                <th className="py-3.5 px-4">Subject & User</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">Priority</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Updated At</th>
-                <th className="py-3.5 px-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50 text-xs">
-              {tickets.map((ticket) => (
-                <tr key={ticket.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-100">{ticket.subject}</div>
-                    <div className="text-[11px] text-slate-400">{ticket.user_email}</div>
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-300 capitalize">
-                    {ticket.category || 'General'}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
-                        ticket.priority === 'urgent'
-                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                          : ticket.priority === 'high'
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          : 'bg-slate-800 text-slate-300 border border-slate-700'
-                      }`}
-                    >
-                      {ticket.priority}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full ${
-                        ticket.status === 'open'
-                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                          : ticket.status === 'in_progress'
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                    {safeFormatDate(ticket.updated_at)}
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => selectTicket(ticket.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      Open Drawer
-                    </button>
-                  </td>
+      {isLoading ? (
+        <TableLoading message="Loading support tickets..." />
+      ) : tickets.length === 0 ? (
+        <TableEmpty
+          icon={Headphones}
+          title="No tickets found"
+          description="The support inbox is currently empty."
+        />
+      ) : (
+        <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-950/60 border-b border-slate-800/80 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                  <th className="py-3.5 px-4">Subject & User</th>
+                  <th className="py-3.5 px-4">Category</th>
+                  <th className="py-3.5 px-4">Priority</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Updated At</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50 text-xs">
+                {tickets.map((ticket) => (
+                  <tr key={ticket.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-100">{ticket.subject}</div>
+                      <div className="text-[11px] text-slate-400">
+                        {ticket.user_name ? `${ticket.user_name} · ` : ''}
+                        {ticket.user_email}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-300 capitalize">
+                      {ticket.category || 'General'}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
+                          ticket.priority === 'urgent'
+                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            : ticket.priority === 'high'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-slate-800 text-slate-300 border border-slate-700'
+                        }`}
+                      >
+                        {ticket.priority}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full ${
+                          ticket.status === 'open'
+                            ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            : ticket.status === 'in_progress'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        }`}
+                      >
+                        {ticket.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
+                      {safeFormatDate(ticket.updated_at)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => selectTicket(ticket.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Open Drawer
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {totalTickets > pageSize && (
+            <div className="flex items-center justify-between border-t border-slate-800/80 px-4 py-3">
+              <span className="text-xs text-slate-400">
+                Page {page} of {Math.ceil(totalTickets / pageSize)} · {totalTickets} tickets
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page <= 1 || isLoading}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => current + 1)}
+                  disabled={page * pageSize >= totalTickets || isLoading}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Ticket Drawer */}
       <TicketDetailDrawer

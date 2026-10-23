@@ -177,6 +177,7 @@ export interface SupportTicket {
   id: string;
   user_id: string;
   user_email: string;
+  user_name?: string | null;
   subject: string;
   category: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
@@ -557,7 +558,7 @@ class AdminApiClient {
   }
 
   // --- Support ---
-  async getTickets(params: { status?: string; priority?: string; page?: number; limit?: number }, totp_code?: string) {
+  async getTickets(params: { status?: string; priority?: string; page?: number; per_page?: number }, totp_code?: string) {
     const headers: Record<string, string> = {};
     if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
     const query = this.formatQuery(params);
@@ -565,7 +566,7 @@ class AdminApiClient {
       `/api/v1/admin/support/tickets${query}`,
       { headers }
     );
-    return res.data?.rows || [];
+    return res.data || { rows: [], total: 0 };
   }
 
   async getTicketById(id: string, totp_code?: string) {

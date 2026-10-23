@@ -262,24 +262,48 @@ export class AdminController {
   }
 
   async listTickets(req: Request, res: Response): Promise<void> {
-    const result = await this.support.listTickets({
-      status: typeof req.query.status === 'string' ? req.query.status : undefined,
-      priority: typeof req.query.priority === 'string' ? req.query.priority : undefined,
-      page: Number(req.query.page || 1),
-      perPage: Number(req.query.per_page || 20),
-    });
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.support.listTickets({
+        status: typeof req.query.status === 'string' ? req.query.status : undefined,
+        priority: typeof req.query.priority === 'string' ? req.query.priority : undefined,
+        page: Number(req.query.page || 1),
+        perPage: Number(req.query.per_page || 20),
+      });
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Support ticket list failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'TICKET_ACTION_FAILED' });
+    }
   }
 
   async getTicketById(req: Request, res: Response): Promise<void> {
-    const result = await this.support.getTicketById(req.params.id);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.support.getTicketById(req.params.id);
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Support ticket lookup failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'TICKET_ACTION_FAILED' });
+    }
   }
 
   async updateTicket(req: Request, res: Response): Promise<void> {
-    const user = req as AdminAuthenticatedRequest;
-    const result = await this.support.updateTicket(req.params.id, req.body, user.user.sub);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const user = req as AdminAuthenticatedRequest;
+      const result = await this.support.updateTicket(req.params.id, req.body, user.user.sub);
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Support ticket update failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'TICKET_ACTION_FAILED' });
+    }
   }
 
   async adjustWallet(req: Request, res: Response): Promise<void> {

@@ -72,7 +72,9 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 <span className="text-xs font-mono text-slate-500">#{ticket.id}</span>
               </div>
               <h2 className="text-lg font-bold text-slate-100">{ticket.subject}</h2>
-              <p className="text-xs text-slate-400">User: {ticket.user_email}</p>
+              <p className="text-xs text-slate-400">
+                User: {ticket.user_name ? `${ticket.user_name} (${ticket.user_email})` : ticket.user_email}
+              </p>
             </div>
             <button
               onClick={onClose}

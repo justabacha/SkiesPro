@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { adminApiClient, SupportTicket } from '@/services/admin/adminApiClient';
 
+const SUPPORT_PAGE_SIZE = 20;
+
 export function useAdminSupport() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -8,6 +10,8 @@ export function useAdminSupport() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [totalTickets, setTotalTickets] = useState(0);
 
   const fetchTickets = useCallback(
     async (totp_code?: string) => {
@@ -18,22 +22,35 @@ export function useAdminSupport() {
           {
             status: statusFilter || undefined,
             priority: priorityFilter || undefined,
+            page,
+            per_page: SUPPORT_PAGE_SIZE,
           },
           totp_code
         );
-        setTickets(list);
+        setTickets(list.rows);
+        setTotalTickets(list.total);
       } catch (err) {
         setError((err as Error).message);
       } finally {
         setIsLoading(false);
       }
     },
-    [statusFilter, priorityFilter]
+    [statusFilter, priorityFilter, page]
   );
 
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
+
+  const changeStatusFilter = useCallback((status: string) => {
+    setStatusFilter(status);
+    setPage(1);
+  }, []);
+
+  const changePriorityFilter = useCallback((priority: string) => {
+    setPriorityFilter(priority);
+    setPage(1);
+  }, []);
 
   const selectTicket = useCallback(async (id: string, totp_code?: string) => {
     setIsLoading(true);
@@ -62,7 +79,14 @@ export function useAdminSupport() {
           const updatedTicket = res && typeof res === 'object' && 'ticket' in res
             ? (res as { ticket: SupportTicket }).ticket
             : (res as SupportTicket);
-          if (updatedTicket) setSelectedTicket(updatedTicket);
+          if (updatedTicket) {
+            setSelectedTicket({
+              ...selectedTicket,
+              ...updatedTicket,
+              user_email: updatedTicket.user_email || selectedTicket.user_email,
+              user_name: updatedTicket.user_name ?? selectedTicket.user_name,
+            });
+          }
         }
         return res;
       } catch (err) {
@@ -81,9 +105,13 @@ export function useAdminSupport() {
     isLoading,
     error,
     statusFilter,
-    setStatusFilter,
+    setStatusFilter: changeStatusFilter,
     priorityFilter,
-    setPriorityFilter,
+    setPriorityFilter: changePriorityFilter,
+    page,
+    pageSize: SUPPORT_PAGE_SIZE,
+    totalTickets,
+    setPage,
     fetchTickets,
     selectTicket,
     clearSelectedTicket: () => setSelectedTicket(null),

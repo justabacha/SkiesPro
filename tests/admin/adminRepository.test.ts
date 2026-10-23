@@ -103,6 +103,54 @@ describe('AdminRepository user data', () => {
     expect(result).not.toHaveProperty('winning_trades');
   });
 
+  it('joins support tickets to current user email and display name', async () => {
+    const { client, repository } = createRepository();
+    client.query
+      .mockResolvedValueOnce({ rows: [{ count: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'ticket-1',
+            user_id: 'user-1',
+            user_email: 'current@example.com',
+            user_name: 'Current User',
+            subject: 'Account question',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'ticket-1',
+            user_id: 'user-1',
+            user_email: 'current@example.com',
+            user_name: 'Current User',
+            subject: 'Account question',
+          },
+        ],
+      });
+
+    const result = await repository.listSupportTickets({ page: 1, perPage: 20 });
+    const query = client.query.mock.calls[1][0] as string;
+    const ticket = await repository.getSupportTicketById('ticket-1');
+    const detailQuery = client.query.mock.calls[2][0] as string;
+
+    expect(query).toContain('LEFT JOIN app_auth.users u ON t.user_id = u.id');
+    expect(query).toContain('u.email AS user_email');
+    expect(query).toContain('u.display_name AS user_name');
+    expect(detailQuery).toContain('LEFT JOIN app_auth.users u ON t.user_id = u.id');
+    expect(detailQuery).toContain('u.email AS user_email');
+    expect(detailQuery).toContain('u.display_name AS user_name');
+    expect(result.rows[0]).toMatchObject({
+      user_email: 'current@example.com',
+      user_name: 'Current User',
+    });
+    expect(ticket).toMatchObject({
+      user_email: 'current@example.com',
+      user_name: 'Current User',
+    });
+  });
+
   it('returns a null win rate when there are no trades', async () => {
     const { client, repository } = createRepository();
     client.query.mockResolvedValueOnce({
