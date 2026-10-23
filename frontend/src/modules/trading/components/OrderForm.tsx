@@ -59,8 +59,15 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   }, [expirySeconds]);
 
   const activeSymbol = selectedSymbol || asset?.symbol || 'EUR/USD';
-  const payoutRate = asset?.payoutRate || 0.6;
-  const minStake = asset?.minStake || 100;
+  const payoutRate = asset?.payoutRate;
+  const minStake = asset?.minStake;
+  const hasTradingConfig =
+    typeof payoutRate === 'number' &&
+    Number.isFinite(payoutRate) &&
+    payoutRate >= 0 &&
+    typeof minStake === 'number' &&
+    Number.isFinite(minStake) &&
+    minStake > 0;
   const maxStake = asset?.maxStake || 50000;
   const isMarketOpen = asset?.isOpen !== false && asset?.isActive !== false;
 
@@ -69,21 +76,42 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
   // Expected payout calculation (Stake + Stake * PayoutRate)
   const expectedPayout = useMemo(() => {
-    if (isNaN(numericStake) || numericStake <= 0) return 0;
+    if (
+      typeof payoutRate !== 'number' ||
+      !Number.isFinite(payoutRate) ||
+      isNaN(numericStake) ||
+      numericStake <= 0
+    ) {
+      return 0;
+    }
     return Number((numericStake * (1 + payoutRate)).toFixed(2));
-  }, [numericStake, payoutRate]);
+  }, [hasTradingConfig, numericStake, payoutRate]);
 
   // Stake validation
   const validationError = useMemo(() => {
+    if (
+      typeof payoutRate !== 'number' ||
+      !Number.isFinite(payoutRate) ||
+      typeof minStake !== 'number' ||
+      !Number.isFinite(minStake) ||
+      payoutRate < 0 ||
+      minStake <= 0
+    ) {
+      return 'Trading configuration unavailable for this asset. Please contact support.';
+    }
     if (!stake || isNaN(numericStake)) return 'Please enter a valid stake amount';
     if (numericStake < minStake) return `Minimum stake is KES ${minStake}`;
     if (numericStake > maxStake) return `Maximum stake is KES ${maxStake}`;
     if (numericStake > userBalance) return 'Insufficient wallet balance';
     return null;
-  }, [stake, numericStake, minStake, maxStake, userBalance]);
+  }, [hasTradingConfig, payoutRate, stake, numericStake, minStake, maxStake, userBalance]);
 
   const isDisabled =
-    !isMarketOpen || !isPriceAvailable || isPlacingTrade || Boolean(validationError);
+    !hasTradingConfig ||
+    !isMarketOpen ||
+    !isPriceAvailable ||
+    isPlacingTrade ||
+    Boolean(validationError);
 
   const handleHigher = () => {
     if (isDisabled) return;
@@ -115,7 +143,9 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           </div>
 
           <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-            Payout +{(payoutRate * 100).toFixed(0)}%
+            {typeof payoutRate === 'number' && Number.isFinite(payoutRate)
+              ? `Payout +${(payoutRate * 100).toFixed(0)}%`
+              : 'Payout unavailable'}
           </span>
         </div>
 
@@ -204,7 +234,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
               min={minStake}
               max={maxStake}
               step="10"
-              placeholder={`Min ${minStake}`}
+              placeholder={hasTradingConfig ? `Min ${minStake}` : 'Configuration unavailable'}
               className="w-full pl-4 pr-16 py-2.5 bg-bg-light-primary dark:bg-bg-dark-primary font-mono text-base font-bold text-text-light-primary dark:text-text-dark-primary rounded-xl border border-border-light dark:border-border-dark focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
             <span className="absolute right-4 top-3 text-xs font-bold text-text-light-secondary dark:text-text-dark-secondary">

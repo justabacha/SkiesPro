@@ -214,8 +214,6 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
           symbol,
           name: symbol,
           isActive: true,
-          payoutRate: 0.6,
-          minStake: 100,
           maxStake: 50000,
           minExpirySeconds: 60,
           maxExpirySeconds: 900,
@@ -418,9 +416,18 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
         setTradeError('MARKET_DATA_UNAVAILABLE');
         return;
       }
+      if (
+        typeof selectedAsset.payoutRate !== 'number' ||
+        !Number.isFinite(selectedAsset.payoutRate) ||
+        typeof selectedAsset.minStake !== 'number' ||
+        !Number.isFinite(selectedAsset.minStake)
+      ) {
+        setTradeError('Trading configuration unavailable for this asset. Please contact support.');
+        return;
+      }
 
       const numericStake = parseFloat(stake);
-      const payoutRate = selectedAsset.payoutRate || 0.6;
+      const payoutRate = selectedAsset.payoutRate;
       const potentialPayout = Number((numericStake * (1 + payoutRate)).toFixed(2));
 
       setPendingOrder({

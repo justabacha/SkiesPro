@@ -57,61 +57,6 @@ const normalizeContract = (value: unknown): BinaryContract => {
   };
 };
 
-const DEFAULT_ASSETS: Asset[] = [
-  {
-    symbol: 'EUR/USD',
-    name: 'Euro / US Dollar',
-    assetType: 'forex',
-    isActive: true,
-    payoutRate: 0.6,
-    minStake: 100,
-    maxStake: 50000,
-    minExpirySeconds: 60,
-    maxExpirySeconds: 900,
-    pipDecimalPlaces: 5,
-    isOpen: true,
-  },
-  {
-    symbol: 'GBP/USD',
-    name: 'British Pound / US Dollar',
-    assetType: 'forex',
-    isActive: true,
-    payoutRate: 0.6,
-    minStake: 100,
-    maxStake: 50000,
-    minExpirySeconds: 60,
-    maxExpirySeconds: 900,
-    pipDecimalPlaces: 5,
-    isOpen: true,
-  },
-  {
-    symbol: 'USD/JPY',
-    name: 'US Dollar / Japanese Yen',
-    assetType: 'forex',
-    isActive: true,
-    payoutRate: 0.6,
-    minStake: 100,
-    maxStake: 50000,
-    minExpirySeconds: 60,
-    maxExpirySeconds: 900,
-    pipDecimalPlaces: 3,
-    isOpen: true,
-  },
-  {
-    symbol: 'Gold',
-    name: 'Gold / US Dollar',
-    assetType: 'commodity',
-    isActive: true,
-    payoutRate: 0.6,
-    minStake: 100,
-    maxStake: 50000,
-    minExpirySeconds: 60,
-    maxExpirySeconds: 900,
-    pipDecimalPlaces: 2,
-    isOpen: true,
-  },
-];
-
 class TradingService {
   /**
    * Fetch all active trading assets
@@ -130,7 +75,7 @@ class TradingService {
       }
 
       if (rawAssets.length === 0) {
-        return DEFAULT_ASSETS;
+        return [];
       }
 
       return rawAssets
@@ -140,8 +85,9 @@ class TradingService {
           name: asset.name || asset.symbol,
           assetType: asset.assetType || 'forex',
           isActive: asset.isActive !== false,
-          payoutRate: Number(asset.payoutRate) || 0.6,
-          minStake: Number(asset.minStake) || 100,
+          payoutRate:
+            asset.payoutRate == null ? undefined : Number(asset.payoutRate),
+          minStake: asset.minStake == null ? undefined : Number(asset.minStake),
           maxStake: Number(asset.maxStake) || 50000,
           minExpirySeconds: Number(asset.minExpirySeconds) || 60,
           maxExpirySeconds: Number(asset.maxExpirySeconds) || 900,
@@ -149,8 +95,8 @@ class TradingService {
           isOpen: asset.isOpen !== false,
         }));
     } catch (error) {
-      console.warn('Falling back to default assets:', error);
-      return DEFAULT_ASSETS;
+      console.warn('Failed to fetch trading assets:', error);
+      return [];
     }
   }
 
@@ -170,29 +116,18 @@ class TradingService {
         name: assetData.name || symbol,
         assetType: assetData.assetType || 'forex',
         isActive: assetData.isActive !== false,
-        payoutRate: Number(assetData.payoutRate) || 0.6,
-        minStake: Number(assetData.minStake) || 100,
+        payoutRate:
+          assetData.payoutRate == null ? undefined : Number(assetData.payoutRate),
+        minStake: assetData.minStake == null ? undefined : Number(assetData.minStake),
         maxStake: Number(assetData.maxStake) || 50000,
         minExpirySeconds: Number(assetData.minExpirySeconds) || 60,
         maxExpirySeconds: Number(assetData.maxExpirySeconds) || 900,
         pipDecimalPlaces: Number(assetData.pipDecimalPlaces) || 5,
         isOpen: assetData.isOpen !== false,
       };
-    } catch {
-      const fallback = DEFAULT_ASSETS.find((a) => a.symbol === symbol) || {
-        symbol,
-        name: symbol,
-        assetType: 'forex',
-        isActive: true,
-        payoutRate: 0.6,
-        minStake: 100,
-        maxStake: 50000,
-        minExpirySeconds: 60,
-        maxExpirySeconds: 900,
-        pipDecimalPlaces: 5,
-        isOpen: true,
-      };
-      return fallback;
+    } catch (error) {
+      console.warn(`Failed to fetch trading asset ${symbol}:`, error);
+      throw error;
     }
   }
 

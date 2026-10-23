@@ -7,6 +7,7 @@ import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
 import { localCache } from '../../../src/infrastructure/cache/memoryCache.js';
 import { priceCacheKey } from '../../../src/modules/pricing/utils/symbolNormalizer.js';
+import { AssetRepository } from '../../../src/modules/trading/repositories/assetRepository.js';
 
 jest.mock('../../../src/infrastructure/message-queue/MessageQueueClient.js', () => ({
   messageQueueClient: {
@@ -21,6 +22,7 @@ describe('Trading Engine Integration', () => {
 
   const testUserId = uuidv4();
   const testSymbol = `T${uuidv4().replace(/-/g, '').slice(0, 10).toUpperCase()}/USD`;
+  const configJoinTestSymbol = `J${uuidv4().replace(/-/g, '').slice(0, 10).toUpperCase()}/USD`;
 
   beforeAll(async () => {
     mockPricingService = {
@@ -66,6 +68,17 @@ describe('Trading Engine Integration', () => {
         max_stake_per_trade = 50000`,
       [testSymbol]
     );
+
+    await pgPool.query(
+      `INSERT INTO trading.assets (symbol, name, asset_type, is_active)
+       VALUES ($1, 'Asset Repository Join Test', 'forex', TRUE)`,
+      [configJoinTestSymbol]
+    );
+    await pgPool.query(
+      `INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, payout_rate, is_active, max_exposure)
+       VALUES ($1, 250, 50000, 60, 3600, 0.75, TRUE, 1000000)`,
+      [configJoinTestSymbol]
+    );
   });
 
   afterAll(async () => {
@@ -76,6 +89,21 @@ describe('Trading Engine Integration', () => {
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
     await pgPool.query('DELETE FROM trading.asset_config WHERE asset_symbol = $1', [testSymbol]);
     await pgPool.query('DELETE FROM trading.assets WHERE symbol = $1', [testSymbol]);
+    await pgPool.query('DELETE FROM trading.asset_config WHERE asset_symbol = $1', [configJoinTestSymbol]);
+    await pgPool.query('DELETE FROM trading.assets WHERE symbol = $1', [configJoinTestSymbol]);
+  });
+
+  test('asset list joins payout and stake configuration', async () => {
+    const repository = new AssetRepository();
+    const assets = await repository.getAllActive();
+    const asset = assets.find((item) => item.symbol === configJoinTestSymbol);
+    const detail = await repository.findBySymbol(configJoinTestSymbol);
+
+    expect(asset).toBeDefined();
+    expect(Number(asset?.payoutRate)).toBe(0.75);
+    expect(Number(asset?.minStake)).toBe(250);
+    expect(Number(detail?.payoutRate)).toBe(0.75);
+    expect(Number(detail?.minStake)).toBe(250);
   });
 
   test('should successfully place a trade', async () => {

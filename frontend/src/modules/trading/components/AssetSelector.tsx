@@ -74,7 +74,10 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
         <div className="flex items-center space-x-1.5 sm:space-x-2 pl-2 border-l border-border-light dark:border-border-dark">
           <div className="text-right">
             <div className="text-[11px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              +{((selectedAsset?.payoutRate || 0.60) * 100).toFixed(0)}%
+              {typeof selectedAsset?.payoutRate !== 'number' ||
+              !Number.isFinite(selectedAsset.payoutRate)
+                ? 'Payout unavailable'
+                : `+${(selectedAsset.payoutRate * 100).toFixed(0)}%`}
             </div>
             {currentPrice !== undefined && currentPrice > 0 && (
               <div className="text-[10px] sm:text-[11px] font-mono text-text-light-secondary dark:text-text-dark-secondary">
@@ -136,7 +139,9 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
 
                     <div className="text-right">
                       <span className="inline-block px-1.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded">
-                        +{((asset.payoutRate || 0.60) * 100).toFixed(0)}%
+                        {typeof asset.payoutRate !== 'number' || !Number.isFinite(asset.payoutRate)
+                          ? 'Unavailable'
+                          : `+${(asset.payoutRate * 100).toFixed(0)}%`}
                       </span>
                     </div>
                   </button>

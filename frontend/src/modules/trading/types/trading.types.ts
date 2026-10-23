@@ -8,8 +8,8 @@ export interface Asset {
   name: string;
   assetType?: string;
   isActive: boolean;
-  payoutRate: number; // e.g. 0.60 for 60%
-  minStake: number; // e.g. 100
+  payoutRate?: number; // e.g. 0.60 for 60%
+  minStake?: number; // e.g. 100
   maxStake: number; // e.g. 50000
   minExpirySeconds: number; // e.g. 60
   maxExpirySeconds: number; // e.g. 900

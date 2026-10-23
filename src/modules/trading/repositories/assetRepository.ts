@@ -5,8 +5,9 @@ export interface Asset {
   name: string;
   assetType: string;
   isActive: boolean;
-  minStake: number;
-  maxStake: number;
+  payoutRate: string | null;
+  minStake: string | null;
+  maxStake: string | null;
   minExpirySeconds: number;
   maxExpirySeconds: number;
   pipDecimalPlaces: number;
@@ -15,9 +16,13 @@ export interface Asset {
 export class AssetRepository {
   async findBySymbol(symbol: string): Promise<Asset | null> {
     const query = `
-      SELECT *, pip_decimal_places AS "pipDecimalPlaces"
-      FROM trading.assets
-      WHERE symbol = $1 AND is_active = TRUE
+      SELECT a.*, a.asset_type AS "assetType", a.is_active AS "isActive",
+             a.pip_decimal_places AS "pipDecimalPlaces",
+             ac.payout_rate AS "payoutRate", ac.min_stake AS "minStake",
+             ac.max_stake_per_trade AS "maxStake"
+      FROM trading.assets a
+      LEFT JOIN trading.asset_config ac ON a.symbol = ac.asset_symbol
+      WHERE a.symbol = $1 AND a.is_active = TRUE
     `;
     const { rows } = await pgPool.query(query, [symbol]);
     return rows[0] || null;
@@ -25,10 +30,13 @@ export class AssetRepository {
 
   async getAllActive(): Promise<Asset[]> {
     const query = `
-      SELECT *, asset_type AS "assetType", is_active AS "isActive",
-             pip_decimal_places AS "pipDecimalPlaces"
-      FROM trading.assets
-      WHERE is_active = TRUE
+      SELECT a.*, a.asset_type AS "assetType", a.is_active AS "isActive",
+             a.pip_decimal_places AS "pipDecimalPlaces",
+             ac.payout_rate AS "payoutRate", ac.min_stake AS "minStake",
+             ac.max_stake_per_trade AS "maxStake"
+      FROM trading.assets a
+      LEFT JOIN trading.asset_config ac ON a.symbol = ac.asset_symbol
+      WHERE a.is_active = TRUE
     `;
     const { rows } = await pgPool.query(query);
     return rows;

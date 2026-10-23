@@ -14,14 +14,13 @@ export class AssetService {
     return this.assetRepo.getAllActive();
   }
 
-  async getAssetDetail(symbol: string): Promise<{ asset: Asset; config: AssetConfig | null }> {
+  async getAssetDetail(symbol: string): Promise<Asset> {
     const asset = await this.assetRepo.findBySymbol(symbol);
     if (!asset) {
       throw new Error(`Asset ${symbol} not found`);
     }
 
-    const config = await this.configRepo.findBySymbol(symbol);
-    return { asset, config };
+    return asset;
   }
 
   async getActiveConfigs(): Promise<AssetConfig[]> {
