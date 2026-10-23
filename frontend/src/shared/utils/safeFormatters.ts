@@ -52,6 +52,27 @@ export function formatDateEAT(dateVal: unknown): string {
 }
 
 /**
+ * Safe helper function for formatting daily aggregated dates to local Kenyan EAT time (UTC+3) without time.
+ * Format: Wed, 07 Oct 2026
+ */
+export function formatDateOnlyEAT(dateVal: unknown): string {
+  if (!dateVal) return 'N/A';
+  try {
+    const date = new Date(dateVal as string | number | Date);
+    if (isNaN(date.getTime())) return 'N/A';
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Nairobi',
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  } catch (e) {
+    return String(dateVal);
+  }
+}
+
+/**
  * Safe helper function for formatting KYC document types into human-readable strings.
  */
 export const formatDocumentType = (docType?: string): string => {

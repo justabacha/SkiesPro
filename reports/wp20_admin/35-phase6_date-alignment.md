@@ -79,4 +79,44 @@ export function formatDateEAT(dateVal: unknown): string {
 - **Reports Integration Test (`npx jest tests/admin/adminReports.integration.test.ts`)**: PASS (1 passed, 1 total).
 - **Visual Output Sample**: `Fri, 23 Oct 2026 03:00:00`
 
+---
+
+## Follow-up: Date-Only Aggregations
+
+### Reason
+The backend report SQL queries group records by `DATE(created_at)`. When parsed by `new Date()`, date-only strings (e.g., `2026-10-07`) represent midnight UTC, which converts to `03:00:00` EAT. For daily aggregated report metrics, the `03:00:00` timestamp is artificial and confusing to users.
+
+### Code Added (`frontend/src/shared/utils/safeFormatters.ts`)
+```typescript
+/**
+ * Safe helper function for formatting daily aggregated dates to local Kenyan EAT time (UTC+3) without time.
+ * Format: Wed, 07 Oct 2026
+ */
+export function formatDateOnlyEAT(dateVal: unknown): string {
+  if (!dateVal) return 'N/A';
+  try {
+    const date = new Date(dateVal as string | number | Date);
+    if (isNaN(date.getTime())) return 'N/A';
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Nairobi',
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  } catch (e) {
+    return String(dateVal);
+  }
+}
+```
+
+### UI Implementation (`frontend/src/pages/admin/ReportsDashboardPage.tsx`)
+Replaced `formatDateEAT` with `formatDateOnlyEAT` across all daily report tabs (**Daily Revenue**, **Trade Volume**, **User Registrations**, and **Settlement Latency**).
+
+### Verification
+- **Frontend Typecheck (`npx tsc --noEmit`)**: Exit code `0` (0 errors).
+- **Backend Typecheck (`npm run typecheck`)**: Exit code `0` (0 errors).
+- **Reports Integration Test**: PASS (1 passed, 1 total).
+- **Visual Output Sample**: `Wed, 07 Oct 2026`
+
 Executed & Verified

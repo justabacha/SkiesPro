@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminReports } from '@/hooks/admin/useAdminReports';
-import { safeFormatNumber, formatDateEAT } from '@/shared/utils/safeFormatters';
+import { safeFormatNumber, formatDateOnlyEAT } from '@/shared/utils/safeFormatters';
 import { FilterTabs, TableEmpty } from '@/shared/components';
 import { BarChart3, RefreshCw, TrendingUp, DollarSign, Users, Activity, AlertCircle } from 'lucide-react';
 
@@ -92,7 +92,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {dailyRevenue.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{formatDateEAT(item.date)}</span>
+                    <span className="font-mono text-slate-400">{formatDateOnlyEAT(item.date)}</span>
                     <div className="flex items-center gap-6">
                       <span className="font-bold text-emerald-400">KES {safeFormatNumber(item.revenue_kes)}</span>
                       <span className="text-slate-300 font-medium">${safeFormatNumber(item.revenue_usd)} USD</span>
@@ -123,7 +123,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {tradeVolume.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{formatDateEAT(item.date)}</span>
+                    <span className="font-mono text-slate-400">{formatDateOnlyEAT(item.date)}</span>
                     <div className="flex items-center gap-6">
                       <span className="font-bold text-blue-400">KES {safeFormatNumber(item.volume_kes)}</span>
                       <span className="text-slate-400">{safeFormatNumber(item.trade_count)} trades</span>
@@ -154,7 +154,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {userRegistrations.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{formatDateEAT(item.date)}</span>
+                    <span className="font-mono text-slate-400">{formatDateOnlyEAT(item.date)}</span>
                     <span className="font-bold text-indigo-400">+{item.count} new registrations</span>
                   </div>
                 ))}
@@ -182,7 +182,7 @@ export const ReportsDashboardPage: React.FC = () => {
               <div className="space-y-3">
                 {settlementPerformance.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
-                    <span className="font-mono text-slate-400">{formatDateEAT(item.timestamp)}</span>
+                    <span className="font-mono text-slate-400">{formatDateOnlyEAT(item.timestamp)}</span>
                     <div className="flex items-center gap-6">
                       <span className="font-bold text-amber-400">{item.avg_latency_ms} ms avg</span>
                       <span className="text-slate-400">{item.processed_count} processed</span>
