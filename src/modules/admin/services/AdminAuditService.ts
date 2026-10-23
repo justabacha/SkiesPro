@@ -24,8 +24,8 @@ export class AdminAuditService {
 
   private readonly repo: AdminRepository;
 
-  constructor() {
-    this.repo = new AdminRepository();
+  constructor(repo = new AdminRepository()) {
+    this.repo = repo;
   }
 
   async createEntry(input: {

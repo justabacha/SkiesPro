@@ -593,14 +593,14 @@ export class AdminRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
-  async setSetting(key: string, value: string, updatedBy: string, reason: string): Promise<any> {
+  async setSetting(key: string, value: string, updatedBy: string): Promise<any> {
     const result = await this.query<any>(
-      `INSERT INTO config.platform_settings (key, value, updated_by, reason, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO config.platform_settings (key, value, updated_by, updated_at)
+       VALUES ($1, $2, $3, NOW())
        ON CONFLICT (key)
-       DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, reason = EXCLUDED.reason, updated_at = NOW()
+       DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = NOW()
        RETURNING *`,
-      [key, value, updatedBy, reason]
+      [key, value, updatedBy]
     );
 
     return result.rows[0] || null;

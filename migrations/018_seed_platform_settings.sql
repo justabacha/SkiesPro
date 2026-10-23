@@ -20,10 +20,10 @@ VALUES
 -- Trade settings
 ('trade.min_duration_seconds', '30', 'Minimum trade duration in seconds', '00000000-0000-0000-0000-000000000000'),
 ('trade.max_duration_seconds', '3600', 'Maximum trade duration in seconds', '00000000-0000-0000-0000-000000000000'),
-('trade.default_payout_ratio', '0.60', 'Default payout ratio (60%)', '00000000-0000-0000-0000-000000000000'),
+('trade.default_payout_ratio', '0.60', 'Default payout ratio for newly configured assets', '00000000-0000-0000-0000-000000000000'),
 
 -- Referral settings
-('referral.commission_percentage', '0.10', 'Referral commission percentage (10%)', '00000000-0000-0000-0000-000000000000'),
+('referral.commission_percentage', '0.10', 'Referral commission percentage', '00000000-0000-0000-0000-000000000000'),
 
 -- KYC settings
 ('kyc.required_for_trading', 'false', 'Whether KYC is required before trading', '00000000-0000-0000-0000-000000000000'),

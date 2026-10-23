@@ -11,14 +11,17 @@ import {
   WithdrawResponseDto,
 } from '../dto/payment.dto.js';
 import { logger } from '../../../shared/middleware/logger.js';
+import { SettingsService } from '../../../shared/services/settingsService.js';
 
 export class PaymentService {
   private paymentRepo: PaymentRepository;
   private userRepo: UserRepository;
+  private settingsService: SettingsService;
 
-  constructor() {
+  constructor(settingsService = new SettingsService()) {
     this.paymentRepo = new PaymentRepository();
     this.userRepo = new UserRepository();
+    this.settingsService = settingsService;
   }
 
   async initiateDeposit(
@@ -30,9 +33,17 @@ export class PaymentService {
     if (cached && cached.status !== 'processing') return cached;
 
     const amount = new Decimal(data.amount);
-    const minDeposit = new Decimal(process.env.MIN_DEPOSIT_KES || '100');
+    const minDeposit = new Decimal(
+      await this.settingsService.getSetting('deposit.min_amount', Number(process.env.MIN_DEPOSIT_KES || '500'))
+    );
+    const maxDeposit = new Decimal(
+      await this.settingsService.getSetting('deposit.max_amount', 500000)
+    );
     if (amount.lessThan(minDeposit)) {
       throw new Error(`Minimum deposit is ${minDeposit} KES`);
+    }
+    if (amount.greaterThan(maxDeposit)) {
+      throw new Error(`Maximum deposit is ${maxDeposit} KES`);
     }
 
     await this.paymentRepo.saveIdempotencyKey(idempotencyKey, { status: 'processing' });
@@ -161,13 +172,24 @@ export class PaymentService {
     if (cached && cached.status !== 'processing') return cached;
 
     const user = await this.userRepo.findById(userId);
-    if (!user || user.kyc_status !== 'verified') {
+    const kycRequired = await this.settingsService.getSetting('kyc.required_for_withdrawal', true);
+    if (!user || (kycRequired && user.kyc_status !== 'verified')) {
       throw new Error('KYC verification required for withdrawals');
     }
 
     const amount = new Decimal(data.amount);
-    const minWithdrawal = new Decimal(process.env.MIN_WITHDRAWAL_KES || '1500');
-    const maxWithdrawal = new Decimal(process.env.MAX_WITHDRAWAL_KES || '60000');
+    const minWithdrawal = new Decimal(
+      await this.settingsService.getSetting(
+        'withdrawal.min_amount',
+        Number(process.env.MIN_WITHDRAWAL_KES || '1500')
+      )
+    );
+    const maxWithdrawal = new Decimal(
+      await this.settingsService.getSetting(
+        'withdrawal.max_amount',
+        Number(process.env.MAX_WITHDRAWAL_KES || '60000')
+      )
+    );
 
     if (amount.lessThan(minWithdrawal)) {
       throw new Error(`Minimum withdrawal is ${minWithdrawal} KES`);

@@ -7,7 +7,7 @@ export interface AssetConfig {
   maxStake: string; // Keep as string for precision
   minDurationSeconds: number;
   maxDurationSeconds: number;
-  payoutRate: string; // Keep as string for precision
+  payoutRate: string | null; // Keep as string for precision when configured
   isActive: boolean;
   maxExposure: string; // Keep as string for precision
   volatilityMultiplier?: string;

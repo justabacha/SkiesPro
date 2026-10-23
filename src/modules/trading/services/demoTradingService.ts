@@ -13,6 +13,7 @@ import { AssetRepository } from '../repositories/assetRepository.js';
 import { BinaryContract, ContractRepository } from '../repositories/contractRepository.js';
 import { StakeValidator } from '../validators/stakeValidator.js';
 import { PlaceTradeRequest } from '../dto/trading.dto.js';
+import { SettingsService } from '../../../shared/services/settingsService.js';
 
 export class DemoTradingService {
   private readonly userRepository = new UserRepository();
@@ -23,7 +24,8 @@ export class DemoTradingService {
 
   constructor(
     private readonly demoPriceFeed: Pick<DemoPriceFeedService, 'getQuote'>,
-    private readonly demoWalletService = new DemoWalletService()
+    private readonly demoWalletService = new DemoWalletService(),
+    private readonly settingsService = new SettingsService()
   ) {}
 
   async placeDemoTrade(
@@ -75,10 +77,32 @@ export class DemoTradingService {
 
     const config = await this.assetConfigRepository.findBySymbol(assetSymbol);
     if (!config) throw new Error(`No configuration found for asset ${assetSymbol}`);
+    const platformMinDuration = Number(
+      await this.settingsService.getSetting('trade.min_duration_seconds', config.minDurationSeconds)
+    );
+    const platformMaxDuration = Number(
+      await this.settingsService.getSetting('trade.max_duration_seconds', config.maxDurationSeconds)
+    );
+    if (
+      !Number.isFinite(platformMinDuration) ||
+      platformMinDuration <= 0 ||
+      !Number.isFinite(platformMaxDuration) ||
+      platformMaxDuration <= 0
+    ) {
+      throw new Error('Invalid platform trade duration settings');
+    }
+    const effectiveConfig = {
+      ...config,
+      minDurationSeconds: Math.max(config.minDurationSeconds, platformMinDuration),
+      maxDurationSeconds: Math.min(config.maxDurationSeconds, platformMaxDuration),
+    };
+    if (effectiveConfig.minDurationSeconds > effectiveConfig.maxDurationSeconds) {
+      throw new Error('Platform and asset trade duration settings do not overlap');
+    }
 
     const stakeValidation = this.stakeValidator.validateStake(request.stake, config);
     if (!stakeValidation.valid) throw new Error(stakeValidation.error);
-    const durationValidation = this.stakeValidator.validateDuration(request.expirySeconds, config);
+    const durationValidation = this.stakeValidator.validateDuration(request.expirySeconds, effectiveConfig);
     if (!durationValidation.valid) throw new Error(durationValidation.error);
 
     const wallet = await this.demoWalletService.getBalance(userId);
@@ -123,7 +147,10 @@ export class DemoTradingService {
     }
 
     const strikePrice = request.contractType === 'higher' ? ask : bid;
-    const payoutRate = new Decimal(config.payoutRate);
+    const configuredPayoutRate =
+      config.payoutRate ??
+      (await this.settingsService.getSetting('trade.default_payout_ratio', 0.6));
+    const payoutRate = new Decimal(String(configuredPayoutRate));
     const potentialPayout = stake.times(payoutRate.plus(1));
     const transactionClient = await pgPool.connect();
     try {

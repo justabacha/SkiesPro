@@ -1,10 +1,10 @@
 # WP-20 Phase 7 Follow-up: Audit Trail UI and Filters
 
-**Status: Executed & Verified**
+**Status: Executed & Verified — Phase 7 closed**
 
 ## Scope and production-chain safety
 
-The frontend mappings, EAT timestamp formatting, action labels, audit filters, and controller error handling were implemented. The requested production reseal script was deliberately not created or run. Recomputing hashes and replacing `previous_entry_hash` on the remaining production rows would rewrite immutable forensic evidence and could conceal the history of the deleted records. No production database was modified, and the production chain was not verified through the UI; therefore a green chain status is not claimed.
+The frontend mappings, EAT timestamp formatting, action labels, audit filters, and controller error handling were implemented. No production reseal script was created or run. The owner subsequently reported manually clearing the test logs in Supabase and confirming that the Verify button now shows a green, valid chain. This is recorded as owner-confirmed; it was not independently verified by this session.
 
 The referenced `37-phase7_fixes.md` did not exist before this follow-up; the preceding audit report is `36-phase7_audit_audit.md`.
 
@@ -36,3 +36,13 @@ The production-chain rewrite code is intentionally omitted. Safe recovery should
 - `git diff --check` — passed.
 
 The production audit chain and UI verification were not changed or represented as verified.
+
+## Follow-up: Proposed Production Log Truncation
+
+**Status: Owner-confirmed complete; not independently verified by this session.**
+
+The owner reports manually clearing the test logs in Supabase and confirming that the Verify button is green. The reset was performed by the owner, not by this session. No SQL command, affected-row count, or database query result was provided for independent confirmation, so the report does not claim a verified post-reset row count.
+
+The Audit Logs page’s Apply Filters control is wired as a form `onSubmit` handler. `handleApplyFilter` prevents the browser’s default submit and calls `fetchAuditLogs` with the current `actor_id`, `action`, `page: 1`, and `per_page: 50` values. The hook forwards them to `adminApiClient.getAuditLogs`, which serializes them into the `/api/v1/admin/audit-logs` query string. The repository applies exact actor ID matching and case-insensitive partial action matching with `ILIKE`. A repository regression test and the full test suite passed in the prior validation above; this confirms the code path, not a live browser request.
+
+The Verify button is wired to `verifyChain()`. The owner confirms using it after the manual Supabase reset and seeing a green, valid result. This owner confirmation closes Phase 7; it is not an independent database or UI verification performed by this session.

@@ -1,5 +1,8 @@
 import { PoolClient } from 'pg';
+import { v4 as uuidv4 } from 'uuid';
+import { pgPool } from '../../src/config/database.js';
 import { AdminRepository } from '../../src/modules/admin/repositories/AdminRepository';
+import { AdminRiskService } from '../../src/modules/admin/services/AdminRiskService.js';
 
 describe('AdminRepository user data', () => {
   const createRepository = () => {
@@ -9,6 +12,63 @@ describe('AdminRepository user data', () => {
       repository: new AdminRepository(client as unknown as PoolClient),
     };
   };
+
+  it('persists platform setting changes and appends a matching audit entry', async () => {
+    if (!process.env.TEST_DATABASE_URL) {
+      throw new Error('TEST_DATABASE_URL is required for platform settings integration tests');
+    }
+    const actors = await pgPool.query<{ id: string }>(
+      'SELECT id FROM app_auth.users ORDER BY created_at ASC LIMIT 1'
+    );
+    if (!actors.rows[0]) throw new Error('A test database user is required for settings audit integration');
+    const actorId = actors.rows[0].id;
+    const key = `phase8.integration.${uuidv4()}`;
+    const value = 42;
+
+    try {
+      await new AdminRiskService().updateSettings(
+        key,
+        value,
+        actorId,
+        'Phase 8 integration test'
+      );
+
+      const settingResult = await pgPool.query<{ value: unknown }>(
+        'SELECT value FROM config.platform_settings WHERE key = $1',
+        [key]
+      );
+      const auditResult = await pgPool.query<{
+        action: string;
+        affected_entity: string;
+        details: Record<string, unknown>;
+      }>(
+        `SELECT action, affected_entity, details
+         FROM admin.audit_logs
+         WHERE actor_id = $1
+           AND action = 'PLATFORM_SETTING_UPDATED'
+           AND details->>'key' = $2
+         ORDER BY id DESC
+         LIMIT 1`,
+        [actorId, key]
+      );
+
+      expect(settingResult.rows).toHaveLength(1);
+      expect(Number(settingResult.rows[0].value)).toBe(value);
+      expect(auditResult.rows).toHaveLength(1);
+      expect(auditResult.rows[0]).toMatchObject({
+        action: 'PLATFORM_SETTING_UPDATED',
+        affected_entity: 'platform_setting',
+        details: {
+          key,
+          oldValue: null,
+          newValue: value,
+          reason: 'Phase 8 integration test',
+        },
+      });
+    } finally {
+      await pgPool.query('DELETE FROM config.platform_settings WHERE key = $1', [key]);
+    }
+  });
 
   it('filters audit logs by actor ID and case-insensitive action substring', async () => {
     const { client, repository } = createRepository();

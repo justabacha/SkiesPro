@@ -13,6 +13,7 @@ import { Decimal } from 'decimal.js';
 import { localCache, DEFAULT_PRICE_TTL_MS } from '../../../infrastructure/cache/memoryCache.js';
 import { priceCacheKey, normalizeSymbol } from '../../pricing/utils/symbolNormalizer.js';
 import { AssetRepository } from '../repositories/assetRepository.js';
+import { SettingsService } from '../../../shared/services/settingsService.js';
 
 function getPipDecimalPlaces(symbol: string, configuredPlaces?: number): number {
   const normalizedSymbol = symbol.replace(/[^a-z0-9]/gi, '').toUpperCase();
@@ -31,8 +32,9 @@ export class TradingService {
   private walletService: WalletService;
   private pricingService: PricingService;
   private userRepo: UserRepository;
+  private settingsService: SettingsService;
 
-  constructor(pricingService: PricingService) {
+  constructor(pricingService: PricingService, settingsService = new SettingsService()) {
     this.contractRepo = new ContractRepository();
     this.assetConfigRepo = new AssetConfigRepository();
     this.assetRepo = new AssetRepository();
@@ -40,6 +42,7 @@ export class TradingService {
     this.walletService = new WalletService();
     this.pricingService = pricingService;
     this.userRepo = new UserRepository();
+    this.settingsService = settingsService;
   }
 
   /**
@@ -53,6 +56,10 @@ export class TradingService {
     const user = await this.userRepo.findById(userId);
     if (!user || user.status !== 'active') {
       throw new Error('User account is not active or suspended');
+    }
+    const kycRequired = await this.settingsService.getSetting('kyc.required_for_trading', false);
+    if (kycRequired && user.kyc_status !== 'verified') {
+      throw new Error('KYC verification required for trading');
     }
 
     // 2. Self-Exclusion Check
@@ -78,6 +85,28 @@ export class TradingService {
     if (!config) {
       throw new Error(`No configuration found for asset ${assetSymbol}`);
     }
+    const platformMinDuration = Number(
+      await this.settingsService.getSetting('trade.min_duration_seconds', config.minDurationSeconds)
+    );
+    const platformMaxDuration = Number(
+      await this.settingsService.getSetting('trade.max_duration_seconds', config.maxDurationSeconds)
+    );
+    if (
+      !Number.isFinite(platformMinDuration) ||
+      platformMinDuration <= 0 ||
+      !Number.isFinite(platformMaxDuration) ||
+      platformMaxDuration <= 0
+    ) {
+      throw new Error('Invalid platform trade duration settings');
+    }
+    const effectiveConfig = {
+      ...config,
+      minDurationSeconds: Math.max(config.minDurationSeconds, platformMinDuration),
+      maxDurationSeconds: Math.min(config.maxDurationSeconds, platformMaxDuration),
+    };
+    if (effectiveConfig.minDurationSeconds > effectiveConfig.maxDurationSeconds) {
+      throw new Error('Platform and asset trade duration settings do not overlap');
+    }
 
     // 4. Stake Range Check
     const stakeValidation = this.stakeValidator.validateStake(request.stake, config);
@@ -86,7 +115,7 @@ export class TradingService {
     }
 
     // 5. Expiry Bounds Check
-    const durationValidation = this.stakeValidator.validateDuration(request.expirySeconds, config);
+    const durationValidation = this.stakeValidator.validateDuration(request.expirySeconds, effectiveConfig);
     if (!durationValidation.valid) {
       throw new Error(durationValidation.error);
     }
@@ -154,7 +183,14 @@ export class TradingService {
     const strikePrice = request.contractType === 'higher' ? tick.ask : tick.bid;
 
     // Calculate potential payout
-    const payoutRate = new Decimal(config.payoutRate);
+    const configuredPayoutRate =
+      config.payoutRate ??
+      (await this.settingsService.getSetting('trade.default_payout_ratio', 0.6));
+    const payoutRateNumber = Number(configuredPayoutRate);
+    if (!Number.isFinite(payoutRateNumber) || payoutRateNumber <= 0 || payoutRateNumber > 1) {
+      throw new Error('Invalid payout ratio configuration');
+    }
+    const payoutRate = new Decimal(payoutRateNumber);
     const potentialPayout = stakeAmount.times(payoutRate.plus(1));
 
     // START TRANSACTION (Steps 7, 9, 10, 11)

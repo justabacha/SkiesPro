@@ -4,6 +4,7 @@ import { AdminComplianceService } from '../../src/modules/admin/services/AdminCo
 import { pgPool } from '../../src/config/database.js';
 import { Decimal } from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
+import { SettingsService } from '../../src/shared/services/settingsService.js';
 
 function generateUniquePhone(): string {
   const random8 = Math.floor(10000000 + Math.random() * 90000000);
@@ -338,29 +339,37 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   it('should fail if amount is below minimum (1500 KES)', async () => {
     const ik = uuidv4();
     usedKeys.push(ik);
+    const minimum = await new SettingsService().getSetting(
+      'withdrawal.min_amount',
+      Number(process.env.MIN_WITHDRAWAL_KES || '1500')
+    );
 
     await expect(
       paymentService.requestWithdrawal(testUserId, {
-        amount: '1000',
+        amount: new Decimal(minimum).minus(1).toString(),
         currency: 'KES',
         gateway_id: 1,
         phone: '+254712345678'
       }, ik)
-    ).rejects.toThrow('Minimum withdrawal is 1500 KES');
+    ).rejects.toThrow(`Minimum withdrawal is ${minimum} KES`);
   });
 
   it('should fail if amount exceeds maximum (60000 KES)', async () => {
     const ik = uuidv4();
     usedKeys.push(ik);
+    const maximum = await new SettingsService().getSetting(
+      'withdrawal.max_amount',
+      Number(process.env.MAX_WITHDRAWAL_KES || '60000')
+    );
 
     await expect(
       paymentService.requestWithdrawal(testUserId, {
-        amount: '70000',
+        amount: new Decimal(maximum).plus(1).toString(),
         currency: 'KES',
         gateway_id: 1,
         phone: '+254712345678'
       }, ik)
-    ).rejects.toThrow('Maximum daily withdrawal is 60000 KES');
+    ).rejects.toThrow(`Maximum daily withdrawal is ${maximum} KES`);
   });
 
   it('should process withdrawal rejection correctly (refund + ledger + status rejected)', async () => {

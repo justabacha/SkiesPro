@@ -677,33 +677,17 @@ class AdminApiClient {
   }
 
   async updateSettings(
-    payload: { key: string; value: unknown; reason?: string } | Record<string, unknown>,
+    payload: Array<{ key: string; value: unknown }>,
     totp_code?: string
   ) {
     const headers: Record<string, string> = {};
     if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
-
-    if (typeof payload === 'object' && payload !== null && 'key' in payload) {
-      const p = payload as { key: string; value: unknown; reason?: string };
-      const res = await apiClient.put<ApiResponse<PlatformSetting>>(
-        `/api/v1/admin/settings`,
-        { key: p.key, value: p.value, reason: p.reason || 'Admin platform setting update' },
-        { headers }
-      );
-      return res.data;
-    }
-
-    const entries = Object.entries(payload as Record<string, unknown>);
-    let lastRes: unknown = null;
-    for (const [key, value] of entries) {
-      const res = await apiClient.put<ApiResponse<PlatformSetting>>(
-        `/api/v1/admin/settings`,
-        { key, value, reason: 'Admin platform setting update' },
-        { headers }
-      );
-      lastRes = res.data;
-    }
-    return lastRes;
+    const res = await apiClient.put<ApiResponse<PlatformSetting[]>>(
+      `/api/v1/admin/settings`,
+      payload,
+      { headers }
+    );
+    return res.data || [];
   }
 }
 

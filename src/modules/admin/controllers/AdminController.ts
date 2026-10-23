@@ -195,24 +195,47 @@ export class AdminController {
   }
 
   async listSettings(req: Request, res: Response): Promise<void> {
-    const result = await this.risk.listSettings();
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.risk.listSettings();
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Platform settings list failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'SETTINGS_ACTION_FAILED' });
+    }
   }
 
   async getSettingByKey(req: Request, res: Response): Promise<void> {
-    const result = await this.risk.getSetting(req.params.key);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.risk.getSetting(req.params.key);
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Platform setting fetch failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'SETTINGS_ACTION_FAILED' });
+    }
   }
 
   async updateSettings(req: Request, res: Response): Promise<void> {
     const user = req as AdminAuthenticatedRequest;
-    const result = await this.risk.updateSettings(
-      req.body.key,
-      req.body.value,
-      user.user.sub,
-      req.body.reason || ''
-    );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const settings = Array.isArray(req.body) ? req.body : [req.body];
+      const reason = Array.isArray(req.body)
+        ? 'Admin platform setting update'
+        : req.body.reason || 'Admin platform setting update';
+      const result = await this.risk.updateSettingsBatch(settings, user.user.sub, reason);
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Platform settings update failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'SETTINGS_ACTION_FAILED' });
+    }
   }
 
   async getDailyRevenue(req: Request, res: Response): Promise<void> {

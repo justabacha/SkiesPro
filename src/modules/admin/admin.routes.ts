@@ -209,7 +209,37 @@ router.put(
   '/settings',
   requireAdminRole(['admin', 'super_admin']),
   requireAdminMFA,
-  [body('key').notEmpty(), body('value').notEmpty(), body('reason').notEmpty()],
+  body().custom((payload) => {
+    const settings = Array.isArray(payload) ? payload : [payload];
+    if (settings.length === 0) throw new Error('At least one setting is required');
+    for (const setting of settings) {
+      if (!setting || typeof setting.key !== 'string' || !setting.key.trim()) {
+        throw new Error('Each setting must have a key');
+      }
+      if (setting.value === undefined || setting.value === null) {
+        throw new Error(`Setting ${setting.key} must have a value`);
+      }
+      if (setting.key.startsWith('kyc.required_') && typeof setting.value !== 'boolean') {
+        throw new Error(`${setting.key} must be a boolean`);
+      }
+      if (/^(deposit|withdrawal)\.(min|max)_amount$|^trade\.(min|max)_duration_seconds$/.test(setting.key)) {
+        if (typeof setting.value !== 'number' || !Number.isFinite(setting.value) || setting.value <= 0) {
+          throw new Error(`${setting.key} must be a positive number`);
+        }
+      }
+      if (setting.key === 'referral.commission_percentage') {
+        if (typeof setting.value !== 'number' || setting.value <= 0 || setting.value > 1) {
+          throw new Error('referral.commission_percentage must be greater than 0 and at most 1');
+        }
+      }
+      if (setting.key === 'trade.default_payout_ratio') {
+        if (typeof setting.value !== 'number' || setting.value <= 0 || setting.value > 1) {
+          throw new Error('trade.default_payout_ratio must be greater than 0 and at most 1');
+        }
+      }
+    }
+    return true;
+  }),
   validate,
   (req: Request, res: Response) => controller.updateSettings(req, res)
 );
