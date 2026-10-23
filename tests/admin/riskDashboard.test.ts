@@ -1,4 +1,5 @@
 import supertest from 'supertest';
+import { v4 as uuidv4 } from 'uuid';
 import app from '../../src/index.js';
 import { pgPool } from '../../src/config/database.js';
 import { TokenService } from '../../src/modules/auth/services/tokenService.js';
@@ -17,8 +18,9 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
   let riskAdminId: string;
   let testUserIds: string[] = [];
   let testContractIds: string[] = [];
+  let dashboardTestUserId: string;
   let adminRepo: AdminRepository;
-  const TEST_SYMBOL = 'TEST/CFG';
+  const TEST_SYMBOL = `T${uuidv4().replace(/-/g, '').slice(0, 12)}/CFG`;
 
   beforeAll(async () => {
     if (skipDatabaseTests) return;
@@ -26,9 +28,7 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
     adminRepo = new AdminRepository();
     const tokenService = new TokenService();
 
-    // Clean up all contracts to ensure deterministic win ratio calculation
-    await pgPool.query('DELETE FROM trading.contract_events');
-    await pgPool.query('DELETE FROM trading.binary_contracts');
+    dashboardTestUserId = await createTestUser();
 
     // Create dedicated test asset for asset config updates (do NOT mutate production assets like EUR/USD)
     await pgPool.query(
@@ -97,13 +97,19 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
     return userId;
   }
 
+  it('Zero Division: 0 settled contracts returns 0 win ratio without crash', async () => {
+    if (skipDatabaseTests) return;
+
+    const res = await adminRepo.getRiskDashboard();
+    expect(res.platform_win_loss_ratio).toBe(0);
+    expect(typeof res.platform_win_loss_ratio).toBe('number');
+    expect(isNaN(res.platform_win_loss_ratio)).toBe(false);
+  });
+
   it('Win Ratio Math: 2 won and 2 lost contracts calculate exactly 50% win ratio', async () => {
     if (skipDatabaseTests) return;
 
-    await pgPool.query('DELETE FROM trading.contract_events');
-    await pgPool.query('DELETE FROM trading.binary_contracts');
-
-    const uId = await createTestUser();
+    const uId = dashboardTestUserId;
 
     // Insert 2 won and 2 lost contracts
     const won1 = await pgPool.query(
@@ -131,18 +137,6 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
 
     const dashboard = await adminRepo.getRiskDashboard();
     expect(dashboard.platform_win_loss_ratio).toBe(50);
-  });
-
-  it('Zero Division: 0 settled contracts returns 0 win ratio without crash', async () => {
-    if (skipDatabaseTests) return;
-
-    await pgPool.query('DELETE FROM trading.contract_events');
-    await pgPool.query('DELETE FROM trading.binary_contracts');
-
-    const res = await adminRepo.getRiskDashboard();
-    expect(res.platform_win_loss_ratio).toBe(0);
-    expect(typeof res.platform_win_loss_ratio).toBe('number');
-    expect(isNaN(res.platform_win_loss_ratio)).toBe(false);
   });
 
   it('Active Traders: 3 users created, 2 with 24h contracts returns active_traders_24h = 2', async () => {

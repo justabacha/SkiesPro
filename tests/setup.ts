@@ -6,8 +6,15 @@ dotenv.config();
 // Set test-specific defaults if not provided
 process.env.PORT = process.env.PORT || '3000';
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+if (process.env.NODE_ENV === 'test') {
+  if (!process.env.TEST_DATABASE_URL) {
+    throw new Error('TEST_DATABASE_URL is required when NODE_ENV=test');
+  }
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+}
 process.env.ENABLE_SETTLEMENT_WORKER = 'false';
 process.env.ENABLE_PRICE_FEED = 'false';
+process.env.DEMO_ENABLED = 'false';
 process.env.MPESA_CALLBACK_TOKEN = process.env.MPESA_CALLBACK_TOKEN || 'test_secret_token_123';
 
 const privPEM = "-----BEGIN PRIVATE KEY-----\nMIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAMfUux4fmHz6d8Lj\nCBGWMttEssyRTq6cVS3B6+RVX2iQgPJF+P1wA5oGlBeRSa+looPKd7T68x3b+d08\nb83ppHYmlIxvY3WYqqB5s8HJqIZ3Yr1l4w8mNpjB8k4tD82kHwMFbPRMCZJOKoJu\niL4gGdW43F1sa4vA6KxMSf5bm7PxAgMBAAECgYA2trBlFxGRZqLT4YWcCxvxnWW3\nTTHV7UgFN0t3QUjWQHqN20rJWZoi2hpCOa2LQja1DwKnsu5OBqTrRlj2cDpvAq0e\nR2G44Zhax1ub+v5iqgm3D+noQFphJehovXxBV3A/3CUTlm4sV0uNQgQOM9lvD8Cm\nj9KuTKu+dH+QL1nugQJBAPq+prjedVeUlujxrJEjywTol2+U77FjbooZsJtFXjGx\nJRVgnqE17oAgIwxsVJdKSa9zqlIpA/89tcAy+WK+zr0CQQDMBOgLqaJGi/0D07nR\n/lEu9k8kDwFLA8ObzegDn8Qx6+EvUk1JGpdJTjd4sMgm49I2JzYezrZU+/PrMNxb\nNxdFAkBmAkYFk8sdNEAoyJkx+uPPPWjOZkMVYaRI3qawpInroWu6xLIEV9KNoYVg\nunm3iutrS50RC8qqfkqAxLwcZg/pAkEAkjqOCxXpvsDFd4HAtRegHpXiQYkTty2a\nfUjHHBneKJ3Vh/JofJY3iw4pyjKDMwSlfbT7IHeuzhjMSm1581L4NQJBAO1nH+CT\nOL3YJfjAk0gW+k69UQkvkqSohKvaQeDGMDSJoN1ulP0Bi4bW5zUtISca+BoBtPDk\nI9j/s9tQcPjC6jg=\n-----END PRIVATE KEY-----\n";

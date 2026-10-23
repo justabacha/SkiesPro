@@ -127,5 +127,5 @@ SELECT
   (SELECT COUNT(*) FROM app_auth.users WHERE deleted_at IS NULL) AS total_users,
   (SELECT COUNT(*) FROM app_auth.users WHERE status = 'active' AND deleted_at IS NULL) AS active_users,
   (SELECT COUNT(*) FROM trading.binary_contracts WHERE status = 'active') AS open_trades,
-  (SELECT COALESCE(SUM(stake_amount), 0) FROM trading.binary_contracts WHERE status = 'active') AS open_exposure,
+  (SELECT COALESCE(SUM(stake), 0) FROM trading.binary_contracts WHERE status = 'active') AS open_exposure,
   (SELECT COALESCE(SUM(amount), 0) FROM payments.withdrawals WHERE status = 'pending') AS pending_withdrawals;

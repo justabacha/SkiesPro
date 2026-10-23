@@ -383,7 +383,15 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
       },
     });
 
-    await pgPool.query("DELETE FROM payments.b2c_outbox WHERE status = 'pending' AND id <> $1", [fixture.outboxId]);
+    await pgPool.query(
+      `DELETE FROM payments.b2c_outbox AS outbox
+       USING payments.withdrawals AS withdrawal
+       WHERE outbox.withdrawal_id = withdrawal.id
+         AND withdrawal.user_id = $1
+         AND outbox.status = 'pending'
+         AND outbox.id <> $2`,
+      [testUserId, fixture.outboxId]
+    );
 
     let capturedAmount: Decimal | null = null;
     const captureGateway: IB2CPayoutGateway = {
@@ -419,7 +427,15 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
       },
     });
 
-    await pgPool.query("DELETE FROM payments.b2c_outbox WHERE status = 'pending' AND id <> $1", [fixture.outboxId]);
+    await pgPool.query(
+      `DELETE FROM payments.b2c_outbox AS outbox
+       USING payments.withdrawals AS withdrawal
+       WHERE outbox.withdrawal_id = withdrawal.id
+         AND withdrawal.user_id = $1
+         AND outbox.status = 'pending'
+         AND outbox.id <> $2`,
+      [testUserId, fixture.outboxId]
+    );
 
     const mockAdapter = new MpesaB2CMockAdapter('success');
     const worker = new B2CDispatchWorker(pgPool, mockAdapter, 10000, 1);

@@ -14,9 +14,22 @@ describe('Demo wallet isolation integration', () => {
   const walletService = new WalletService();
   const contractRepository = new ContractRepository();
   const originalInitialBalance = process.env.DEMO_INITIAL_BALANCE_KES;
+  let originalEurUsdMinStake: string | undefined;
 
   beforeAll(async () => {
     process.env.DEMO_INITIAL_BALANCE_KES = '100000';
+    const assetConfig = await pgPool.query<{ min_stake: string }>(
+      'SELECT min_stake FROM trading.asset_config WHERE asset_symbol = $1',
+      ['EUR/USD']
+    );
+    if (!assetConfig.rows[0]) {
+      throw new Error('Missing EUR/USD asset configuration for demo wallet integration test');
+    }
+    originalEurUsdMinStake = assetConfig.rows[0].min_stake;
+    await pgPool.query('UPDATE trading.asset_config SET min_stake = 100 WHERE asset_symbol = $1', [
+      'EUR/USD',
+    ]);
+
     const referralCode = uuidv4().replace(/-/g, '').slice(0, 8).toUpperCase();
     await pgPool.query(
       `INSERT INTO app_auth.users
@@ -35,10 +48,6 @@ describe('Demo wallet isolation integration', () => {
     );
   });
 
-  beforeEach(async () => {
-    await pgPool.query("DELETE FROM pricing.price_ticks WHERE source = 'demo'");
-  });
-
   afterAll(async () => {
     await pgPool.query('DELETE FROM trading.demo_trade_idempotency WHERE user_id = $1', [userId]);
     await pgPool.query('DELETE FROM wallet.demo_wallet_reset_events WHERE user_id = $1', [userId]);
@@ -53,6 +62,12 @@ describe('Demo wallet isolation integration', () => {
     );
     await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [userId]);
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [userId]);
+    if (originalEurUsdMinStake !== undefined) {
+      await pgPool.query('UPDATE trading.asset_config SET min_stake = $1 WHERE asset_symbol = $2', [
+        originalEurUsdMinStake,
+        'EUR/USD',
+      ]);
+    }
     if (originalInitialBalance === undefined) {
       delete process.env.DEMO_INITIAL_BALANCE_KES;
     } else {

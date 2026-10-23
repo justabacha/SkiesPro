@@ -24,7 +24,7 @@ describe('Trade Settlement Integration', () => {
   let walletService: WalletService;
 
   const testUserId = uuidv4();
-  const testSymbol = 'EUR/USD';
+  const testSymbol = `T${uuidv4().replace(/-/g, '').slice(0, 10).toUpperCase()}/USD`;
 
   beforeAll(async () => {
     mockPricingService = {
@@ -35,23 +35,6 @@ describe('Trade Settlement Integration', () => {
     settlementWorker = new SettlementWorker();
     tradingService = new TradingService(mockPricingService);
     walletService = new WalletService();
-
-    // Clean up
-    await pgPool.query(
-      'DELETE FROM events.event_outbox WHERE aggregate_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)',
-      [testUserId]
-    );
-    await pgPool.query(
-      'DELETE FROM trading.contract_events WHERE contract_id IN (SELECT id FROM trading.binary_contracts WHERE user_id = $1)',
-      [testUserId]
-    );
-    await pgPool.query('DELETE FROM trading.binary_contracts WHERE user_id = $1', [testUserId]);
-    await pgPool.query(
-      'DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)',
-      [testUserId]
-    );
-    await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
-    await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
 
     // Create a test user
     const testReferralCode = uuidv4().split('-')[0].toUpperCase();
@@ -74,9 +57,15 @@ describe('Trade Settlement Integration', () => {
 
     // Ensure asset config exists
     await pgPool.query(
+      `INSERT INTO trading.assets (symbol, name, asset_type, is_active)
+       VALUES ($1, 'Settlement Integration Test Asset', 'forex', TRUE)
+       ON CONFLICT (symbol) DO NOTHING`,
+      [testSymbol]
+    );
+    await pgPool.query(
       `INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, payout_rate, is_active, max_exposure)
        VALUES ($1, '100', '50000', 60, 3600, '0.60', TRUE, '1000000')
-       ON CONFLICT (asset_symbol) DO UPDATE SET is_active = TRUE, payout_rate = '0.60'`,
+       ON CONFLICT (asset_symbol) DO NOTHING`,
       [testSymbol]
     );
   });
@@ -109,6 +98,9 @@ describe('Trade Settlement Integration', () => {
     );
     await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
+    await pgPool.query('DELETE FROM pricing.price_ticks WHERE symbol = $1', [testSymbol]);
+    await pgPool.query('DELETE FROM trading.asset_config WHERE asset_symbol = $1', [testSymbol]);
+    await pgPool.query('DELETE FROM trading.assets WHERE symbol = $1', [testSymbol]);
   });
 
   beforeEach(() => {
@@ -321,9 +313,6 @@ describe('Trade Settlement Integration', () => {
 
   test('SET-008: should handle missing price tick with error (to trigger retry)', async () => {
     const contract = await placeTestTrade('1.10000');
-
-    // Ensure no ticks exist in the database for any symbol
-    await pgPool.query('DELETE FROM pricing.price_ticks');
 
     const tickRepo = (settlementWorker as any).tickRepo;
     const originalGetPriceAt = tickRepo.getPriceAt;

@@ -20,7 +20,7 @@ describe('Trading Engine Integration', () => {
   let walletService: WalletService;
 
   const testUserId = uuidv4();
-  const testSymbol = 'EUR/USD';
+  const testSymbol = `T${uuidv4().replace(/-/g, '').slice(0, 10).toUpperCase()}/USD`;
 
   beforeAll(async () => {
     mockPricingService = {
@@ -48,7 +48,13 @@ describe('Trading Engine Integration', () => {
     await walletService.createWallet(testUserId, 'real', 'KES');
     await walletService.credit(testUserId, 'real', new Decimal('10000'), 'deposit', undefined, 'Initial balance');
 
-    // Ensure asset config exists
+    await pgPool.query(
+      `INSERT INTO trading.assets (symbol, name, asset_type, is_active)
+       VALUES ($1, 'Trading Integration Test Asset', 'forex', TRUE)
+       ON CONFLICT (symbol) DO NOTHING`,
+      [testSymbol]
+    );
+
     await pgPool.query(
       `INSERT INTO trading.asset_config (asset_symbol, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, payout_rate, is_active, max_exposure)
        VALUES ($1, 100, 50000, 60, 3600, 0.60, TRUE, 1000000)
@@ -68,6 +74,8 @@ describe('Trading Engine Integration', () => {
     await pgPool.query('DELETE FROM wallet.ledger_entries WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = $1)', [testUserId]);
     await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = $1', [testUserId]);
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [testUserId]);
+    await pgPool.query('DELETE FROM trading.asset_config WHERE asset_symbol = $1', [testSymbol]);
+    await pgPool.query('DELETE FROM trading.assets WHERE symbol = $1', [testSymbol]);
   });
 
   test('should successfully place a trade', async () => {
