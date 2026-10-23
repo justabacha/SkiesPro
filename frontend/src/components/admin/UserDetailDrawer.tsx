@@ -71,12 +71,15 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
     (user as any)?.trades ||
     (user as any)?.recentTrades ||
     [];
-  const tradeDirectionLabel = (direction: string) => {
+
+  const tradeDirectionLabel = (direction?: string) => {
+    if (!direction) return 'CALL';
     const normalized = direction.toLowerCase();
-    if (normalized === 'higher') return 'HIGH';
-    if (normalized === 'lower') return 'LOW';
+    if (normalized === 'higher' || normalized === 'call') return 'HIGH';
+    if (normalized === 'lower' || normalized === 'put') return 'LOW';
     return direction.toUpperCase();
   };
+
   const tradeOutcomeLabel = (trade: (typeof recentTrades)[number]) =>
     String(trade.result || trade.status || 'pending').toUpperCase();
 
@@ -194,14 +197,23 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                           ? 'bg-emerald-500/10 text-emerald-400'
                           : outcome === 'LOST' || outcome === 'LOSS'
                             ? 'bg-rose-500/10 text-rose-400'
-                            : 'bg-slate-700/50 text-slate-300';
+                            : outcome === 'CANCELLED'
+                              ? 'bg-amber-500/10 text-amber-400'
+                              : 'bg-slate-700/50 text-slate-300';
+
+                      const accountType = (trade as any).account_type || (trade as any).mode;
 
                       return (
                         <div key={trade.id} className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs space-y-2">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <div className="font-semibold text-slate-200">
-                                {trade.asset_pair || trade.symbol || 'Unknown asset'}
+                              <div className="flex items-center gap-2 font-semibold text-slate-200">
+                                <span>{trade.asset_pair || trade.symbol || 'Unknown asset'}</span>
+                                {accountType && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-slate-800 text-slate-400 rounded">
+                                    {accountType}
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[10px] text-slate-500 uppercase">
                                 {tradeDirectionLabel(trade.direction)}

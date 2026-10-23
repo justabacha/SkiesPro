@@ -518,8 +518,9 @@ class AdminApiClient {
   async updateAssetConfig(symbol: string, payload: Partial<AssetConfig> & { totp_code?: string }) {
     const headers: Record<string, string> = {};
     if (payload.totp_code) headers['X-Admin-MFA-Token'] = payload.totp_code;
+    const encodedSymbol = encodeURIComponent(symbol);
     const res = await apiClient.put<ApiResponse<AssetConfig>>(
-      `/api/v1/admin/risk/asset-config/${symbol}`,
+      `/api/v1/admin/risk/asset-config/${encodedSymbol}`,
       payload,
       { headers }
     );

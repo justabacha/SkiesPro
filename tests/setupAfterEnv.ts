@@ -1,5 +1,6 @@
 import { pgPool } from '../src/config/database.js';
 import { cacheClient } from '../src/infrastructure/cache/index.js';
+import { demoPriceFeedService } from '../src/modules/pricing/services/DemoPriceFeedService.js';
 
 jest.mock('otplib', () => ({
   TOTP: jest.fn().mockImplementation(() => ({
@@ -54,6 +55,9 @@ jest.mock('../../modules/auth/repositories/sessionRepository', () => ({
 }), { virtual: true });
 
 afterAll(async () => {
+  try {
+    await demoPriceFeedService.stop();
+  } catch (e) {}
   await pgPool.end();
   await cacheClient.close();
 });

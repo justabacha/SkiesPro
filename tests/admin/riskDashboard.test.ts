@@ -18,6 +18,7 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
   let testUserIds: string[] = [];
   let testContractIds: string[] = [];
   let adminRepo: AdminRepository;
+  const TEST_SYMBOL = 'TEST/CFG';
 
   beforeAll(async () => {
     if (skipDatabaseTests) return;
@@ -28,6 +29,16 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
     // Clean up all contracts to ensure deterministic win ratio calculation
     await pgPool.query('DELETE FROM trading.contract_events');
     await pgPool.query('DELETE FROM trading.binary_contracts');
+
+    // Create dedicated test asset for asset config updates (do NOT mutate production assets like EUR/USD)
+    await pgPool.query(
+      "INSERT INTO trading.assets (symbol, name, asset_type, is_active) VALUES ($1, 'Test Config Asset', 'forex', true) ON CONFLICT (symbol) DO NOTHING",
+      [TEST_SYMBOL]
+    );
+    await pgPool.query(
+      "INSERT INTO trading.asset_config (asset_symbol, payout_rate, min_stake, max_stake_per_trade, min_duration_seconds, max_duration_seconds, is_active) VALUES ($1, 0.60, 100, 5000, 60, 3600, true) ON CONFLICT (asset_symbol) DO NOTHING",
+      [TEST_SYMBOL]
+    );
 
     // 1. Create Risk Admin user & role
     const adminEmail = `riskadmin-${Date.now()}@example.com`;
@@ -68,6 +79,10 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
         await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [riskAdminId]);
       } catch (e) {}
     }
+
+    // Clean up dedicated test asset
+    await pgPool.query('DELETE FROM trading.asset_config WHERE asset_symbol = $1', [TEST_SYMBOL]);
+    await pgPool.query('DELETE FROM trading.assets WHERE symbol = $1', [TEST_SYMBOL]);
   });
 
   async function createTestUser(): Promise<string> {
@@ -165,7 +180,7 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
   it('Asset Config Update: Updating max_stake and is_active persists max_stake_per_trade and is_active in DB', async () => {
     if (skipDatabaseTests) return;
 
-    const symbolParam = encodeURIComponent('EUR/USD');
+    const symbolParam = encodeURIComponent(TEST_SYMBOL);
     const response = await supertest(app)
       .put(`/api/v1/admin/risk/asset-config/${symbolParam}`)
       .set('Authorization', `Bearer ${riskAdminToken}`)
@@ -181,7 +196,7 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
 
     const dbRes = await pgPool.query(
       'SELECT payout_rate, min_stake, max_stake_per_trade, is_active FROM trading.asset_config WHERE asset_symbol = $1',
-      ['EUR/USD']
+      [TEST_SYMBOL]
     );
 
     expect(dbRes.rows[0]).toBeDefined();
@@ -189,11 +204,5 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
     expect(parseFloat(dbRes.rows[0].min_stake)).toBe(50);
     expect(parseFloat(dbRes.rows[0].max_stake_per_trade)).toBe(5000);
     expect(dbRes.rows[0].is_active).toBe(false);
-
-    // Restore asset config to active state
-    await pgPool.query(
-      'UPDATE trading.asset_config SET is_active = true, payout_rate = 0.85, min_stake = 10, max_stake_per_trade = 1000 WHERE asset_symbol = $1',
-      ['EUR/USD']
-    );
   });
 });
