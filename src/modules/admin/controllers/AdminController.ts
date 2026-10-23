@@ -216,35 +216,67 @@ export class AdminController {
   }
 
   async getDailyRevenue(req: Request, res: Response): Promise<void> {
-    const result = await this.reports.getDailyRevenue(
-      req.query.date_from as string,
-      req.query.date_to as string
-    );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.reports.getDailyRevenue(
+        req.query.date_from as string,
+        req.query.date_to as string
+      );
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Daily revenue report fetch failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'REPORT_FETCH_FAILED' });
+    }
   }
 
   async getTradeVolume(req: Request, res: Response): Promise<void> {
-    const result = await this.reports.getTradeVolume(
-      req.query.date_from as string,
-      req.query.date_to as string
-    );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.reports.getTradeVolume(
+        req.query.date_from as string,
+        req.query.date_to as string
+      );
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Trade volume report fetch failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'REPORT_FETCH_FAILED' });
+    }
   }
 
   async getUserRegistrations(req: Request, res: Response): Promise<void> {
-    const result = await this.reports.getUserRegistrations(
-      req.query.date_from as string,
-      req.query.date_to as string
-    );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.reports.getUserRegistrations(
+        req.query.date_from as string,
+        req.query.date_to as string
+      );
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('User registrations report fetch failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'REPORT_FETCH_FAILED' });
+    }
   }
 
   async getSettlementPerformance(req: Request, res: Response): Promise<void> {
-    const result = await this.reports.getSettlementPerformance(
-      req.query.date_from as string,
-      req.query.date_to as string
-    );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.reports.getSettlementPerformance(
+        req.query.date_from as string,
+        req.query.date_to as string
+      );
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Settlement performance report fetch failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'REPORT_FETCH_FAILED' });
+    }
   }
 
   async getAuditLogs(req: Request, res: Response): Promise<void> {

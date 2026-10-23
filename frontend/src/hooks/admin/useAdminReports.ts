@@ -20,17 +20,17 @@ export function useAdminReports() {
     setError(null);
     try {
       const [rev, vol, reg, setl] = await Promise.all([
-        adminApiClient.getDailyRevenue(totp_code).catch(() => []),
-        adminApiClient.getTradeVolume(totp_code).catch(() => []),
-        adminApiClient.getUserRegistrations(totp_code).catch(() => []),
-        adminApiClient.getSettlementPerformance(totp_code).catch(() => []),
+        adminApiClient.getDailyRevenue(totp_code),
+        adminApiClient.getTradeVolume(totp_code),
+        adminApiClient.getUserRegistrations(totp_code),
+        adminApiClient.getSettlementPerformance(totp_code),
       ]);
       setDailyRevenue(rev);
       setTradeVolume(vol);
       setUserRegistrations(reg);
       setSettlementPerformance(setl);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : 'Failed to load reports');
     } finally {
       setIsLoading(false);
     }

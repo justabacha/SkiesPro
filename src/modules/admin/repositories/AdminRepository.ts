@@ -626,7 +626,7 @@ export class AdminRepository extends BaseRepository {
     );
 
     const tradeResult = await this.query<any>(
-      `SELECT COALESCE(SUM(stake_amount), 0) AS volume, DATE(created_at) AS day
+      `SELECT COALESCE(SUM(stake), 0) AS volume, DATE(created_at) AS day
        FROM trading.binary_contracts
        WHERE created_at >= COALESCE($1::timestamptz, NOW() - INTERVAL '30 days')
          AND created_at <= COALESCE($2::timestamptz, NOW())

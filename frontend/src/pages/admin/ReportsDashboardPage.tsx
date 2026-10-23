@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAdminReports } from '@/hooks/admin/useAdminReports';
 import { safeFormatNumber } from '@/shared/utils/safeFormatters';
-import { FilterTabs } from '@/shared/components';
+import { FilterTabs, TableEmpty } from '@/shared/components';
 import { BarChart3, RefreshCw, TrendingUp, DollarSign, Users, Activity, AlertCircle } from 'lucide-react';
 
 const REPORT_TABS = [
@@ -53,9 +53,19 @@ export const ReportsDashboardPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-rose-400 text-xs">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center justify-between gap-3 text-rose-400 text-xs">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchAllReports()}
+            disabled={isLoading}
+            className="px-3 py-1.5 rounded-lg border border-rose-500/30 hover:bg-rose-500/10 disabled:opacity-50"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -72,7 +82,13 @@ export const ReportsDashboardPage: React.FC = () => {
         {activeReportTab === 'revenue' && (
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Daily Revenue Breakdown</h3>
-            {dailyRevenue.length > 0 ? (
+            {isLoading ? (
+              <div className="space-y-3" aria-label="Loading revenue metrics">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-16 rounded-lg bg-slate-950/60 animate-pulse" />
+                ))}
+              </div>
+            ) : dailyRevenue.length > 0 ? (
               <div className="space-y-3">
                 {dailyRevenue.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
@@ -85,7 +101,11 @@ export const ReportsDashboardPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-xs text-slate-500">No revenue data reported.</div>
+              <TableEmpty
+                icon={BarChart3}
+                title="No Data Available"
+                description="No metrics found for the selected period."
+              />
             )}
           </div>
         )}
@@ -93,7 +113,13 @@ export const ReportsDashboardPage: React.FC = () => {
         {activeReportTab === 'volume' && (
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Trading Volume Analytics</h3>
-            {tradeVolume.length > 0 ? (
+            {isLoading ? (
+              <div className="space-y-3" aria-label="Loading trade volume metrics">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-16 rounded-lg bg-slate-950/60 animate-pulse" />
+                ))}
+              </div>
+            ) : tradeVolume.length > 0 ? (
               <div className="space-y-3">
                 {tradeVolume.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
@@ -106,7 +132,11 @@ export const ReportsDashboardPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-xs text-slate-500">No trade volume reported.</div>
+              <TableEmpty
+                icon={TrendingUp}
+                title="No Data Available"
+                description="No metrics found for the selected period."
+              />
             )}
           </div>
         )}
@@ -114,7 +144,13 @@ export const ReportsDashboardPage: React.FC = () => {
         {activeReportTab === 'users' && (
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">User Acquisition & Growth</h3>
-            {userRegistrations.length > 0 ? (
+            {isLoading ? (
+              <div className="space-y-3" aria-label="Loading registration metrics">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-16 rounded-lg bg-slate-950/60 animate-pulse" />
+                ))}
+              </div>
+            ) : userRegistrations.length > 0 ? (
               <div className="space-y-3">
                 {userRegistrations.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
@@ -124,7 +160,11 @@ export const ReportsDashboardPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-xs text-slate-500">No registration metrics reported.</div>
+              <TableEmpty
+                icon={Users}
+                title="No Data Available"
+                description="No metrics found for the selected period."
+              />
             )}
           </div>
         )}
@@ -132,7 +172,13 @@ export const ReportsDashboardPage: React.FC = () => {
         {activeReportTab === 'settlement' && (
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Worker Settlement Latency (ms)</h3>
-            {settlementPerformance.length > 0 ? (
+            {isLoading ? (
+              <div className="space-y-3" aria-label="Loading settlement metrics">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="h-16 rounded-lg bg-slate-950/60 animate-pulse" />
+                ))}
+              </div>
+            ) : settlementPerformance.length > 0 ? (
               <div className="space-y-3">
                 {settlementPerformance.map((item, idx) => (
                   <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between text-xs">
@@ -145,7 +191,11 @@ export const ReportsDashboardPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-xs text-slate-500">No settlement worker metrics reported.</div>
+              <TableEmpty
+                icon={Activity}
+                title="No Data Available"
+                description="No metrics found for the selected period."
+              />
             )}
           </div>
         )}
