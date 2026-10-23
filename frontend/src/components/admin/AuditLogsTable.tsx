@@ -1,8 +1,14 @@
 import React from 'react';
 import { AuditLogItem } from '@/services/admin/adminApiClient';
-import { safeFormatDate } from '@/shared/utils/safeFormatters';
+import { formatDateEAT } from '@/shared/utils/safeFormatters';
 import { TableLoading, TableEmpty } from '@/shared/components';
 import { ShieldCheck } from 'lucide-react';
+
+const formatAction = (action: string): string =>
+  action
+    .replace(/[_\s]+/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 
 interface AuditLogsTableProps {
   logs: AuditLogItem[];
@@ -34,7 +40,7 @@ export const AuditLogsTable: React.FC<AuditLogsTableProps> = ({ logs, isLoading 
               <th className="py-3.5 px-4">Action</th>
               <th className="py-3.5 px-4">Target Entity</th>
               <th className="py-3.5 px-4">SHA-256 Hash Badge</th>
-              <th className="py-3.5 px-4">Timestamp (UTC)</th>
+              <th className="py-3.5 px-4">Timestamp (EAT)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50 text-xs">
@@ -46,7 +52,7 @@ export const AuditLogsTable: React.FC<AuditLogsTableProps> = ({ logs, isLoading 
                 </td>
                 <td className="py-3.5 px-4">
                   <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    {log.action}
+                    {formatAction(log.action)}
                   </span>
                 </td>
                 <td className="py-3.5 px-4 font-mono text-slate-300">
@@ -55,15 +61,15 @@ export const AuditLogsTable: React.FC<AuditLogsTableProps> = ({ logs, isLoading 
                 <td className="py-3.5 px-4">
                   <div className="flex flex-col gap-0.5">
                     <span className="font-mono text-[10px] px-2 py-0.5 bg-slate-950 text-emerald-400 border border-emerald-500/30 rounded w-fit">
-                      {log.hash ? `${log.hash.substring(0, 8)}...${log.hash.substring(log.hash.length - 8)}` : 'N/A'}
+                      {log.entry_hash ? `${log.entry_hash.substring(0, 8)}...${log.entry_hash.substring(log.entry_hash.length - 8)}` : 'N/A'}
                     </span>
                     <span className="text-[9px] text-slate-500 font-mono">
-                      Prev: {log.previous_hash ? `${log.previous_hash.substring(0, 6)}...` : 'GENESIS'}
+                      Prev: {log.previous_entry_hash ? `${log.previous_entry_hash.substring(0, 6)}...` : 'GENESIS'}
                     </span>
                   </div>
                 </td>
                 <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                  {safeFormatDate(log.created_at, { utc: true })}
+                  {formatDateEAT(log.created_at)}
                 </td>
               </tr>
             ))}

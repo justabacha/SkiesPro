@@ -10,6 +10,35 @@ describe('AdminRepository user data', () => {
     };
   };
 
+  it('filters audit logs by actor ID and case-insensitive action substring', async () => {
+    const { client, repository } = createRepository();
+    client.query
+      .mockResolvedValueOnce({ rows: [{ count: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [{ id: 'audit-1', actor_id: 'actor-1', action: 'WALLET_ADJUSTMENT_PENDING_APPROVAL' }],
+      });
+
+    const result = await repository.getAuditLogs({
+      actorId: 'actor-1',
+      action: 'wallet_adjustment',
+      page: 1,
+      perPage: 50,
+    });
+
+    const countQuery = client.query.mock.calls[0][0] as string;
+    const rowsQuery = client.query.mock.calls[1][0] as string;
+    expect(countQuery).toContain('actor_id = $1');
+    expect(countQuery).toContain('action ILIKE $2');
+    expect(rowsQuery).toContain('actor_id = $1');
+    expect(rowsQuery).toContain('action ILIKE $2');
+    expect(client.query.mock.calls[0][1]).toEqual(['actor-1', '%wallet_adjustment%']);
+    expect(client.query.mock.calls[1][1]).toEqual(['actor-1', '%wallet_adjustment%', 50, 0]);
+    expect(result).toEqual({
+      rows: [{ id: 'audit-1', actor_id: 'actor-1', action: 'WALLET_ADJUSTMENT_PENDING_APPROVAL' }],
+      total: 1,
+    });
+  });
+
   it('lists users with one active role selected by the shared role priority', async () => {
     const { client, repository } = createRepository();
     client.query

@@ -684,8 +684,8 @@ export class AdminRepository extends BaseRepository {
     }
 
     if (filters.action) {
-      params.push(filters.action);
-      conditions.push(`action = $${params.length}`);
+      params.push(`%${filters.action}%`);
+      conditions.push(`action ILIKE $${params.length}`);
     }
 
     if (filters.affectedEntity) {

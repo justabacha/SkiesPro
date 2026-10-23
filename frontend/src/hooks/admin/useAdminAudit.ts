@@ -14,11 +14,14 @@ export function useAdminAudit() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAuditLogs = useCallback(
-    async (params?: { actor_id?: string; action?: string; limit?: number; offset?: number }, totp_code?: string) => {
+    async (
+      params?: { actor_id?: string; action?: string; page?: number; per_page?: number },
+      totp_code?: string
+    ) => {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await adminApiClient.getAuditLogs(params || { limit: 50 }, totp_code);
+        const res = await adminApiClient.getAuditLogs(params || { page: 1, per_page: 50 }, totp_code);
         setLogs(res.rows || []);
         setTotal(res.total || 0);
       } catch (err) {

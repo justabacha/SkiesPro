@@ -529,7 +529,10 @@ class AdminApiClient {
   }
 
   // --- Audit Logs ---
-  async getAuditLogs(params: { actor_id?: string; action?: string; limit?: number; offset?: number }, totp_code?: string) {
+  async getAuditLogs(
+    params: { actor_id?: string; action?: string; page?: number; per_page?: number },
+    totp_code?: string
+  ) {
     const headers: Record<string, string> = {};
     if (totp_code) headers['X-Admin-MFA-Token'] = totp_code;
     const query = this.formatQuery(params);

@@ -280,17 +280,25 @@ export class AdminController {
   }
 
   async getAuditLogs(req: Request, res: Response): Promise<void> {
-    const result = await this.audit.listAuditLogs({
-      actorId: typeof req.query.actor_id === 'string' ? req.query.actor_id : undefined,
-      action: typeof req.query.action === 'string' ? req.query.action : undefined,
-      affectedEntity:
-        typeof req.query.affected_entity === 'string' ? req.query.affected_entity : undefined,
-      dateFrom: typeof req.query.date_from === 'string' ? req.query.date_from : undefined,
-      dateTo: typeof req.query.date_to === 'string' ? req.query.date_to : undefined,
-      page: Number(req.query.page || 1),
-      perPage: Number(req.query.per_page || 20),
-    });
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.audit.listAuditLogs({
+        actorId: typeof req.query.actor_id === 'string' ? req.query.actor_id : undefined,
+        action: typeof req.query.action === 'string' ? req.query.action : undefined,
+        affectedEntity:
+          typeof req.query.affected_entity === 'string' ? req.query.affected_entity : undefined,
+        dateFrom: typeof req.query.date_from === 'string' ? req.query.date_from : undefined,
+        dateTo: typeof req.query.date_to === 'string' ? req.query.date_to : undefined,
+        page: Number(req.query.page || 1),
+        perPage: Number(req.query.per_page || 20),
+      });
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Audit log fetch failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'AUDIT_ACTION_FAILED' });
+    }
   }
 
   async listTickets(req: Request, res: Response): Promise<void> {
@@ -420,7 +428,15 @@ export class AdminController {
   }
 
   async verifyAuditChain(req: Request, res: Response): Promise<void> {
-    const result = await this.audit.verifyChain();
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    try {
+      const result = await this.audit.verifyChain();
+      res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error('Audit chain verification failed', {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'AUDIT_ACTION_FAILED' });
+    }
   }
 }

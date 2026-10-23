@@ -25,7 +25,8 @@ export const AuditLogsPage: React.FC = () => {
     fetchAuditLogs({
       actor_id: actorId || undefined,
       action: actionFilter || undefined,
-      limit: 50,
+      page: 1,
+      per_page: 50,
     });
   };
 
@@ -57,7 +58,7 @@ export const AuditLogsPage: React.FC = () => {
               type="text"
               value={actorId}
               onChange={(e) => setActorId(e.target.value)}
-              placeholder="Filter by Actor ID / Email..."
+              placeholder="Filter by Actor ID..."
               className="w-full pl-9 pr-4 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500/80"
             />
           </div>
