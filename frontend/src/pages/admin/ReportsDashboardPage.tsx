@@ -36,7 +36,7 @@ export const ReportsDashboardPage: React.FC = () => {
             <div>
               <h1 className="text-xl font-bold text-slate-100">Reports & Business Analytics</h1>
               <p className="text-xs text-slate-400">
-                Visualize revenue metrics, trade volumes, registration growth, and worker settlement latency (all dates in EAT).
+                Visualize revenue metrics, trade volumes, registration growth, and worker settlement latency.
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const ReportsDashboardPage: React.FC = () => {
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-6 shadow-2xl">
         {activeReportTab === 'revenue' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Daily Revenue Breakdown (EAT)</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Daily Revenue Breakdown</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading revenue metrics">
                 {[1, 2, 3].map((item) => (
@@ -112,7 +112,7 @@ export const ReportsDashboardPage: React.FC = () => {
 
         {activeReportTab === 'volume' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Trading Volume Analytics (EAT)</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Trading Volume Analytics</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading trade volume metrics">
                 {[1, 2, 3].map((item) => (
@@ -143,7 +143,7 @@ export const ReportsDashboardPage: React.FC = () => {
 
         {activeReportTab === 'users' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">User Acquisition & Growth (EAT)</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">User Acquisition & Growth</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading registration metrics">
                 {[1, 2, 3].map((item) => (
@@ -171,7 +171,7 @@ export const ReportsDashboardPage: React.FC = () => {
 
         {activeReportTab === 'settlement' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Worker Settlement Latency (ms) (EAT)</h3>
+            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Worker Settlement Latency (ms)</h3>
             {isLoading ? (
               <div className="space-y-3" aria-label="Loading settlement metrics">
                 {[1, 2, 3].map((item) => (

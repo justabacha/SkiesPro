@@ -26,27 +26,26 @@ export const safeFormatDate = (
 
 /**
  * Safe helper function for formatting dates to local Kenyan EAT time (UTC+3).
- * Format: 23 Oct 03:00:00 EAT
+ * Format: Fri, 23 Oct 2026 03:00:00
  */
 export function formatDateEAT(dateVal: unknown): string {
   if (!dateVal) return 'N/A';
   try {
     const date = new Date(dateVal as string | number | Date);
     if (isNaN(date.getTime())) return 'N/A';
-    return new Intl.DateTimeFormat('en-GB', {
+    const formatted = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Africa/Nairobi',
+      weekday: 'short',
       day: '2-digit',
       month: 'short',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      timeZoneName: 'short',
       hour12: false,
-    })
-      .format(date)
-      .replace(',', '')
-      .replace('GMT+3', 'EAT')
-      .replace('EAT', 'EAT');
+    }).format(date);
+
+    return formatted.replace(/,\s*(\d{2}:)/, ' $1');
   } catch (e) {
     return String(dateVal);
   }
