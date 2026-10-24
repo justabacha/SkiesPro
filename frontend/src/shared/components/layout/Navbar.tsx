@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Bell, Moon, Sun, User, LogOut, Menu, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -86,8 +87,12 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-2 p-1 rounded-full hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary transition-colors"
                 >
-                  <div className="h-8 w-8 rounded-full bg-brand flex items-center justify-center text-white font-bold text-xs uppercase shadow-sm">
-                    {user?.displayName?.[0] || 'A'}
+                  <div className="h-8 w-8 rounded-full bg-brand flex items-center justify-center text-white font-bold text-xs uppercase shadow-sm overflow-hidden">
+                    {user?.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.displayName || 'Avatar'} className="h-full w-full object-cover" />
+                    ) : (
+                      user?.displayName?.[0] || 'A'
+                    )}
                   </div>
                   <ChevronDown
                     className={`h-4 w-4 text-text-light-secondary dark:text-text-dark-secondary transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`}
@@ -105,9 +110,13 @@ export const Navbar = ({ onMenuClick }: NavbarProps) => {
                       </p>
                     </div>
                     <div className="py-1">
-                      <button className="flex w-full items-center px-4 py-2 text-sm text-text-light-secondary dark:text-text-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary transition-colors">
+                      <Link
+                        to="/settings?tab=profile"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex w-full items-center px-4 py-2 text-sm text-text-light-secondary dark:text-text-dark-secondary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary transition-colors"
+                      >
                         <User className="mr-3 h-4 w-4" /> Profile
-                      </button>
+                      </Link>
                       <button
                         onClick={() => {
                           setIsProfileOpen(false);

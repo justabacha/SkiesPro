@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, Save } from 'lucide-react';
 import { Button, Input } from '@/shared/components';
 import { apiClient } from '@/shared/services/apiClient';
+import { useAuth } from '@/shared/hooks/useAuth';
 import type { ApiEnvelope, SettingsProfile } from '../types';
 
 interface ProfileTabProps {
@@ -15,6 +16,7 @@ const labelClass =
   'mb-1.5 block text-sm font-medium text-text-light-primary dark:text-text-dark-primary';
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({ profile, onProfileUpdated }) => {
+  const { updateUser } = useAuth();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [phone, setPhone] = useState(profile.phone || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -31,6 +33,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ profile, onProfileUpdate
         { display_name: displayName.trim(), phone: phone.trim() || null }
       );
       onProfileUpdated(response.data);
+      updateUser({ displayName: response.data.display_name });
       setDisplayName(response.data.display_name);
       setPhone(response.data.phone || '');
       setNotice({ type: 'success', text: 'Profile updated successfully.' });
@@ -67,6 +70,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ profile, onProfileUpdate
         formData
       );
       onProfileUpdated({ avatar_url: response.data.avatar_url });
+      updateUser({ avatarUrl: response.data.avatar_url });
       setNotice({ type: 'success', text: 'Avatar uploaded successfully.' });
     } catch (uploadError) {
       setNotice({

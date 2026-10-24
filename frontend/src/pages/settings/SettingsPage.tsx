@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FilterTabs, TableLoading } from '@/shared/components';
 import { apiClient } from '@/shared/services/apiClient';
 import { ProfileTab } from './components/ProfileTab';
@@ -15,12 +16,21 @@ const SETTINGS_TABS = [
 ] as const;
 
 type SettingsTab = (typeof SETTINGS_TABS)[number]['id'];
+const VALID_TABS = new Set<SettingsTab>(['profile', 'security', 'sessions', 'danger']);
 
 export const SettingsPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [profile, setProfile] = useState<SettingsProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const rawTab = searchParams.get('tab');
+  const activeTab: SettingsTab =
+    rawTab && VALID_TABS.has(rawTab as SettingsTab) ? (rawTab as SettingsTab) : 'profile';
+
+  const handleTabChange = (newTab: SettingsTab) => {
+    setSearchParams({ tab: newTab });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -60,7 +70,7 @@ export const SettingsPage: React.FC = () => {
       <FilterTabs
         tabs={SETTINGS_TABS}
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onChange={(tab) => handleTabChange(tab as SettingsTab)}
         variant="pills-themed"
         className="flex-wrap"
       />

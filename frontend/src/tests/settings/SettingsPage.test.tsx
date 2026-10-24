@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import type { SettingsProfile } from '@/pages/settings/types';
 
@@ -22,7 +23,7 @@ vi.mock('@/shared/services/apiClient', () => ({
 }));
 
 vi.mock('@/shared/hooks/useAuth', () => ({
-  useAuth: () => ({ logout: mocks.logout }),
+  useAuth: () => ({ logout: mocks.logout, updateUser: vi.fn() }),
 }));
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -65,6 +66,13 @@ const sessions = [
 
 const openTab = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 
+const renderSettingsPage = (initialEntry = '/settings') =>
+  render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <SettingsPage />
+    </MemoryRouter>
+  );
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     mocks.get.mockReset().mockImplementation(async (path: string) => {
@@ -81,7 +89,7 @@ describe('SettingsPage', () => {
   afterEach(() => cleanup());
 
   it('renders all settings tabs', async () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
     await screen.findByRole('heading', { name: 'Profile' });
     expect(screen.getByRole('button', { name: 'Profile' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Security' })).toBeTruthy();
@@ -90,7 +98,7 @@ describe('SettingsPage', () => {
   });
 
   it('validates the strict backend password policy before submit', async () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
     await screen.findByRole('heading', { name: 'Profile' });
     openTab('Security');
 
@@ -130,7 +138,7 @@ describe('SettingsPage', () => {
     mocks.put.mockResolvedValue({
       data: { ...profile, display_name: 'Updated Trader', phone: '+254711111111' },
     });
-    render(<SettingsPage />);
+    renderSettingsPage();
     await screen.findByRole('heading', { name: 'Profile' });
 
     fireEvent.change(screen.getByLabelText('Display name'), {
@@ -152,8 +160,28 @@ describe('SettingsPage', () => {
     );
   });
 
+  it('starts MFA setup with user email as label', async () => {
+    const disabledMfaProfile = { ...profile, mfa_enabled: false };
+    mocks.get.mockResolvedValue({ data: disabledMfaProfile });
+    mocks.post.mockResolvedValue({
+      data: { secret: 'SECRET123', qr_code_url: 'data:image/png;base64,qr' },
+    });
+
+    renderSettingsPage();
+    await screen.findByRole('heading', { name: 'Profile' });
+    openTab('Security');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Enable MFA' }));
+
+    await waitFor(() => {
+      expect(mocks.post).toHaveBeenCalledWith('/api/v1/auth/mfa/setup', {
+        label: 'trader@example.com',
+      });
+    });
+  });
+
   it('disables MFA using an authenticator code', async () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
     await screen.findByRole('heading', { name: 'Profile' });
     openTab('Security');
     fireEvent.click(screen.getByRole('button', { name: 'Disable MFA' }));
@@ -172,7 +200,7 @@ describe('SettingsPage', () => {
   });
 
   it('loads sessions and revokes a non-current session', async () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
     await screen.findByRole('heading', { name: 'Profile' });
     openTab('Sessions');
     expect(await screen.findByText('Desktop Browser')).toBeTruthy();

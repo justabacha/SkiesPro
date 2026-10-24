@@ -83,7 +83,9 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ profile, onProfileUpda
     setNotice(null);
     setIsMfaBusy(true);
     try {
-      const response = await apiClient.post<ApiEnvelope<MfaSetup>>('/api/v1/auth/mfa/setup');
+      const response = await apiClient.post<ApiEnvelope<MfaSetup>>('/api/v1/auth/mfa/setup', {
+        label: profile.email || 'user@example.com',
+      });
       setMfaSetup(response.data);
       setIsMfaSetupOpen(true);
     } catch (setupError) {

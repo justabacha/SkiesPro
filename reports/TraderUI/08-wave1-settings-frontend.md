@@ -62,3 +62,30 @@
   ```
 - The backend, migration, and settings integration-test entries above are pre-existing Slice 1 work from the handoff; this Settings frontend slice did not modify backend or admin files.
 - `git diff --check` passed. The requested implementation is complete; the earlier full-repository frontend lint reports unrelated warnings in existing admin/trading files, while ESLint on the changed frontend files passed.
+
+---
+
+## Follow-up: Fixes
+
+### T1 — MFA Setup 400 Error Fix (`SecurityTab.tsx`)
+Updated `startMfaSetup` in `frontend/src/pages/settings/components/SecurityTab.tsx` to pass `{ label: profile.email || 'user@example.com' }` to `POST /api/v1/auth/mfa/setup`, matching the backend requirements for generating the TOTP label/URI.
+
+### T2 — URL Deep-Linking for Tabs (`SettingsPage.tsx`)
+Updated `frontend/src/pages/settings/SettingsPage.tsx` using `useSearchParams` from `react-router-dom`. The active tab is read from query param `?tab=` (defaulting to `'profile'`). Tab changes trigger `setSearchParams({ tab: newTab })`.
+
+### T3 — Navbar Profile Dropdown Link (`Navbar.tsx`)
+Updated the "Profile" option in `frontend/src/shared/components/layout/Navbar.tsx` to `<Link to="/settings?tab=profile" ...>`, navigating directly to the Profile tab on click.
+
+### T4 — Header Avatar & Refresh Integration (`AuthContext.tsx`, `Navbar.tsx`, `ProfileTab.tsx`)
+1. **`AuthContext.tsx`**: Updated `User` interface to include `avatarUrl?: string | null` and added `updateUser: (updates: Partial<User>) => void` to `AuthContextType`.
+2. **`Navbar.tsx`**: Renders `user.avatarUrl` in an `<img>` tag inside the top avatar button, falling back to initial when null.
+3. **`ProfileTab.tsx`**: Triggers `updateUser({ avatarUrl: response.data.avatar_url })` immediately upon successful upload so the Navbar avatar updates instantly without a page reload.
+
+### T5 — Verification & Test Results
+- **Frontend Unit/UI Tests**: Added test case in `SettingsPage.test.tsx` verifying `{ label: 'trader@example.com' }` is passed to MFA setup. Executed 2x consecutive test runs (`cd frontend && npm run test:ui`):
+  - Run 1: **15/15 passed** (Settings: 6, History: 9)
+  - Run 2: **15/15 passed** (Settings: 6, History: 9)
+- **Typechecks**:
+  - Frontend typecheck (`cd frontend && npx tsc --noEmit`): **0 errors**
+  - Backend typecheck (`npm run typecheck`): **0 errors**
+- **Zero Backend / Admin Files Touched**: Verified via `git status` that zero backend (`src/`) or admin (`frontend/src/modules/admin/*`) files were modified.

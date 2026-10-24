@@ -10,6 +10,7 @@ interface User {
   roles: string[];
   kycStatus: string;
   mfaEnabled: boolean;
+  avatarUrl?: string | null;
 }
 
 const ADMIN_ROLE_SET = new Set([
@@ -43,6 +44,7 @@ interface AuthContextType extends AuthState {
   verifyMfa: (totp_code: string) => Promise<void>;
   clearMfaEnrollment: () => void;
   logout: () => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -99,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       roles,
       kycStatus: userData.kyc_status,
       mfaEnabled: userData.mfa_enabled === true,
+      avatarUrl: (userData as any).avatar_url || (userData as any).avatarUrl || null,
     };
   };
 
@@ -376,9 +379,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refresh();
   }, [refresh]);
 
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setState((prev) => ({
+      ...prev,
+      user: prev.user ? { ...prev.user, ...updates } : null,
+    }));
+  }, []);
+
   return (
     <AuthContext.Provider
-      value={{ ...state, login, register, verifyMfa, clearMfaEnrollment, logout }}
+      value={{ ...state, login, register, verifyMfa, clearMfaEnrollment, logout, updateUser }}
     >
       {children}
     </AuthContext.Provider>
