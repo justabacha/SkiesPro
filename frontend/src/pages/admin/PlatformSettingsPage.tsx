@@ -8,10 +8,16 @@ type SettingsCategory = (typeof categories)[number];
 
 function getCategory(key: string): SettingsCategory {
   if (key.startsWith('trade.')) return 'Trading';
-  if (key.startsWith('referral.') || key.startsWith('fee.')) return 'Fees & Referrals';
+  if (
+    key.startsWith('referral.') ||
+    key.startsWith('fee.') ||
+    key === 'withdrawal.fee_percentage'
+  ) {
+    return 'Fees & Referrals';
+  }
   if (key.startsWith('kyc.')) return 'KYC';
   if (key.startsWith('deposit.')) return 'Deposits';
-  if (key === 'withdrawal.fee_percentage' || key.startsWith('withdrawal.')) return 'Withdrawals';
+  if (key.startsWith('withdrawal.')) return 'Withdrawals';
   return 'General';
 }
 

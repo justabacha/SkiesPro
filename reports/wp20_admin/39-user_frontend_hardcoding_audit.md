@@ -227,15 +227,18 @@ The requested live admin-setting changes (`deposit.min_amount = 1000` and `kyc.r
 **Status: Executed & Verified**
 
 - `AdminRepository.listSettings()` selects all rows from `config.platform_settings`, so `withdrawal.fee_percentage` is included whenever seeded. Migration `041_seed_withdrawal_fee_setting.sql` inserts the setting at JSONB value `0.02` if absent; no repository query or schema change was needed.
-- The settings UI categorizes `withdrawal.fee_percentage` under **Withdrawals** and renders it through the existing numeric-setting input. The fee-specific UI validation now accepts only values from `0` through `1` (inclusive), and the input advertises the same `min`/`max` range.
+- Follow-up correction: `withdrawal.fee_percentage` is categorized under **Fees & Referrals** (not Withdrawals) and renders through the existing numeric-setting input. Fee-specific UI validation accepts values from `0` through `1` inclusive, and the input advertises the same `min`/`max` range.
 - `WithdrawForm.tsx` already reads `usePublicConfig()`, calculates `fee = numAmount * config.withdrawalFeePercentage`, and displays `(config.withdrawalFeePercentage * 100).toFixed(2)` in the fee label. Thus a fetched value of `0.05` displays `5.00%` and calculates a five-percent fee; the hook's existing public-config cache is five seconds.
 - An admin save updates the stored platform setting; the next public config fetch returns it and the trader form uses it. The requested TOTP save and browser-to-browser UI flow were not executed in this environment, so no live `0.05` value or rendered `5%` label is claimed as manually verified.
 
 Admin UI change:
 
 ```diff
-- if (key.startsWith('withdrawal.')) return 'Withdrawals';
-+ if (key === 'withdrawal.fee_percentage' || key.startsWith('withdrawal.')) return 'Withdrawals';
+- if (key.startsWith('withdrawal.') || key.startsWith('fee.') || key.startsWith('referral.')) ...
++ if (key.startsWith('referral.') || key.startsWith('fee.') || key === 'withdrawal.fee_percentage') {
++   return 'Fees & Referrals';
++ }
++ if (key.startsWith('withdrawal.')) return 'Withdrawals';
 +
 + if (setting.key === 'withdrawal.fee_percentage') {
 +   if (!Number.isFinite(value) || value < 0 || value > 1) {
