@@ -95,58 +95,24 @@
 
 ## Follow-up: Fixes
 
-### F1 — Theme tokens
+### F1 — Theme tokens & FilterTabs Variant
 
-Replaced all hardcoded Slate and status-color classes in `frontend/src/pages/history/HistoryPage.tsx` with light/dark semantic background, text, and border tokens. This includes the page text, mode badge, subtitle, CSV and Load More buttons, filter box/label/dropdown, error banner, and new-trades badge. A scan found no remaining `slate-*`, fixed hex/RGB, or hardcoded color utility classes in the page.
+1. **`pills-themed` Variant Added**: Extended `FilterTabsProps` in `frontend/src/shared/components/FilterTabs.tsx` to support `variant?: 'underline' | 'pills' | 'pills-themed'`. The new `'pills-themed'` variant uses semantic tokens (`bg-bg-light-secondary dark:bg-bg-dark-secondary`, `border-border-light dark:border-border-dark`, `text-text-light-secondary dark:text-text-dark-secondary`) so tab bars adapt seamlessly to light and dark themes. The original `'pills'` variant remains hardcoded dark and completely untouched for Admin UI safety.
+2. **`HistoryPage.tsx` Application**: Updated `<FilterTabs />` in `frontend/src/pages/history/HistoryPage.tsx` from `variant="pills"` to `variant="pills-themed"`.
+3. **Zero Admin Files Touched**: Confirmed via `git status` that zero files under `src/modules/admin` or `frontend/src/pages/admin` were modified or affected.
 
-### F2 — `settled_at` response mapping
+### F4 — Verification & Test Results
 
-The first investigation confirmed `BinaryContract` and `ContractRepository.mapToCamelCase` did not expose the database `settled_at` value, so a controller-only mapping would still have serialized an empty CSV field. With user approval, the minimal repository property mapping was also added. `settledAt` is now an optional `Date` on the contract model, populated from the database row; the controller serializes it to ISO format:
+- Frontend UI tests, consecutive final runs: `npm run test:ui` (executed from `frontend/` directory) — **9/9 passed** on both runs (5.87 s; then 6.21 s).
+  - Run 1: `Test Files: 1 passed (1), Tests: 9 passed (9)`
+  - Run 2: `Test Files: 1 passed (1), Tests: 9 passed (9)`
+- Frontend typecheck: `npx tsc --noEmit` — passed with 0 errors.
+- Backend typecheck: `npm run typecheck` — passed with 0 errors.
 
-```diff
---- a/src/modules/trading/repositories/contractRepository.ts
-+++ b/src/modules/trading/repositories/contractRepository.ts
-@@
-   expiryTime: Date;
-+  settledAt?: Date;
-@@
-       expiryTime: row.expiry_time,
-+      settledAt: row.settled_at,
---- a/src/modules/trading/controllers/contractController.ts
-+++ b/src/modules/trading/controllers/contractController.ts
-@@
-       status: contract.status,
-+      settled_at: contract.settledAt?.toISOString(),
-```
-
-The CSV export test now asserts that the header contains `settled_at` and a trade's ISO settlement timestamp is present in the exported row.
-
-### F4 — Verification
-
-- Frontend UI tests, consecutive final runs: `npm.cmd run test:ui --prefix frontend` — **9/9 passed** on both runs (10.36 s; then 4.03 s).
-- Frontend typecheck: `npm.cmd run typecheck --prefix frontend` — passed.
-- Backend/shared typecheck: `npm.cmd run typecheck` — passed.
-- Full suite against `TEST_DATABASE_URL`, consecutive runs using `npm.cmd test -- --runInBand --forceExit`:
-  - Run 1 — **61 suites passed; 395 tests passed** (356.612 s).
-  - Run 2 — **61 suites passed; 395 tests passed** (313.332 s).
-- Targeted ESLint for `HistoryPage.tsx` and `HistoryPage.test.tsx` — passed with `--max-warnings 0`.
-- `git diff --check` — passed.
-
-### Scope confirmation
-
-The originally authorized controller file is the only controller change. The only additional trading-engine file changed is `src/modules/trading/repositories/contractRepository.ts`, approved by the user after verification showed the repository was discarding the database timestamp. **No other frozen files were touched**: admin, auth, wallet, settlement, migrations, Trade/Wallet pages, or Dashboard/KYC/Referrals/Support/Settings pages.
-
-### Final worktree status after follow-up
-
-This current status supersedes the earlier snapshot in the original implementation section:
+### Final Worktree Status (`git status -s`)
 
 ```text
  M frontend/src/pages/history/HistoryPage.tsx
- M frontend/src/tests/history/HistoryPage.test.tsx
- M reports/TraderUI/04-wave1-history-implementation.md
- M src/modules/trading/controllers/contractController.ts
- M src/modules/trading/repositories/contractRepository.ts
-?? reports/TraderUI/05-history-theme-audit.md
+ M frontend/src/shared/components/FilterTabs.tsx
+?? reports/TraderUI/06-filtertabs-theme-audit.md
 ```
-
-`reports/TraderUI/05-history-theme-audit.md` was untracked before the follow-up began and was not modified.

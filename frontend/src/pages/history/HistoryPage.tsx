@@ -309,7 +309,7 @@ export const HistoryPage: React.FC = () => {
           tabs={STATUS_TABS}
           activeTab={statusFilter}
           onChange={(tab) => setStatusFilter(tab as StatusFilter)}
-          variant="pills"
+          variant="pills-themed"
           className="flex-wrap"
         />
         <label className="flex flex-wrap items-center gap-3 text-sm text-text-light-secondary dark:text-text-dark-secondary">
