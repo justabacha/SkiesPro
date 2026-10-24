@@ -21,7 +21,8 @@ const makeContract = (
   id: string,
   assetSymbol = 'EUR/USD',
   status: BinaryContract['status'] = 'active',
-  purchaseTime = '2026-10-24T10:00:00.000Z'
+  purchaseTime = '2026-10-24T10:00:00.000Z',
+  settledAt?: string
 ): BinaryContract => ({
   id,
   user_id: 'user-1',
@@ -35,6 +36,7 @@ const makeContract = (
   purchase_time: purchaseTime,
   expiry_time: '2026-10-24T10:01:00.000Z',
   status,
+  settled_at: settledAt,
 });
 
 let accountMode: 'real' | 'demo';
@@ -164,7 +166,8 @@ describe('HistoryPage', () => {
   });
 
   it('exports all pulled pages as a CSV download', async () => {
-    const trade = makeContract('csv-1', 'EUR/USD', 'won');
+    const settledAt = '2026-10-24T10:02:03.456Z';
+    const trade = makeContract('csv-1', 'EUR/USD', 'won', undefined, settledAt);
     mocks.getContracts.mockResolvedValue([trade]);
     const createObjectURL = vi.fn<(blob: Blob) => string>(() => 'blob:trade-history');
     const revokeObjectURL = vi.fn();
@@ -189,6 +192,8 @@ describe('HistoryPage', () => {
     await waitFor(() => expect(downloadedText).toContain('id,asset_symbol'));
     expect(downloadedText.split('\r\n')).toHaveLength(2);
     expect(downloadedText).toContain('csv-1');
+    expect(downloadedText.split('\r\n')[0]).toContain('settled_at');
+    expect(downloadedText.split('\r\n')[1]).toContain(settledAt);
     expect(createObjectURL).toHaveBeenCalledOnce();
   });
 

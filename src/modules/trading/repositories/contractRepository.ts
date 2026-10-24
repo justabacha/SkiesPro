@@ -15,6 +15,7 @@ export interface BinaryContract {
   potentialPayout: string;
   purchaseTime: Date;
   expiryTime: Date;
+  settledAt?: Date;
   status: 'draft' | 'active' | 'settling' | 'won' | 'lost' | 'draw' | 'cancelled' | 'archived';
   lockTxId?: string;
   payoutTxId?: string;
@@ -191,6 +192,7 @@ export class ContractRepository {
       potentialPayout: row.potential_payout, // Keep as string for precision
       purchaseTime: row.purchase_time,
       expiryTime: row.expiry_time,
+      settledAt: row.settled_at,
       status: row.status,
       lockTxId: row.lock_tx_id,
       payoutTxId: row.payout_tx_id,

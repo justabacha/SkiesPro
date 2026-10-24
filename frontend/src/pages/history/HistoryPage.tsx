@@ -274,7 +274,7 @@ export const HistoryPage: React.FC = () => {
   };
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-6 p-4 text-slate-100 sm:p-6">
+    <main className="mx-auto w-full max-w-7xl space-y-6 p-4 text-text-light-primary dark:text-text-dark-primary sm:p-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
@@ -282,14 +282,14 @@ export const HistoryPage: React.FC = () => {
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 accountMode === 'demo'
-                  ? 'bg-amber-500/15 text-amber-300'
-                  : 'bg-emerald-500/15 text-emerald-300'
+                  ? 'bg-bg-light-tertiary dark:bg-bg-dark-tertiary text-text-light-secondary dark:text-text-dark-secondary'
+                  : 'bg-bg-light-secondary dark:bg-bg-dark-secondary text-text-light-primary dark:text-text-dark-primary'
               }`}
             >
               {accountMode === 'demo' ? 'Demo' : 'Real'}
             </span>
           </div>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-text-light-secondary dark:text-text-dark-secondary">
             Review your trades and settlement outcomes.
           </p>
         </div>
@@ -297,14 +297,14 @@ export const HistoryPage: React.FC = () => {
           type="button"
           onClick={() => void exportHistory()}
           disabled={isExporting}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-border-light dark:border-border-dark bg-bg-light-secondary dark:bg-bg-dark-secondary text-text-light-primary dark:text-text-dark-primary px-4 py-2 text-sm font-semibold hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
           {isExporting ? 'Exporting...' : 'Export CSV'}
         </button>
       </header>
 
-      <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+      <section className="space-y-4 rounded-xl border border-border-light dark:border-border-dark bg-bg-light-secondary dark:bg-bg-dark-secondary p-4">
         <FilterTabs
           tabs={STATUS_TABS}
           activeTab={statusFilter}
@@ -312,13 +312,13 @@ export const HistoryPage: React.FC = () => {
           variant="pills"
           className="flex-wrap"
         />
-        <label className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+        <label className="flex flex-wrap items-center gap-3 text-sm text-text-light-secondary dark:text-text-dark-secondary">
           Asset
           <select
             aria-label="Filter by asset"
             value={assetFilter}
             onChange={(event) => setAssetFilter(event.target.value)}
-            className="min-w-48 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+            className="min-w-48 rounded-lg border border-border-light dark:border-border-dark bg-bg-light-primary dark:bg-bg-dark-primary px-3 py-2 text-text-light-primary dark:text-text-dark-primary"
           >
             <option value={ALL_ASSETS}>All assets</option>
             {assetSymbols.map((symbol) => (
@@ -333,13 +333,13 @@ export const HistoryPage: React.FC = () => {
       {error && (
         <div
           role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-light dark:border-border-dark bg-bg-light-secondary dark:bg-bg-dark-secondary p-4 text-sm text-text-light-secondary dark:text-text-dark-secondary"
         >
           <span>Unable to load trade history: {error}</span>
           <button
             type="button"
             onClick={retryLoad}
-            className="inline-flex items-center gap-2 rounded-md border border-rose-400/40 px-3 py-1.5 font-semibold hover:bg-rose-500/10"
+            className="inline-flex items-center gap-2 rounded-md border border-border-light dark:border-border-dark px-3 py-1.5 font-semibold hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary"
           >
             <RefreshCw className="h-4 w-4" />
             Retry
@@ -354,7 +354,7 @@ export const HistoryPage: React.FC = () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setNewCount(0);
           }}
-          className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg"
+          className="rounded-full bg-bg-light-tertiary dark:bg-bg-dark-tertiary px-4 py-2 text-sm font-semibold text-text-light-primary dark:text-text-dark-primary shadow-lg"
         >
           {newCount} new
         </button>
@@ -373,7 +373,7 @@ export const HistoryPage: React.FC = () => {
               <button
                 type="button"
                 onClick={loadMore}
-                className="rounded-lg border border-slate-700 px-5 py-2.5 text-sm font-semibold hover:bg-slate-800"
+                className="rounded-lg border border-border-light dark:border-border-dark bg-bg-light-secondary dark:bg-bg-dark-secondary text-text-light-primary dark:text-text-dark-primary px-5 py-2.5 text-sm font-semibold hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary"
               >
                 Load more
               </button>

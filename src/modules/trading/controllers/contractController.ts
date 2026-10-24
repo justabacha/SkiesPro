@@ -26,6 +26,7 @@ export class ContractController {
       purchase_time: contract.purchaseTime.toISOString(),
       expiry_time: contract.expiryTime.toISOString(),
       status: contract.status,
+      settled_at: contract.settledAt?.toISOString(),
     };
   };
 
