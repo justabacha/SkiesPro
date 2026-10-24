@@ -10,7 +10,7 @@ export const TableLoading: React.FC<TableLoadingProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-8 text-center text-slate-400 ${className}`}>
+    <div className={`bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark rounded-xl p-8 text-center text-text-light-secondary dark:text-text-dark-secondary ${className}`}>
       <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
       {message}
     </div>

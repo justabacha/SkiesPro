@@ -279,13 +279,7 @@ export const HistoryPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">Trade History</h1>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                accountMode === 'demo'
-                  ? 'bg-bg-light-tertiary dark:bg-bg-dark-tertiary text-text-light-secondary dark:text-text-dark-secondary'
-                  : 'bg-bg-light-secondary dark:bg-bg-dark-secondary text-text-light-primary dark:text-text-dark-primary'
-              }`}
-            >
+            <span className="rounded-full border border-border-light dark:border-border-dark bg-bg-light-tertiary dark:bg-bg-dark-tertiary px-3 py-1 text-xs font-semibold text-text-light-primary dark:text-text-dark-primary">
               {accountMode === 'demo' ? 'Demo' : 'Real'}
             </span>
           </div>

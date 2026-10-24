@@ -101,9 +101,16 @@
 2. **`HistoryPage.tsx` Application**: Updated `<FilterTabs />` in `frontend/src/pages/history/HistoryPage.tsx` from `variant="pills"` to `variant="pills-themed"`.
 3. **Zero Admin Files Touched**: Confirmed via `git status` that zero files under `src/modules/admin` or `frontend/src/pages/admin` were modified or affected.
 
-### F4 — Verification & Test Results
+### F5 — Final Polish (Empty State, Badges, Buttons)
 
-- Frontend UI tests, consecutive final runs: `npm run test:ui` (executed from `frontend/` directory) — **9/9 passed** on both runs (5.87 s; then 6.21 s).
+1. **TableEmpty & TableLoading Tokens**: Updated `frontend/src/shared/components/TableEmpty.tsx` and `TableLoading.tsx` container and text styles to use semantic design tokens (`bg-bg-light-secondary dark:bg-bg-dark-secondary`, `border-border-light dark:border-border-dark`, `text-text-light-secondary dark:text-text-dark-secondary`, `text-text-light-primary dark:text-text-dark-primary`). This eliminates dark gray background boxes in light mode across trader pages while preserving identical dark mode styling for Admin UI.
+2. **Real/Demo Badge Styling**: Updated the mode badge in `HistoryPage.tsx` next to "Trade History" title to use semantic tokens (`bg-bg-light-tertiary dark:bg-bg-dark-tertiary`, `text-text-light-primary dark:text-text-dark-primary`, `border-border-light dark:border-border-dark`).
+3. **Export CSV Button**: Updated button styling in `HistoryPage.tsx` to match standard semantic button tokens (`border-border-light dark:border-border-dark bg-bg-light-secondary dark:bg-bg-dark-secondary text-text-light-primary dark:text-text-dark-primary hover:bg-bg-light-tertiary dark:hover:bg-bg-dark-tertiary`).
+4. **Zero Admin Files Broken**: Verified zero files under `src/modules/admin` or `frontend/src/pages/admin` were broken or modified.
+
+### Final Verification & Test Results
+
+- Frontend UI tests, consecutive final runs: `npm run test:ui` (executed from `frontend/` directory) — **9/9 passed** on both runs (8.36 s; then 4.93 s).
   - Run 1: `Test Files: 1 passed (1), Tests: 9 passed (9)`
   - Run 2: `Test Files: 1 passed (1), Tests: 9 passed (9)`
 - Frontend typecheck: `npx tsc --noEmit` — passed with 0 errors.
@@ -114,5 +121,7 @@
 ```text
  M frontend/src/pages/history/HistoryPage.tsx
  M frontend/src/shared/components/FilterTabs.tsx
+ M frontend/src/shared/components/TableEmpty.tsx
+ M frontend/src/shared/components/TableLoading.tsx
 ?? reports/TraderUI/06-filtertabs-theme-audit.md
 ```

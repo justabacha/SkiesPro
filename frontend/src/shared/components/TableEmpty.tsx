@@ -14,14 +14,14 @@ export const TableEmpty: React.FC<TableEmptyProps> = ({
   title,
   description,
   action,
-  iconClassName = 'w-10 h-10 text-slate-600 mx-auto mb-3',
+  iconClassName = 'w-10 h-10 text-text-light-secondary dark:text-text-dark-secondary mx-auto mb-3',
   className = '',
 }) => {
   return (
-    <div className={`bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-12 text-center text-slate-400 ${className}`}>
+    <div className={`bg-bg-light-secondary dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark rounded-xl p-12 text-center text-text-light-secondary dark:text-text-dark-secondary ${className}`}>
       {Icon && <Icon className={iconClassName} />}
-      <p className="text-base font-semibold text-slate-200">{title}</p>
-      {description && <p className="text-xs text-slate-500 mt-1">{description}</p>}
+      <p className="text-base font-semibold text-text-light-primary dark:text-text-dark-primary">{title}</p>
+      {description && <p className="text-xs text-text-light-secondary dark:text-text-dark-secondary mt-1">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
