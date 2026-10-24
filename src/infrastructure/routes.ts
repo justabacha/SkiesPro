@@ -9,6 +9,7 @@ import pricingRoutes from '../modules/pricing/pricing.routes.js';
 import tradingRoutes from '../modules/trading/trading.routes.js';
 import demoRoutes from '../modules/demo/demo.routes.js';
 import adminRoutes from '../modules/admin/admin.routes.js';
+import configRoutes from '../modules/config/config.routes.js';
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use('/api/v1/pricing', pricingRoutes);
 router.use('/api/v1/trading', tradingRoutes);
 router.use('/api/v1/demo', demoRoutes);
 router.use('/api/v1/admin', adminRoutes);
+router.use('/api/v1/config', configRoutes);
 
 export default router;

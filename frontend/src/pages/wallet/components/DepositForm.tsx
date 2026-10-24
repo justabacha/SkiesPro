@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,20 +10,20 @@ import {
   PhoneInput,
 } from '@/shared/components';
 import { useWallet } from '@/shared/hooks/useWallet';
+import { usePublicConfig } from '@/shared/hooks/usePublicConfig';
 import { formatKES } from '@/shared/utils/currencyUtils';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
-const depositSchema = z.object({
-  amount: z.string().refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num >= 500;
-  }, { message: 'Minimum deposit is KES 500' }),
-  phone: z.string().regex(/^(?:254|\+254|0)?([71][0-9]{8})$/, {
-    message: 'Please enter a valid Safaricom phone number',
-  }),
-});
-
-type DepositInput = z.infer<typeof depositSchema>;
+const createDepositSchema = (min: number, max: number) =>
+  z.object({
+    amount: z.string().refine((value) => {
+      const amount = Number(value);
+      return Number.isFinite(amount) && amount >= min && amount <= max;
+    }, { message: `Deposit amount must be between KES ${min} and KES ${max}` }),
+    phone: z.string().regex(/^(?:254|\+254|0)?([71][0-9]{8})$/, {
+      message: 'Please enter a valid Safaricom phone number',
+    }),
+  });
 
 interface DepositFormProps {
   onSuccess: () => void;
@@ -31,8 +31,14 @@ interface DepositFormProps {
 
 export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
   const { initiateDeposit } = useWallet({ accountMode: 'real' });
+  const config = usePublicConfig();
   const [status, setState] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const [errorMsg, setError] = useState<string | null>(null);
+  const depositSchema = useMemo(
+    () => createDepositSchema(config.minDeposit, config.maxDeposit),
+    [config.minDeposit, config.maxDeposit]
+  );
+  type DepositInput = z.infer<typeof depositSchema>;
 
   const {
     register,
@@ -42,9 +48,12 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
   } = useForm<DepositInput>({
     resolver: zodResolver(depositSchema),
     defaultValues: {
-      amount: '500',
+      amount: String(config.minDeposit),
     }
   });
+  useEffect(() => {
+    setValue('amount', String(config.minDeposit), { shouldValidate: true });
+  }, [config.minDeposit, setValue]);
 
   const onSubmit = async (data: DepositInput) => {
     setState('processing');
@@ -64,7 +73,9 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
     }
   };
 
-  const quickAmounts = ['500', '1000', '2000', '5000'];
+  const quickAmounts = Array.from(
+    new Set([config.minDeposit, config.minDeposit * 2, config.minDeposit * 5])
+  ).filter((amount) => amount <= config.maxDeposit);
 
   if (status === 'success') {
     return (
@@ -88,6 +99,10 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
           </div>
         )}
 
+        {config.error && (
+          <div className="text-xs text-amber-600">Using default limits; latest settings could not be loaded.</div>
+        )}
+
         <FormGroup label="Deposit Amount (KES)" error={errors.amount?.message}>
           <div className="grid grid-cols-4 gap-2 mb-3">
             {quickAmounts.map((amt) => (
@@ -96,7 +111,7 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
                 type="button"
                 variant="secondary"
                 size="sm"
-                onClick={() => setValue('amount', amt)}
+                onClick={() => setValue('amount', String(amt))}
               >
                 {formatKES(amt, false)}
               </Button>
@@ -105,7 +120,7 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
           <Input
             {...register('amount')}
             type="number"
-            placeholder="Min 500"
+            placeholder={`KES ${config.minDeposit}–${config.maxDeposit}`}
             className="font-mono"
             error={!!errors.amount}
           />

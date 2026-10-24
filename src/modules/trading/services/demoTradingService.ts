@@ -74,6 +74,10 @@ export class DemoTradingService {
     if (!user || user.status !== 'active') {
       throw new Error('User account is not active or suspended');
     }
+    const kycRequired = await this.settingsService.getSetting('kyc.required_for_trading', false);
+    if (kycRequired && user.kyc_status !== 'verified') {
+      throw new Error('KYC verification required for trading');
+    }
 
     const config = await this.assetConfigRepository.findBySymbol(assetSymbol);
     if (!config) throw new Error(`No configuration found for asset ${assetSymbol}`);

@@ -3,6 +3,8 @@ import { ArrowUpRight, ArrowDownRight, Lock, Clock, DollarSign, AlertCircle } fr
 import { Asset, ContractType } from '../types/trading.types';
 import { getPriceDecimalPlaces } from '../utils/pricePrecision';
 import { DemoModeBanner } from './DemoModeBanner';
+import { usePublicConfig } from '@/shared/hooks/usePublicConfig';
+import { useAuth } from '@/shared/hooks/useAuth';
 
 export interface OrderFormProps {
   accountMode?: 'real' | 'demo';
@@ -23,12 +25,11 @@ export interface OrderFormProps {
   onClearError: () => void;
 }
 
-const QUICK_STAKES = ['100', '250', '500', '1000', '5000'];
-const DURATION_OPTIONS = [
-  { label: '60s (1m)', value: 60 },
-  { label: '300s (5m)', value: 300 },
-  { label: '900s (15m)', value: 900 },
-];
+const formatDuration = (seconds: number): string => {
+  if (seconds % 3600 === 0) return `${seconds / 3600}h`;
+  if (seconds % 60 === 0) return `${seconds / 60}m`;
+  return `${seconds}s`;
+};
 
 export const OrderForm: React.FC<OrderFormProps> = ({
   accountMode = 'real',
@@ -42,6 +43,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   tradeError,
   onClearError,
 }) => {
+  const config = usePublicConfig();
+  const { user } = useAuth();
   const [stake, setStake] = useState<string>(() => {
     return localStorage.getItem('skies_trade_stake') || '100';
   });
@@ -59,7 +62,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   }, [expirySeconds]);
 
   const activeSymbol = selectedSymbol || asset?.symbol || 'EUR/USD';
-  const payoutRate = asset?.payoutRate;
+  const payoutRate = asset?.payoutRate ?? config.defaultPayoutRatio;
   const minStake = asset?.minStake;
   const hasTradingConfig =
     typeof payoutRate === 'number' &&
@@ -68,10 +71,52 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     typeof minStake === 'number' &&
     Number.isFinite(minStake) &&
     minStake > 0;
-  const maxStake = asset?.maxStake || 50000;
+  const maxStake = asset?.maxStake ?? 50000;
   const isMarketOpen = asset?.isOpen !== false && asset?.isActive !== false;
+  const requiresTradingKyc = config.kycRequiredForTrading && user?.kycStatus !== 'verified';
+  const durationMinimum = Math.max(
+    config.minDuration,
+    asset?.minExpirySeconds ?? config.minDuration
+  );
+  const durationMaximum = Math.min(
+    config.maxDuration,
+    asset?.maxExpirySeconds ?? config.maxDuration
+  );
+  const durationOptions = useMemo(() => {
+    if (durationMinimum > durationMaximum) return [];
+    return Array.from(
+      new Set([
+        durationMinimum,
+        ...[60, 300, 900, 1800, 3600].filter(
+          (duration) => duration >= durationMinimum && duration <= durationMaximum
+        ),
+        durationMaximum,
+      ])
+    ).map((value) => ({ label: `${formatDuration(value)} (${value}s)`, value }));
+  }, [durationMinimum, durationMaximum]);
+  const quickStakes = useMemo(() => {
+    if (!minStake || minStake <= 0) return [];
+    return Array.from(new Set([1, 2, 5, 10].map((multiple) => minStake * multiple)))
+      .filter((amount) => amount <= maxStake)
+      .map(String);
+  }, [minStake, maxStake]);
 
   const numericStake = parseFloat(stake) || 0;
+  useEffect(() => {
+    if (hasTradingConfig && minStake !== undefined && numericStake < minStake) {
+      setStake(String(minStake));
+    }
+  }, [hasTradingConfig, minStake, numericStake]);
+
+  useEffect(() => {
+    if (
+      durationOptions.length > 0 &&
+      !durationOptions.some((option) => option.value === expirySeconds)
+    ) {
+      setExpirySeconds(durationOptions[0].value);
+    }
+  }, [durationOptions, expirySeconds]);
+
   const pipPlaces = getPriceDecimalPlaces(activeSymbol, asset?.pipDecimalPlaces, currentPrice);
 
   // Expected payout calculation (Stake + Stake * PayoutRate)
@@ -108,6 +153,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
   const isDisabled =
     !hasTradingConfig ||
+    requiresTradingKyc ||
+    config.isLoading ||
     !isMarketOpen ||
     !isPriceAvailable ||
     isPlacingTrade ||
@@ -150,6 +197,16 @@ export const OrderForm: React.FC<OrderFormProps> = ({
         </div>
 
         {accountMode === 'demo' && <DemoModeBanner compact />}
+
+        {requiresTradingKyc && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs font-medium text-amber-700 dark:text-amber-300"
+          >
+            <Lock className="h-4 w-4 shrink-0" />
+            <span>KYC verification is required to place trades.</span>
+          </div>
+        )}
 
         {/* Market Closed Badge Tooltip */}
         {!isMarketOpen && (
@@ -196,7 +253,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
             <span>Duration / Expiry</span>
           </label>
           <div className="grid grid-cols-3 gap-2">
-            {DURATION_OPTIONS.map((opt) => (
+            {durationOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
@@ -244,7 +301,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
           {/* Quick Stake Adjust Buttons (UI-TRADE-002) */}
           <div className="grid grid-cols-5 gap-1 sm:gap-1.5 mt-2">
-            {QUICK_STAKES.map((amt) => (
+            {quickStakes.map((amt) => (
               <button
                 key={amt}
                 type="button"

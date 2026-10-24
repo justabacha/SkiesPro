@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,20 +10,20 @@ import {
   PhoneInput,
 } from '@/shared/components';
 import { useWallet } from '@/shared/hooks/useWallet';
+import { usePublicConfig } from '@/shared/hooks/usePublicConfig';
 import { formatKES } from '@/shared/utils/currencyUtils';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 
-const withdrawSchema = z.object({
-  amount: z.string().refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num >= 1500;
-  }, { message: 'Minimum withdrawal is KES 1,500' }),
-  phone: z.string().regex(/^(?:254|\+254|0)?([71][0-9]{8})$/, {
-    message: 'Please enter a valid Safaricom phone number',
-  }),
-});
-
-type WithdrawInput = z.infer<typeof withdrawSchema>;
+const createWithdrawSchema = (min: number, max: number) =>
+  z.object({
+    amount: z.string().refine((value) => {
+      const amount = Number(value);
+      return Number.isFinite(amount) && amount >= min && amount <= max;
+    }, { message: `Withdrawal amount must be between KES ${min} and KES ${max}` }),
+    phone: z.string().regex(/^(?:254|\+254|0)?([71][0-9]{8})$/, {
+      message: 'Please enter a valid Safaricom phone number',
+    }),
+  });
 
 interface WithdrawFormProps {
   availableBalance: string;
@@ -32,24 +32,34 @@ interface WithdrawFormProps {
 
 export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, onSuccess }) => {
   const { requestWithdrawal } = useWallet({ accountMode: 'real' });
+  const config = usePublicConfig();
   const [status, setState] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setError] = useState<string | null>(null);
+  const withdrawSchema = useMemo(
+    () => createWithdrawSchema(config.minWithdrawal, config.maxWithdrawal),
+    [config.minWithdrawal, config.maxWithdrawal]
+  );
+  type WithdrawInput = z.infer<typeof withdrawSchema>;
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<WithdrawInput>({
     resolver: zodResolver(withdrawSchema),
     defaultValues: {
-      amount: '1500',
+      amount: String(config.minWithdrawal),
     }
   });
+  useEffect(() => {
+    setValue('amount', String(config.minWithdrawal), { shouldValidate: true });
+  }, [config.minWithdrawal, setValue]);
 
   const amount = useWatch({ control, name: 'amount' });
   const numAmount = parseFloat(amount) || 0;
-  const fee = numAmount * 0.02;
+  const fee = numAmount * config.withdrawalFeePercentage;
   const netAmount = numAmount - fee;
 
   const onSubmit = async (data: WithdrawInput) => {
@@ -108,7 +118,7 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           <Input
             {...register('amount')}
             type="number"
-            placeholder="Min 1,500"
+            placeholder={`KES ${config.minWithdrawal}–${config.maxWithdrawal}`}
             className="font-mono"
             error={!!errors.amount}
           />
@@ -124,7 +134,9 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
 
         <div className="space-y-2 p-3 bg-bg-light-secondary dark:bg-bg-dark-secondary rounded border border-border-light dark:border-border-dark">
           <div className="flex justify-between text-xs">
-            <span className="text-text-light-tertiary">Processing Fee (2%)</span>
+            <span className="text-text-light-tertiary">
+              Processing Fee ({(config.withdrawalFeePercentage * 100).toFixed(2)}%)
+            </span>
             <span className="font-mono">{formatKES(fee)}</span>
           </div>
           <div className="flex justify-between text-sm font-bold border-t border-border-light dark:border-border-dark pt-2">

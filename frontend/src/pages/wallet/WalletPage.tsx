@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useWallet } from '@/shared/hooks/useWallet';
 import { formatKES } from '@/shared/utils/currencyUtils';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { usePublicConfig } from '@/shared/hooks/usePublicConfig';
 import {
   Card,
   Container,
@@ -18,6 +19,7 @@ import { Wallet, ArrowUpCircle, ArrowDownCircle, ShieldCheck, RefreshCw } from '
 
 export const WalletPage = () => {
   const { user } = useAuth();
+  const config = usePublicConfig();
   const {
     balance,
     ledger,
@@ -119,7 +121,9 @@ export const WalletPage = () => {
             variant="secondary"
             className="h-12 w-full text-base font-bold sm:h-14 sm:flex-1 sm:text-lg"
             onClick={() => setIsWithdrawOpen(true)}
-            disabled={user?.kycStatus !== 'verified'}
+            disabled={
+              config.kycRequiredForWithdrawal && user?.kycStatus !== 'verified'
+            }
           >
             <ArrowUpCircle className="h-5 w-5 mr-2" />
             Withdraw

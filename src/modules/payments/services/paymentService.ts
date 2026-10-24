@@ -198,7 +198,12 @@ export class PaymentService {
       throw new Error(`Maximum daily withdrawal is ${maxWithdrawal} KES`);
     }
 
-    const feePercent = new Decimal(process.env.WITHDRAWAL_FEE_PERCENT || '2').div(100);
+    const feePercent = new Decimal(
+      await this.settingsService.getSetting(
+        'withdrawal.fee_percentage',
+        Number(process.env.WITHDRAWAL_FEE_PERCENT || '2') / 100
+      )
+    );
     const fee = amount.mul(feePercent).toDecimalPlaces(4);
     const netAmount = amount.minus(fee);
 
