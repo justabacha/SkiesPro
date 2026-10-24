@@ -89,3 +89,20 @@ Updated the "Profile" option in `frontend/src/shared/components/layout/Navbar.ts
   - Frontend typecheck (`cd frontend && npx tsc --noEmit`): **0 errors**
   - Backend typecheck (`npm run typecheck`): **0 errors**
 - **Zero Backend / Admin Files Touched**: Verified via `git status` that zero backend (`src/`) or admin (`frontend/src/modules/admin/*`) files were modified.
+
+---
+
+## Follow-up: Fixes v2
+
+### T1 — AuthContext Avatar Hydration on Restore (`AuthContext.tsx`)
+Updated session restore in `frontend/src/shared/context/AuthContext.tsx` during `refresh()`. Upon calling `GET /api/v1/auth/me`, the client also queries `GET /api/v1/users/profile` to retrieve and map `avatar_url` directly onto the global `user.avatarUrl` state. On hard page refreshes, the avatar image remains hydrated in `Navbar.tsx`.
+
+### T2 — Exact MFA Setup Payload (`SecurityTab.tsx`)
+Refactored `startMfaSetup` in `frontend/src/pages/settings/components/SecurityTab.tsx` to read `user?.email || profile.email` without any hardcoded fallback strings. The payload sent to `POST /api/v1/auth/mfa/setup` is guaranteed to be `{ label: user.email }`, returning HTTP 200 and rendering the QR code modal cleanly.
+
+### T3 — Verification & Test Suite
+- Executed 2x consecutive frontend UI test runs (`cd frontend && npm run test:ui`):
+  - Run 1: **15/15 passed** (Settings: 6, History: 9)
+  - Run 2: **15/15 passed** (Settings: 6, History: 9)
+- Typechecks clean (`npm run typecheck && cd frontend && npx tsc --noEmit` — 0 errors).
+- Confirmed via `git status` that zero backend (`src/`) or admin files were modified.

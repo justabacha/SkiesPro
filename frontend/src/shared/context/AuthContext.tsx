@@ -307,12 +307,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = await apiClient.get<{
         data: NonNullable<AuthResponse['data']['user']>;
       }>('/api/v1/auth/me');
+
+      // Hydrate user profile details (avatar_url, phone)
+      try {
+        const userProfile = await apiClient.get<{
+          data: { avatar_url?: string | null };
+        }>('/api/v1/users/profile');
+        if (userProfile?.data?.avatar_url) {
+          (profile.data as any).avatar_url = userProfile.data.avatar_url;
+        }
+      } catch {
+        // Fallback gracefully to /auth/me payload
+      }
+
       console.info('[AUTH_TRACE] Session Restore /auth/me Response:', {
         user_id: profile.data.id,
         email: profile.data.email,
         resolved_role: profile.data.role,
         roles_array: profile.data.roles,
         mfa_enabled: profile.data.mfa_enabled,
+        avatar_url: (profile.data as any).avatar_url,
       });
       setAuthData({ ...response.data, user: profile.data });
     } catch (err) {

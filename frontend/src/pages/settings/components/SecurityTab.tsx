@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, Copy, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Button, Input, Modal, PasswordInput } from '@/shared/components';
 import { apiClient } from '@/shared/services/apiClient';
+import { useAuth } from '@/shared/hooks/useAuth';
 import type { ApiEnvelope, SettingsProfile } from '../types';
 
 interface SecurityTabProps {
@@ -25,6 +26,7 @@ const isSettingsPasswordValid = (password: string): boolean =>
   PASSWORD_PATTERN.test(password);
 
 export const SecurityTab: React.FC<SecurityTabProps> = ({ profile, onProfileUpdated }) => {
+  const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -82,9 +84,10 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({ profile, onProfileUpda
   const startMfaSetup = async () => {
     setNotice(null);
     setIsMfaBusy(true);
+    const mfaLabel = user?.email || profile.email;
     try {
       const response = await apiClient.post<ApiEnvelope<MfaSetup>>('/api/v1/auth/mfa/setup', {
-        label: profile.email || 'user@example.com',
+        label: mfaLabel,
       });
       setMfaSetup(response.data);
       setIsMfaSetupOpen(true);
