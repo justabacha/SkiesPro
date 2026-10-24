@@ -1,7 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { adminApiClient, UserSummary, UserDetail, UserLedgerEntry } from '@/services/admin/adminApiClient';
 
 export function useAdminUsers() {
+  const location = useLocation();
+  const initialSearch = new URLSearchParams(location.search).get('search') || '';
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
@@ -10,10 +13,16 @@ export function useAdminUsers() {
   const [isDrawerLoading, setIsDrawerLoading] = useState<boolean>(false);
   const [isLedgerLoading, setIsLedgerLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [search, setSearch] = useState<string>(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState<string>(initialSearch);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
+
+  useEffect(() => {
+    const querySearch = new URLSearchParams(location.search).get('search') || '';
+    setSearch(querySearch);
+    setDebouncedSearch(querySearch);
+  }, [location.search]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

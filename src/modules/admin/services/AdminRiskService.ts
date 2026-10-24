@@ -63,12 +63,7 @@ export class AdminRiskService {
     return setting ? normalizeSetting(setting) : null;
   }
 
-  async updateSettings(
-    key: string,
-    value: unknown,
-    updatedBy: string,
-    reason: string
-  ) {
+  async updateSettings(key: string, value: unknown, updatedBy: string, reason: string) {
     const [setting] = await this.updateSettingsBatch([{ key, value }], updatedBy, reason);
     return setting;
   }
@@ -105,11 +100,7 @@ export class AdminRiskService {
         if (serializedValue === undefined) {
           throw new Error(`Setting ${setting.key} has an unsupported value`);
         }
-        const updated = await repository.setSetting(
-          setting.key,
-          serializedValue,
-          updatedBy
-        );
+        const updated = await repository.setSetting(setting.key, serializedValue, updatedBy);
         await audit.createEntry({
           actorId: updatedBy,
           action: 'PLATFORM_SETTING_UPDATED',

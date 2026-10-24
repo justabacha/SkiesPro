@@ -106,7 +106,10 @@ export class DemoTradingService {
 
     const stakeValidation = this.stakeValidator.validateStake(request.stake, config);
     if (!stakeValidation.valid) throw new Error(stakeValidation.error);
-    const durationValidation = this.stakeValidator.validateDuration(request.expirySeconds, effectiveConfig);
+    const durationValidation = this.stakeValidator.validateDuration(
+      request.expirySeconds,
+      effectiveConfig
+    );
     if (!durationValidation.valid) throw new Error(durationValidation.error);
 
     const wallet = await this.demoWalletService.getBalance(userId);

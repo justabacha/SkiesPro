@@ -115,7 +115,10 @@ export class TradingService {
     }
 
     // 5. Expiry Bounds Check
-    const durationValidation = this.stakeValidator.validateDuration(request.expirySeconds, effectiveConfig);
+    const durationValidation = this.stakeValidator.validateDuration(
+      request.expirySeconds,
+      effectiveConfig
+    );
     if (!durationValidation.valid) {
       throw new Error(durationValidation.error);
     }

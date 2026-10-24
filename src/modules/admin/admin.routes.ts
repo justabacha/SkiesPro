@@ -222,8 +222,16 @@ router.put(
       if (setting.key.startsWith('kyc.required_') && typeof setting.value !== 'boolean') {
         throw new Error(`${setting.key} must be a boolean`);
       }
-      if (/^(deposit|withdrawal)\.(min|max)_amount$|^trade\.(min|max)_duration_seconds$/.test(setting.key)) {
-        if (typeof setting.value !== 'number' || !Number.isFinite(setting.value) || setting.value <= 0) {
+      if (
+        /^(deposit|withdrawal)\.(min|max)_amount$|^trade\.(min|max)_duration_seconds$/.test(
+          setting.key
+        )
+      ) {
+        if (
+          typeof setting.value !== 'number' ||
+          !Number.isFinite(setting.value) ||
+          setting.value <= 0
+        ) {
           throw new Error(`${setting.key} must be a positive number`);
         }
       }

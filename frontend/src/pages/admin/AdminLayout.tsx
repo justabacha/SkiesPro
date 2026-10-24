@@ -14,6 +14,7 @@ export const AdminLayout: React.FC = () => {
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onNavigate={() => setMobileSidebarOpen(false)}
         />
       </div>
 
@@ -25,7 +26,7 @@ export const AdminLayout: React.FC = () => {
             onClick={() => setMobileSidebarOpen(false)}
           />
           <div className="relative z-10 w-64 h-full">
-            <AdminSidebar collapsed={false} />
+            <AdminSidebar collapsed={false} onNavigate={() => setMobileSidebarOpen(false)} />
           </div>
         </div>
       )}

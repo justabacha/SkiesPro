@@ -82,9 +82,14 @@ const SIDEBAR_NAV_ITEMS: SidebarItem[] = [
 interface AdminSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onNavigate?: () => void;
 }
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, onToggleCollapse }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({
+  collapsed = false,
+  onToggleCollapse,
+  onNavigate,
+}) => {
   const { user } = useAuth();
   const userRoles = new Set(user?.roles || (user?.role ? [user.role] : ['trader']));
 
@@ -101,7 +106,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, o
     >
       {/* Brand Header */}
       <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800/80">
-        <NavLink to="/admin" className="flex items-center gap-3">
+        <NavLink to="/admin" onClick={onNavigate} className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-bold text-lg">
             S
           </div>
@@ -135,6 +140,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, o
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onNavigate}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all group ${
                   isActive

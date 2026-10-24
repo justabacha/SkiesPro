@@ -34,7 +34,10 @@ export class PaymentService {
 
     const amount = new Decimal(data.amount);
     const minDeposit = new Decimal(
-      await this.settingsService.getSetting('deposit.min_amount', Number(process.env.MIN_DEPOSIT_KES || '500'))
+      await this.settingsService.getSetting(
+        'deposit.min_amount',
+        Number(process.env.MIN_DEPOSIT_KES || '500')
+      )
     );
     const maxDeposit = new Decimal(
       await this.settingsService.getSetting('deposit.max_amount', 500000)

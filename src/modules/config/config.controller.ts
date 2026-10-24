@@ -23,10 +23,10 @@ export class ConfigController {
   async getPublicConfig(_req: Request, res: Response): Promise<void> {
     try {
       const entries = await Promise.all(
-        Object.entries(publicSettingDefaults).map(async ([key, defaultValue]) => [
-          key,
-          await this.settings.getSetting(key, defaultValue),
-        ] as const)
+        Object.entries(publicSettingDefaults).map(
+          async ([key, defaultValue]) =>
+            [key, await this.settings.getSetting(key, defaultValue)] as const
+        )
       );
       const values = Object.fromEntries(entries) as Record<PublicConfigKey, unknown>;
       res.status(200).json({

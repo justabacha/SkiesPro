@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/shared/hooks/useAuth';
-import { ShieldCheck, Search, LogOut, Menu } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Search, LogOut, Menu } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { apiClient } from '@/shared/services/apiClient';
 
 interface AdminHeaderProps {
   onToggleSidebar?: () => void;
@@ -20,9 +21,32 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => 
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isMfaActive, setIsMfaActive] = useState(() => Boolean(apiClient.getAdminMfaToken()));
 
   const role = user?.role.toLowerCase() || 'admin';
   const roleStyle = ROLE_COLOR_MAP[role] || ROLE_COLOR_MAP.admin;
+
+  useEffect(() => {
+    if (!isMfaActive) return;
+    const expiresAt = apiClient.getAdminMfaTokenExpiration();
+    if (!expiresAt) {
+      setIsMfaActive(false);
+      return;
+    }
+    const timeout = window.setTimeout(
+      () => setIsMfaActive(false),
+      Math.max(0, expiresAt - Date.now())
+    );
+    return () => window.clearTimeout(timeout);
+  }, [isMfaActive]);
+
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+    navigate(`/admin/users?search=${encodeURIComponent(query)}`);
+  };
 
   // Format path for breadcrumbs
   const pathSegments = location.pathname.split('/').filter(Boolean);
@@ -55,25 +79,32 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => 
 
       {/* Global Quick Search */}
       <div className="flex-1 max-w-md mx-4 hidden md:block">
-        <div className="relative">
+        <form className="relative" onSubmit={handleSearch}>
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Quick search users, tickets, transactions..."
+            aria-label="Search users"
             className="w-full pl-9 pr-4 py-1.5 bg-slate-950/60 border border-slate-800/80 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/80 transition-colors"
           />
-        </div>
+        </form>
       </div>
 
       {/* Right controls */}
       <div className="flex items-center gap-4">
         {/* MFA Status Indicator */}
         <div
-          className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[11px] text-emerald-400 font-medium"
-          title="MFA Token Active"
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${
+            isMfaActive
+              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+              : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+          }`}
+          title={isMfaActive ? 'MFA step-up token active' : 'MFA step-up required'}
         >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">MFA Active</span>
+          {isMfaActive ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
+          <span className="hidden sm:inline">{isMfaActive ? 'MFA Active' : 'MFA Required'}</span>
         </div>
 
         {/* Active Profile & Role Badge */}
