@@ -180,7 +180,8 @@ export class AuthController {
   async setupMfa(req: Request, res: Response): Promise<void> {
     const authReq = req as AuthenticatedRequest;
     try {
-      const result = await this.authService.setupMfa(authReq.user.sub, authReq.user.email || '');
+      const label = req.body.label || req.body.email || authReq.user.email || 'SkiesPro Trader';
+      const result = await this.authService.setupMfa(authReq.user.sub, label);
       res.status(200).json({ data: result });
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
