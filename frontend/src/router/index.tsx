@@ -9,6 +9,7 @@ import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { EmailVerificationPage } from '@/pages/auth/EmailVerificationPage';
 import { WalletPage } from '@/pages/wallet/WalletPage';
 import { TradingPage } from '@/pages/trading/TradingPage';
+import { HistoryPage } from '@/pages/history/HistoryPage';
 import { Placeholder } from '@/shared/components/Placeholder';
 import { ProtectedRoute, PublicRoute } from '@/shared/components';
 import DesignSystemPage from '@/pages/DesignSystem';
@@ -31,7 +32,7 @@ export const router = createBrowserRouter([
       { path: 'trading', element: <TradingPage /> },
       { path: 'trade', element: <TradingPage /> },
       { path: 'wallet', element: <WalletPage /> },
-      { path: 'history', element: <Placeholder title="Trade History" /> },
+      { path: 'history', element: <HistoryPage /> },
       { path: 'referrals', element: <Placeholder title="Referral System" /> },
       { path: 'kyc', element: <Placeholder title="KYC Verification" /> },
       { path: 'support', element: <Placeholder title="Support Tickets" /> },

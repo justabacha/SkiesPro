@@ -46,6 +46,16 @@ export interface UseTradingReturn {
   selectAsset: (symbol: string) => void;
   isLoadingAssets: boolean;
 
+  getContracts: (
+    params?: {
+      status?: string;
+      asset_symbol?: string;
+      limit?: number;
+      cursor?: string;
+    },
+    signal?: AbortSignal
+  ) => Promise<BinaryContract[]>;
+
   activeContracts: BinaryContract[];
   isLoadingActive: boolean;
   fetchActiveContracts: () => Promise<void>;
@@ -122,6 +132,19 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
 
   const [settlementEvents, setSettlementEvents] = useState<SettlementEvent[]>([]);
+
+  const getContracts = useCallback(
+    (
+      params?: {
+        status?: string;
+        asset_symbol?: string;
+        limit?: number;
+        cursor?: string;
+      },
+      signal?: AbortSignal
+    ) => tradingService.getContracts(params, accountMode, signal),
+    [accountMode]
+  );
 
   const previousActiveIdsRef = useRef<Set<string>>(new Set());
   const hasLoadedActiveRef = useRef<boolean>(false);
@@ -553,6 +576,8 @@ export const useTrading = (initialSymbol?: string): UseTradingReturn => {
     selectedAsset,
     selectAsset,
     isLoadingAssets,
+
+    getContracts,
 
     activeContracts,
     isLoadingActive,

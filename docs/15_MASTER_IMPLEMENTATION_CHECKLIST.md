@@ -9,6 +9,7 @@
 | :--- | :--- | :--- | :--- |
 | 2026-07-24 | 1.0.0 | Initial Master Implementation Checklist. Derived from all 14 prerequisite documents: BRD v1.0, SRS v1.0, Domain Model v1.0, Software Architecture v1.1, Architecture Review v1.0, Database Design v1.0, API Design v1.0, UI/UX Design v1.0, Security Architecture v1.0, Infrastructure & DevOps v1.0, Implementation v1.0, Testing Strategy v1.0, Deployment & Operations Manual v1.0, Developer Handbook v1.0, Project Plan v1.0, and Technical Analysis Report v1.0. | Lead Architect / Antigravity |
 | 2026-10-05 | 1.1.0 | Ground-truth reconciliation by Document Auditor: re-computed task count (88 → **80** enumerated rows), marked Phase 5 (Trading Engine) & Phase 6 (Settlement) **Complete**, corrected Phase 10 to **87.5% (7/8)**, added the **WP-21 post-Phase-10 increment** (Demo Trade Surface), annotated Price-Feed/WebSocket/Demo/Chart items, and updated the Progress Dashboard (Overall **60.0% / 48 of 80**). | Document Auditor Agent |
+| 2026-10-24 | 1.2.0 | Marked 10.6 (Admin Dashboard) as Complete. Added Trader Secondary Pages (10.9–10.14) to Phase 10 to resolve tracking gap. Recalculated Phase 10 completion to **57.1% (8/14)** and Overall completion to **57.0% (49/86)**. | Antigravity Agent |
 
 ---
 
@@ -187,9 +188,9 @@ Phase 4: Week 8-9 (shifted)
 | :--- | :--- | :--- |
 | **Total Phases** | 11 | IMP §3 |
 | **Total Modules** | 11 (Auth, User, Wallet, Payment, Pricing, Trading, Settlement, Notification, Referral, Admin, Frontend) | IMP §7 |
-| **Total Features** | 80 tasks across 11 phases (+ WP-21 demo post-Phase-10 increment) | This document |
+| **Total Features** | 86 tasks across 11 phases (+ WP-21 demo post-Phase-10 increment) | This document |
 | **Estimated Duration** | 24-32 weeks (based on 6-8 person team) | PLAN |
-| **Current Status** | In Progress — 60.0% (48/80 tasks complete) | This document §2.2 / §9.2 |
+| **Current Status** | In Progress — 57.0% (49/86 tasks complete) | This document §2.2 / §9.2 |
 
 ### 2.2 Current Status Dashboard
 
@@ -204,11 +205,11 @@ Phase 4: Week 8-9 (shifted)
 | Phase 7: Notifications | ☐ Not Started | 0% | ⏸ No | None |
 | Phase 8: Referral System | ☐ Not Started | 0% | ⏸ No | None |
 | Phase 9: Admin Panel | ☐ Not Started | 0% | ⏸ No | None |
-| Phase 10: Frontend | 🔄 In Progress | 87.5% | ✅ Yes | None |
+| Phase 10: Frontend | 🔄 In Progress | 57.1% (8/14) | ✅ Yes | None |
 | Phase 11: Testing & Launch | ☐ Not Started | 0% | ✅ Yes | None |
 | WP-21 (post-Phase-10) | 🔄 In Progress | ≈85% | ✅ Yes (D4) | Demo candle history, UI-DEMO tests open |
 
-**Overall Completion: 60.0%** (48 of 80 enumerated Phase 1–11 tasks; WP-21 treated as a post-Phase-10 increment)
+**Overall Completion: 57.0%** (49 of 86 enumerated Phase 1–11 tasks; WP-21 treated as a post-Phase-10 increment)
 
 ### 2.3 Critical Path Diagram
 
@@ -537,9 +538,15 @@ These phases can run in parallel with critical path phases once their dependenci
 | 10.3 | Trading interface | Frontend | XL | 5.1–5.6 | 5.1–5.6 | UDS §X, IMP §7.6 | Trade placement, chart, history, open positions | Trading UI | E2E tests pass | ✅ | | | WP-18 + WP-21 demo toggle; `lightweight-charts` v5 (line/candle, timeframes, pip-delta pill) |
 | 10.4 | Wallet screens | Frontend | M | 3.7, 3.8 | 3.7, 3.8 | UDS §X, IMP §7.3 | Balance, history, deposit, withdrawal screens | Wallet UI | E2E tests pass | ✅ | | | WP-19; demo balance chip in `Navbar`/`AccountSwitcher` |
 | 10.5 | Deposit/withdrawal UI | Frontend | M | 3.4, 3.5 | 3.4, 3.5 | UDS §X, IMP §7.4 | Deposit form, withdrawal request, status tracking | Payment UI | E2E tests pass | ✅ | | | WP-19; real-only — locked out in demo mode |
-| 10.6 | Admin dashboard UI | Frontend | XL | 9.1–9.8 | 9.1–9.8 | UDS §X, IMP §7.9 | All admin features accessible, responsive | Admin UI | E2E tests pass | ☐ | | | Blocked by WP-14/WP-20 final spec |
+| 10.6 | Admin dashboard UI | Frontend | XL | 9.1–9.8 | 9.1–9.8 | UDS §X, IMP §7.9 | All admin features accessible, responsive | Admin UI | E2E tests pass | ✅ | | | WP-20 complete. All admin pages, shell, and settings wired. |
 | 10.7 | Responsive design | Frontend | M | 10.1 | 10.1 | UDS §X, DHCS §5 | Mobile, tablet, desktop layouts correct | Responsive CSS | Visual tests | ✅ | | | Chart + trading grid responsive at 375/768/1440; `MobileNav` |
 | 10.8 | Dark mode | Frontend | S | 10.1 | 10.1 | UDS §X | Theme toggle, persistent preference | Theme system | Visual tests | ✅ | | | `ThemeContext` + dark-mode flash prevention |
+| 10.9 | Trader Dashboard UI | Frontend | M | 10.1 | None | UDS §4, IMP §7.1 | Live metrics, account overview, quick actions | Trader Dashboard UI | Visual tests | ☐ | | | Currently a placeholder. Needs live metrics. |
+| 10.10 | Trader History UI | Frontend | M | 10.3 | None | UDS §7, IMP §7.6 | Paginated contract history with settlement outcomes | Trade History UI | E2E tests pass | ☐ | | | Needs paginated trade history. |
+| 10.11 | User KYC Flow UI | Frontend | L | 2.8, 10.2 | None | UDS §5, IMP §7.1 | Document upload and status tracking | KYC Flow UI | E2E tests pass | ☐ | | | Document upload and status tracking. |
+| 10.12 | User Referral Dashboard UI | Frontend | M | 8.4, 10.1 | None | UDS §9, IMP §7.8 | Referral code generation and commission earnings view | Referral Dashboard UI | E2E tests pass | ☐ | | | Code generation and earnings view. |
+| 10.13 | User Support UI | Frontend | M | 10.1 | None | UDS §10, IMP §7.10 | Ticket creation and message thread interface | User Support UI | E2E tests pass | ☐ | | | Ticket creation and message thread. |
+| 10.14 | User Settings UI | Frontend | S | 10.1 | None | UDS §4, IMP §7.1 | Profile details, password reset, MFA setup | User Settings UI | E2E tests pass | ☐ | | | Profile, password, MFA setup. |
 
 **Phase 10 Exit Criteria:**
 - ✅ All user-facing screens functional
@@ -864,6 +871,12 @@ These phases can run in parallel with critical path phases once their dependenci
 | 10.6 Admin dashboard UI | BRD §X | SRS §X | ADS §16 | - | UDS §8 | SATM §6 | TSQS §12 | - |
 | 10.7 Responsive design | BRD §X | SRS §X | - | - | UDS §2 | - | TSQS §12 | - |
 | 10.8 Dark mode | BRD §X | SRS §X | - | - | UDS §2 | - | TSQS §12 | - |
+| 10.9 Trader Dashboard UI | BRD §X | SRS §X | ADS §8 | - | UDS §4 | SATM §6 | TSQS §12 | - |
+| 10.10 Trader History UI | BRD §X | SRS §X | ADS §12 | - | UDS §7 | SATM §6 | TSQS §12 | - |
+| 10.11 User KYC Flow UI | BRD §X | SRS §X | ADS §8 | - | UDS §5 | SATM §6 | TSQS §12 | - |
+| 10.12 User Referral Dashboard UI | BRD §X | SRS §X | ADS §15 | - | UDS §9 | SATM §6 | TSQS §12 | - |
+| 10.13 User Support UI | BRD §X | SRS §X | ADS §14 | - | UDS §10 | SATM §6 | TSQS §12 | - |
+| 10.14 User Settings UI | BRD §X | SRS §X | ADS §8 | - | UDS §4 | SATM §6 | TSQS §12 | - |
 | **WP-21: Demo Trade Surface (post-Phase-10)** | | | | | | | | |
 | WP-21.1 Demo isolation migration (033/034) | D4=YES | SRS §X | - | DDS §5.9/5.8/5.7 | - | SATM §7 | TSQS §4.5 | DOM §5 |
 | WP-21.2 Demo price feed (isolated mock) | D4=YES | SRS §X | ADS §13 | DDS §5.7 | - | SATM §7 | TSQS §4.7 | - |
@@ -1019,7 +1032,7 @@ Critical Path Status =
 
 | Metric | Current | Target | Status |
 |--------|---------|--------|--------|
-| **Overall Completion** | 60.0% (48/80) | 100% | 🔄 |
+| **Overall Completion** | 57.0% (49/86) | 100% | 🔄 |
 | **Phase 1 Completion** | 87.5% | 100% | 🔄 |
 | **Phase 2 Completion** | 100% | 100% | ✅ |
 | **Phase 3 Completion** | 100% | 100% | ✅ |
@@ -1029,7 +1042,7 @@ Critical Path Status =
 | **Phase 7 Completion** | 0% | 100% | ☐ |
 | **Phase 8 Completion** | 0% | 100% | ☐ |
 | **Phase 9 Completion** | 0% | 100% | ☐ |
-| **Phase 10 Completion** | 87.5% (7/8) | 100% | 🔄 |
+| **Phase 10 Completion** | 57.1% (8/14) | 100% | 🔄 |
 | **Phase 11 Completion** | 0% | 100% | ☐ |
 | **WP-21 Demo (post-Phase-10)** | ≈85% (backend + FE; UI-DEMO tests + demo candles open) | 100% | 🔄 |
 | **Critical Path Status** | Green | Green | ✅ |
