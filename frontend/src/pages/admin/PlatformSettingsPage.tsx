@@ -11,7 +11,7 @@ function getCategory(key: string): SettingsCategory {
   if (key.startsWith('referral.') || key.startsWith('fee.')) return 'Fees & Referrals';
   if (key.startsWith('kyc.')) return 'KYC';
   if (key.startsWith('deposit.')) return 'Deposits';
-  if (key.startsWith('withdrawal.')) return 'Withdrawals';
+  if (key === 'withdrawal.fee_percentage' || key.startsWith('withdrawal.')) return 'Withdrawals';
   return 'General';
 }
 
@@ -27,6 +27,12 @@ function validateSettings(settings: PlatformSetting[]): string | null {
     }
     if (!isNumericSetting(setting.key, setting.value)) continue;
     const value = Number(setting.value);
+    if (setting.key === 'withdrawal.fee_percentage') {
+      if (!Number.isFinite(value) || value < 0 || value > 1) {
+        return 'Withdrawal fee percentage must be between 0 and 1.';
+      }
+      continue;
+    }
     if (!Number.isFinite(value) || value <= 0) {
       return `${setting.key} must be a positive number.`;
     }
@@ -207,6 +213,7 @@ export const PlatformSettingsPage: React.FC = () => {
                   type={isNumericSetting(setting.key, setting.value) ? 'number' : 'text'}
                   min={isNumericSetting(setting.key, setting.value) ? '0' : undefined}
                   max={
+                    setting.key === 'withdrawal.fee_percentage' ||
                     setting.key === 'trade.default_payout_ratio' ||
                     setting.key === 'referral.commission_percentage'
                       ? '1'

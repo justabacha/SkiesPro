@@ -221,3 +221,36 @@ Ran all test suites.
 ```
 
 The requested live admin-setting changes (`deposit.min_amount = 1000` and `kyc.required_for_trading = true`) and browser UI verification were not performed in this session. No database values were changed; the dynamic frontend behavior is covered by the endpoint implementation and automated verification above.
+
+## Final Polish: Admin UI Fee Setting
+
+**Status: Executed & Verified**
+
+- `AdminRepository.listSettings()` selects all rows from `config.platform_settings`, so `withdrawal.fee_percentage` is included whenever seeded. Migration `041_seed_withdrawal_fee_setting.sql` inserts the setting at JSONB value `0.02` if absent; no repository query or schema change was needed.
+- The settings UI categorizes `withdrawal.fee_percentage` under **Withdrawals** and renders it through the existing numeric-setting input. The fee-specific UI validation now accepts only values from `0` through `1` (inclusive), and the input advertises the same `min`/`max` range.
+- `WithdrawForm.tsx` already reads `usePublicConfig()`, calculates `fee = numAmount * config.withdrawalFeePercentage`, and displays `(config.withdrawalFeePercentage * 100).toFixed(2)` in the fee label. Thus a fetched value of `0.05` displays `5.00%` and calculates a five-percent fee; the hook's existing public-config cache is five seconds.
+- An admin save updates the stored platform setting; the next public config fetch returns it and the trader form uses it. The requested TOTP save and browser-to-browser UI flow were not executed in this environment, so no live `0.05` value or rendered `5%` label is claimed as manually verified.
+
+Admin UI change:
+
+```diff
+- if (key.startsWith('withdrawal.')) return 'Withdrawals';
++ if (key === 'withdrawal.fee_percentage' || key.startsWith('withdrawal.')) return 'Withdrawals';
++
++ if (setting.key === 'withdrawal.fee_percentage') {
++   if (!Number.isFinite(value) || value < 0 || value > 1) {
++     return 'Withdrawal fee percentage must be between 0 and 1.';
++   }
++   continue;
++ }
++
++ max={
++   setting.key === 'withdrawal.fee_percentage' ||
++   setting.key === 'trade.default_payout_ratio' ||
++   setting.key === 'referral.commission_percentage'
++     ? '1'
++     : undefined
++ }
+```
+
+`git diff --check` passed. No database values were changed.
