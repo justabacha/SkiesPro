@@ -22,6 +22,21 @@ export interface UserRow {
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
+  deactivated_at?: Date | null;
+}
+
+export interface SessionRow {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  access_token_jti: string | null;
+  expires_at: Date;
+  created_at: Date;
+  last_seen_at: Date | null;
+  is_revoked: boolean;
+  revoked_at: Date | null;
 }
 
 export class UserRepository extends BaseRepository {
@@ -87,6 +102,20 @@ export class UserRepository extends BaseRepository {
     await this.query(
       'UPDATE app_auth.users SET mfa_enabled = $1, mfa_type = $2, updated_at = NOW() WHERE id = $3',
       [enabled, type, id]
+    );
+  }
+
+  async updateEmail(userId: string, newEmail: string): Promise<void> {
+    await this.query(
+      'UPDATE app_auth.users SET email = $1, updated_at = NOW() WHERE id = $2',
+      [newEmail, userId]
+    );
+  }
+
+  async deactivate(userId: string): Promise<void> {
+    await this.query(
+      "UPDATE app_auth.users SET status = 'closed', updated_at = NOW() WHERE id = $1",
+      [userId]
     );
   }
 
@@ -213,5 +242,51 @@ export class UserRepository extends BaseRepository {
       throw new Error('KYC initiation failed: Invalid current status');
     }
     return result.rows[0];
+  }
+
+  async revokeOtherSessions(userId: string, currentJti?: string): Promise<void> {
+    if (currentJti) {
+      await this.query(
+        'UPDATE app_auth.sessions SET is_revoked = TRUE, revoked_at = NOW() WHERE user_id = $1 AND access_token_jti <> $2 AND is_revoked = FALSE',
+        [userId, currentJti]
+      );
+    } else {
+      await this.query(
+        'UPDATE app_auth.sessions SET is_revoked = TRUE, revoked_at = NOW() WHERE user_id = $1 AND is_revoked = FALSE',
+        [userId]
+      );
+    }
+  }
+
+  async revokeAllSessions(userId: string): Promise<void> {
+    await this.query(
+      'UPDATE app_auth.sessions SET is_revoked = TRUE, revoked_at = NOW() WHERE user_id = $1 AND is_revoked = FALSE',
+      [userId]
+    );
+  }
+
+  async getActiveSessions(userId: string): Promise<SessionRow[]> {
+    const result = await this.query<SessionRow>(
+      `SELECT * FROM app_auth.sessions
+       WHERE user_id = $1 AND is_revoked = FALSE AND expires_at > NOW()
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async findSessionById(sessionId: string, userId: string): Promise<SessionRow | null> {
+    const result = await this.query<SessionRow>(
+      'SELECT * FROM app_auth.sessions WHERE id = $1 AND user_id = $2',
+      [sessionId, userId]
+    );
+    return result.rows[0] || null;
+  }
+
+  async revokeSessionById(sessionId: string): Promise<void> {
+    await this.query(
+      'UPDATE app_auth.sessions SET is_revoked = TRUE, revoked_at = NOW() WHERE id = $1',
+      [sessionId]
+    );
   }
 }

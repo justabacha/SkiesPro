@@ -314,6 +314,55 @@ export class AuthService {
     return this.confirmMfaSetup(userId, code);
   }
 
+  async disableMfa(userId: string, code?: string, password?: string): Promise<void> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new Error('User not found');
+    if (!user.mfa_enabled) throw new Error('MFA is not enabled');
+
+    let isValid = false;
+    if (code) {
+      const mfa = await this.mfaRepo.findByUserId(userId);
+      if (mfa && mfa.is_enabled) {
+        const secret = this.mfaService.decrypt(mfa.secret_encrypted);
+        isValid = await this.mfaService.verifyToken(code, secret);
+      }
+    } else if (password) {
+      isValid = await bcrypt.compare(password, user.password_hash);
+    }
+
+    if (!isValid) throw new Error('Invalid MFA code or password');
+
+    await this.userRepo.updateMfaStatus(userId, false, null);
+    await this.mfaRepo.disable(userId);
+  }
+
+  async regenerateBackupCodes(
+    userId: string,
+    code?: string,
+    password?: string
+  ): Promise<string[]> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new Error('User not found');
+    if (!user.mfa_enabled) throw new Error('MFA is not enabled');
+
+    let isValid = false;
+    if (code) {
+      const mfa = await this.mfaRepo.findByUserId(userId);
+      if (mfa && mfa.is_enabled) {
+        const secret = this.mfaService.decrypt(mfa.secret_encrypted);
+        isValid = await this.mfaService.verifyToken(code, secret);
+      }
+    } else if (password) {
+      isValid = await bcrypt.compare(password, user.password_hash);
+    }
+
+    if (!isValid) throw new Error('Invalid MFA code or password');
+
+    const backupCodes = this.mfaService.generateBackupCodes();
+    await this.mfaRepo.updateBackupCodes(userId, backupCodes);
+    return backupCodes;
+  }
+
   async verifyAdminStepUp(userId: string, role: string, code: string): Promise<string> {
     if (!ADMIN_ROLES.has(role.toLowerCase())) {
       throw new Error('FORBIDDEN_NOT_ADMIN');

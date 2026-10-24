@@ -110,7 +110,11 @@ class ApiClient {
     }
 
     const headers = new Headers(options.headers);
-    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    const isFormData =
+      typeof FormData !== 'undefined' && options.body instanceof FormData;
+    if (!headers.has('Content-Type') && !isFormData) {
+      headers.set('Content-Type', 'application/json');
+    }
     if (this.accessToken && !headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${this.accessToken}`);
     }
@@ -207,7 +211,12 @@ class ApiClient {
     return this.request<T>(path, {
       ...options,
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      body:
+        typeof FormData !== 'undefined' && body instanceof FormData
+          ? body
+          : body
+            ? JSON.stringify(body)
+            : undefined,
     });
   }
 

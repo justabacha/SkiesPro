@@ -223,6 +223,30 @@ export class AuthController {
     }
   }
 
+  async disableMfa(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      await this.authService.disableMfa(authReq.user.sub, req.body.code, req.body.password);
+      res.status(200).json({ data: { message: 'MFA disabled successfully' } });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
+  async regenerateBackupCodes(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const backupCodes = await this.authService.regenerateBackupCodes(
+        authReq.user.sub,
+        req.body.code,
+        req.body.password
+      );
+      res.status(200).json({ data: { backup_codes: backupCodes } });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
   async adminMfaStepUp(req: Request, res: Response): Promise<void> {
     const authReq = req as AuthenticatedRequest;
     try {

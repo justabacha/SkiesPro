@@ -36,4 +36,18 @@ export class MfaRepository {
       [userId]
     );
   }
+
+  async disable(userId: string): Promise<void> {
+    await pgPool.query(
+      'UPDATE app_auth.mfa_tokens SET is_enabled = FALSE, disabled_at = NOW() WHERE user_id = $1',
+      [userId]
+    );
+  }
+
+  async updateBackupCodes(userId: string, backupCodes: string[]): Promise<void> {
+    await pgPool.query(
+      'UPDATE app_auth.mfa_tokens SET backup_codes = $1 WHERE user_id = $2',
+      [backupCodes, userId]
+    );
+  }
 }

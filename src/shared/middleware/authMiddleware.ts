@@ -10,6 +10,7 @@ export interface AuthenticatedRequest extends Request {
     permissions: string[];
     email?: string;
     mfa_verified?: boolean;
+    jti?: string;
   };
 }
 

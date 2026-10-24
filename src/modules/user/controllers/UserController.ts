@@ -83,12 +83,130 @@ export class UserController {
         .status(200)
         .json({ data: { kyc_status: status }, meta: { request_id: req.correlationId } });
     } catch (error) {
-      // Return 409 Conflict if status is already pending/verified
       if (error instanceof Error && error.message.includes('Invalid current status')) {
         res.status(409).json({ error: error.message });
       } else {
         res.status(400).json({ error: (error as Error).message });
       }
+    }
+  }
+
+  async changePassword(req: Request, res: Response): Promise<void> {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const authReq = req as AuthenticatedRequest;
+    try {
+      await this.userService.changePassword(
+        authReq.user.sub,
+        req.body.current_password,
+        req.body.new_password,
+        authReq.user.jti
+      );
+      res.status(200).json({
+        data: { message: 'Password updated successfully' },
+        meta: { request_id: req.correlationId },
+      });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
+  async initiateEmailChange(req: Request, res: Response): Promise<void> {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const result = await this.userService.initiateEmailChange(
+        authReq.user.sub,
+        req.body.new_email,
+        req.body.password
+      );
+      res.status(200).json({
+        data: {
+          message: 'Verification token generated and outbox alert recorded',
+          token: result.token,
+        },
+        meta: { request_id: req.correlationId },
+      });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
+  async verifyEmailChange(req: Request, res: Response): Promise<void> {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const result = await this.userService.verifyEmailChange(
+        authReq.user.sub,
+        req.body.token,
+        authReq.user.jti
+      );
+      res.status(200).json({
+        data: { message: 'Email updated successfully', email: result.email },
+        meta: { request_id: req.correlationId },
+      });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
+  async getSessions(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      const sessions = await this.userService.getActiveSessions(authReq.user.sub, authReq.user.jti);
+      res.status(200).json({ data: sessions, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  }
+
+  async revokeSession(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    try {
+      await this.userService.revokeSession(
+        authReq.user.sub,
+        req.params.id,
+        authReq.user.jti
+      );
+      res.status(200).json({
+        data: { message: 'Session revoked successfully' },
+        meta: { request_id: req.correlationId },
+      });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  }
+
+  async deactivateAccount(req: Request, res: Response): Promise<void> {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const authReq = req as AuthenticatedRequest;
+    try {
+      await this.userService.deactivateAccount(authReq.user.sub, req.body.password);
+      res.status(200).json({
+        data: { message: 'Account deactivated successfully' },
+        meta: { request_id: req.correlationId },
+      });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
     }
   }
 }

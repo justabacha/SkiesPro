@@ -10,6 +10,7 @@ import { EmailVerificationPage } from '@/pages/auth/EmailVerificationPage';
 import { WalletPage } from '@/pages/wallet/WalletPage';
 import { TradingPage } from '@/pages/trading/TradingPage';
 import { HistoryPage } from '@/pages/history/HistoryPage';
+import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { Placeholder } from '@/shared/components/Placeholder';
 import { ProtectedRoute, PublicRoute } from '@/shared/components';
 import DesignSystemPage from '@/pages/DesignSystem';
@@ -36,7 +37,7 @@ export const router = createBrowserRouter([
       { path: 'referrals', element: <Placeholder title="Referral System" /> },
       { path: 'kyc', element: <Placeholder title="KYC Verification" /> },
       { path: 'support', element: <Placeholder title="Support Tickets" /> },
-      { path: 'settings', element: <Placeholder title="User Settings" /> },
+      { path: 'settings', element: <SettingsPage /> },
       { path: 'design-system', element: <DesignSystemPage /> },
       { path: 'menu', element: <Placeholder title="Mobile Menu" /> },
     ],

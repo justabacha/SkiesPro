@@ -6,4 +6,5 @@ export interface ProfileResponseDto {
   avatar_url: string | null;
   kyc_status: string;
   created_at: string;
+  mfa_enabled: boolean;
 }

@@ -107,7 +107,7 @@ router.post(
   (req: Request, res: Response) => controller.resetPassword(req, res)
 );
 
-// MFA Setup (authenticated)
+// MFA Management (authenticated)
 router.post('/mfa/setup', authenticate, (req: Request, res: Response) =>
   controller.setupMfa(req, res)
 );
@@ -116,6 +116,12 @@ router.post(
   authenticate,
   [body('totp_code').isLength({ min: 6, max: 6 }).isNumeric()],
   (req: Request, res: Response) => controller.confirmMfaSetup(req, res)
+);
+router.post('/mfa/disable', authenticate, (req: Request, res: Response) =>
+  controller.disableMfa(req, res)
+);
+router.post('/mfa/backup-codes/regenerate', authenticate, (req: Request, res: Response) =>
+  controller.regenerateBackupCodes(req, res)
 );
 
 export default router;

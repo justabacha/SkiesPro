@@ -35,7 +35,7 @@ export function FilterTabs<T extends string = string>({
               aria-pressed={isActive}
               className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  ? 'bg-brand text-text-dark-primary shadow-md shadow-brand/20'
                   : 'text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary'
               }`}
             >
@@ -45,7 +45,7 @@ export function FilterTabs<T extends string = string>({
                 <span
                   className={`px-1.5 py-0.5 text-[10px] rounded-full ${
                     isActive
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-brand text-text-dark-primary'
                       : 'bg-bg-light-tertiary dark:bg-bg-dark-tertiary text-text-light-secondary dark:text-text-dark-secondary'
                   }`}
                 >
