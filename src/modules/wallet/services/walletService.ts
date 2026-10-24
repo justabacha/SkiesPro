@@ -120,8 +120,12 @@ export class WalletService {
       const walletRepo = new WalletRepository(client);
       const ledgerService = new LedgerService(client);
 
-      const wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
-      if (!wallet) throw new Error('Wallet not found');
+      let wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
+      if (!wallet) {
+        await walletRepo.createIfAbsent(userId, 'KES', accountType);
+        wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
+      }
+      if (!wallet) throw new Error('Unable to create wallet');
 
       const balanceBefore = new Decimal(wallet.balance);
       const balanceAfter = balanceBefore.plus(amount);
@@ -164,8 +168,12 @@ export class WalletService {
       const walletRepo = new WalletRepository(client);
       const ledgerService = new LedgerService(client);
 
-      const wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
-      if (!wallet) throw new Error('Wallet not found');
+      let wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
+      if (!wallet) {
+        await walletRepo.createIfAbsent(userId, 'KES', accountType);
+        wallet = await walletRepo.findByUserIdForUpdate(userId, accountType);
+      }
+      if (!wallet) throw new Error('Unable to create wallet');
 
       const availableBefore = new Decimal(wallet.available_balance);
       if (availableBefore.lessThan(amount)) {

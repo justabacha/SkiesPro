@@ -69,7 +69,7 @@ export const FinanceOverviewPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 self-start md:self-auto">
-          <HasRole roles={['super_admin']}>
+          <HasRole roles={['finance', 'super_admin']}>
             <button
               onClick={() => setIsAdjustModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg shadow-blue-600/20"

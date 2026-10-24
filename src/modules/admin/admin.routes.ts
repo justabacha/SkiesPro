@@ -266,13 +266,13 @@ router.get(
 );
 router.get(
   '/reports/user-registrations',
-  requireAdminRole(['admin', 'super_admin']),
+  requireAdminRole(['finance', 'admin', 'super_admin']),
   requireAdminMFA,
   (req: Request, res: Response) => controller.getUserRegistrations(req, res)
 );
 router.get(
   '/reports/settlement-performance',
-  requireAdminRole(['admin', 'super_admin']),
+  requireAdminRole(['finance', 'admin', 'super_admin']),
   requireAdminMFA,
   (req: Request, res: Response) => controller.getSettlementPerformance(req, res)
 );
@@ -319,7 +319,7 @@ router.put(
 
 router.post(
   '/wallets/adjust',
-  requireAdminRole(['super_admin']),
+  requireAdminRole(['finance', 'super_admin']),
   requireAdminMFA,
   validateWalletAdjustment,
   validate,

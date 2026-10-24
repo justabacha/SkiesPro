@@ -9,6 +9,7 @@ describe('AdminWalletService balance mutations', () => {
   let actorId: string;
   let userId: string;
   let walletId: string;
+  let userWithoutWalletId: string;
   let createdActionIds: string[] = [];
 
   beforeAll(async () => {
@@ -31,6 +32,18 @@ describe('AdminWalletService balance mutations', () => {
     userId = user.rows[0].id;
     const wallet = await new WalletService().createWallet(userId, 'real', 'KES');
     walletId = wallet.id;
+
+    const userWithoutWallet = await pgPool.query<{ id: string }>(
+      `INSERT INTO app_auth.users
+         (email, password_hash, display_name, status, kyc_status, phone)
+       VALUES ($1, 'test-hash', 'Admin Wallet No Wallet Integration', 'active', 'verified', $2)
+       RETURNING id`,
+      [
+        `admin-wallet-no-wallet-${uuidv4()}@example.com`,
+        `08${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`,
+      ]
+    );
+    userWithoutWalletId = userWithoutWallet.rows[0].id;
   });
 
   afterAll(async () => {
@@ -38,11 +51,18 @@ describe('AdminWalletService balance mutations', () => {
     if (createdActionIds.length > 0) {
       await pgPool.query('DELETE FROM admin.admin_actions WHERE id = ANY($1::uuid[])', [createdActionIds]);
     }
-    if (walletId) {
-      await pgPool.query('DELETE FROM wallet.ledger_entries WHERE wallet_id = $1', [walletId]);
-      await pgPool.query('DELETE FROM wallet.wallets WHERE id = $1', [walletId]);
+    const testUserIds = [userId, userWithoutWalletId].filter(Boolean);
+    if (testUserIds.length > 0) {
+      await pgPool.query(
+        `DELETE FROM wallet.ledger_entries
+         WHERE wallet_id IN (SELECT id FROM wallet.wallets WHERE user_id = ANY($1::uuid[]))`,
+        [testUserIds]
+      );
+      await pgPool.query('DELETE FROM wallet.wallets WHERE user_id = ANY($1::uuid[])', [testUserIds]);
     }
-    await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [userId]);
+    await pgPool.query('DELETE FROM app_auth.users WHERE id = ANY($1::uuid[])', [
+      testUserIds,
+    ]);
   });
 
   it('applies immediate adjustments and applies pending adjustments only when approved', async () => {
@@ -108,5 +128,28 @@ describe('AdminWalletService balance mutations', () => {
       [walletId]
     );
     expect(Number(balance.rows[0].balance)).toBe(700);
+  });
+
+  it('creates a missing wallet and credits it during a wallet adjustment', async () => {
+    if (skipDatabaseTests) return;
+    const result = await new AdminWalletService().adjustWallet({
+      actorId,
+      userId: userWithoutWalletId,
+      amount: 250,
+      type: 'credit',
+      reason: 'Create wallet during admin adjustment test',
+      idempotencyKey: `missing-wallet-${uuidv4()}`,
+    });
+    createdActionIds.push(result.actionId!);
+    expect(result.status).toBe('applied');
+
+    const wallet = await pgPool.query<{ id: string; balance: string }>(
+      `SELECT id, balance
+       FROM wallet.wallets
+       WHERE user_id = $1 AND account_type = 'real'`,
+      [userWithoutWalletId]
+    );
+    expect(wallet.rows).toHaveLength(1);
+    expect(Number(wallet.rows[0].balance)).toBe(250);
   });
 });
