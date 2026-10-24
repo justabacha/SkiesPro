@@ -321,12 +321,12 @@ export class AuthService {
 
     const mfa = await this.mfaRepo.findByUserId(userId);
     if (!mfa || !mfa.is_enabled) {
-      throw new Error('MFA_STEP_UP_REQUIRED');
+      throw new Error('MFA_NOT_CONFIGURED');
     }
 
     const secret = this.mfaService.decrypt(mfa.secret_encrypted);
     if (!(await this.mfaService.verifyToken(code, secret))) {
-      throw new Error('MFA_STEP_UP_REQUIRED');
+      throw new Error('INVALID_TOTP');
     }
 
     return this.tokenService.generateAdminMfaToken(userId, role);

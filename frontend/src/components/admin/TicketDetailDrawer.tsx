@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SupportTicket } from '@/services/admin/adminApiClient';
-import { safeFormatDate } from '@/shared/utils/safeFormatters';
+import { formatDateEAT, formatLabel } from '@/shared/utils/safeFormatters';
 import { MfaStepUpModal } from './MfaStepUpModal';
 import { X, Send, AlertCircle } from 'lucide-react';
 
@@ -67,7 +67,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2 py-0.5 text-[10px] uppercase font-bold rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  {ticket.category || 'General'}
+                  {formatLabel(ticket.category || 'General')}
                 </span>
                 <span className="text-xs font-mono text-slate-500">#{ticket.id}</span>
               </div>
@@ -129,7 +129,7 @@ export const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 >
                   <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold mb-1">
                     <span>{msg.sender_name || (msg.sender === 'agent' ? 'Support Officer' : 'Customer')}</span>
-                    <span>{safeFormatDate(msg.created_at, { timeOnly: true })}</span>
+                    <span>{formatDateEAT(msg.created_at)}</span>
                   </div>
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.message}</p>
                 </div>

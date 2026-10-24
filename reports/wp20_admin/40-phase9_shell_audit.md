@@ -95,3 +95,121 @@
 3. **Dynamic MFA Badge**: Wire `AdminHeader.tsx` to reflect active MFA step-up token presence/expiry rather than a static badge.
 
 Read-Only Audit Completed
+
+## Follow-up: Shell Component Fixes
+
+**Status: Executed & Verified**
+
+### Pre-check findings
+
+- **P1:** `AdminSidebar` originally accepted only `collapsed` and `onToggleCollapse`; its navigation links had no callback for closing the mobile drawer.
+- **P2:** `AdminHeader` had an uncontrolled search field and an always-green, hardcoded “MFA Active” badge.
+- **P3:** The admin step-up token is held by `apiClient` and persisted in `sessionStorage` under `x_admin_mfa_token` (with legacy lookup for `admin_mfa_token`). `apiClient.getAdminMfaToken()` validates the decoded JWT purpose, MFA claim, and expiry, and clears invalid/expired tokens.
+
+### Implemented changes
+
+- Added optional `onNavigate` to `AdminSidebar` and call it when clicking both the brand link and each navigation link. Both desktop and mobile sidebar instances in `AdminLayout` receive a callback to close the mobile drawer.
+- Made the header search controlled; submitting a non-empty query navigates to `/admin/users?search=<encoded query>`.
+- The MFA badge now reflects the validated step-up token state and schedules a state update at token expiry. Active shows a green `ShieldCheck`/“MFA Active”; missing or expired shows amber `ShieldAlert`/“MFA Required”.
+- `useAdminUsers` initializes the search input from the `search` query parameter and synchronizes it when the URL query changes. That value flows through the existing debounced search into the existing user-list request.
+
+### Diffs
+
+`AdminSidebar.tsx`:
+
+```diff
+ interface AdminSidebarProps {
+   collapsed?: boolean;
+   onToggleCollapse?: () => void;
++  onNavigate?: () => void;
+ }
+
+-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, onToggleCollapse }) => {
++export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, onToggleCollapse, onNavigate }) => {
+...
+-<NavLink key={item.path} to={item.path} className={...}>
++<NavLink key={item.path} to={item.path} onClick={onNavigate} className={...}>
+```
+
+`AdminLayout.tsx`:
+
+```diff
+ <AdminSidebar
+   collapsed={sidebarCollapsed}
+   onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
++  onNavigate={() => setMobileSidebarOpen(false)}
+ />
+...
+-<AdminSidebar collapsed={false} />
++<AdminSidebar collapsed={false} onNavigate={() => setMobileSidebarOpen(false)} />
+```
+
+`AdminHeader.tsx`:
+
+```diff
+-import React from 'react';
++import React, { useEffect, useState } from 'react';
+-import { ShieldCheck, Search, LogOut, Menu } from 'lucide-react';
++import { ShieldAlert, ShieldCheck, Search, LogOut, Menu } from 'lucide-react';
++import { apiClient } from '@/shared/services/apiClient';
+...
++const [searchQuery, setSearchQuery] = useState('');
++const [isMfaActive, setIsMfaActive] = useState(() => Boolean(apiClient.getAdminMfaToken()));
++// Read token expiration and schedule the badge to change when it expires.
++const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
++  event.preventDefault();
++  const query = searchQuery.trim();
++  if (query) navigate(`/admin/users?search=${encodeURIComponent(query)}`);
++};
+...
+-<div className="relative"> ... uncontrolled input ... </div>
++<form className="relative" onSubmit={handleSearch}>
++  <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} ... />
++</form>
+...
+-<ShieldCheck ... /><span>MFA Active</span>
++{isMfaActive ? <ShieldCheck ... /> : <ShieldAlert ... />}
++<span>{isMfaActive ? 'MFA Active' : 'MFA Required'}</span>
+```
+
+`useAdminUsers.ts` query-prefill/synchronization:
+
+```diff
++const location = useLocation();
++const initialSearch = new URLSearchParams(location.search).get('search') || '';
+-const [search, setSearch] = useState<string>('');
+-const [debouncedSearch, setDebouncedSearch] = useState<string>('');
++const [search, setSearch] = useState<string>(initialSearch);
++const [debouncedSearch, setDebouncedSearch] = useState<string>(initialSearch);
++useEffect(() => {
++  const querySearch = new URLSearchParams(location.search).get('search') || '';
++  setSearch(querySearch);
++  setDebouncedSearch(querySearch);
++}, [location.search]);
+```
+
+### Verification
+
+- `npx.cmd tsc --noEmit -p frontend\tsconfig.json` — passed with 0 errors.
+- `git diff --check` — passed.
+- Full Jest run 1:
+
+```text
+Test Suites: 59 passed, 59 total
+Tests:       392 passed, 392 total
+Snapshots:   0 total
+Time:        424.887 s
+Ran all test suites.
+```
+
+- Full Jest run 2:
+
+```text
+Test Suites: 59 passed, 59 total
+Tests:       392 passed, 392 total
+Snapshots:   0 total
+Time:        424.705 s
+Ran all test suites.
+```
+
+Both Jest commands exited successfully. They emitted Jest’s standard `--forceExit` notice about open handles after the summary.

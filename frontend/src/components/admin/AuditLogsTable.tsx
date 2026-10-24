@@ -1,14 +1,8 @@
 import React from 'react';
 import { AuditLogItem } from '@/services/admin/adminApiClient';
-import { formatDateEAT } from '@/shared/utils/safeFormatters';
+import { formatDateEAT, formatLabel } from '@/shared/utils/safeFormatters';
 import { TableLoading, TableEmpty } from '@/shared/components';
 import { ShieldCheck } from 'lucide-react';
-
-const formatAction = (action: string): string =>
-  action
-    .replace(/[_\s]+/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (character) => character.toUpperCase());
 
 interface AuditLogsTableProps {
   logs: AuditLogItem[];
@@ -52,11 +46,11 @@ export const AuditLogsTable: React.FC<AuditLogsTableProps> = ({ logs, isLoading 
                 </td>
                 <td className="py-3.5 px-4">
                   <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    {formatAction(log.action)}
+                    {formatLabel(log.action)}
                   </span>
                 </td>
                 <td className="py-3.5 px-4 font-mono text-slate-300">
-                  {log.target_entity} {log.target_id ? `(${log.target_id.substring(0, 8)}...)` : ''}
+                  {formatLabel(log.target_entity)} {log.target_id ? `(${log.target_id.substring(0, 8)}...)` : ''}
                 </td>
                 <td className="py-3.5 px-4">
                   <div className="flex flex-col gap-0.5">

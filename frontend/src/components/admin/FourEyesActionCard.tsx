@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { adminApiClient, PendingAction } from '@/services/admin/adminApiClient';
-import { safeFormatNumber, safeFormatDate } from '@/shared/utils/safeFormatters';
+import { safeFormatNumber, formatDateEAT, formatLabel } from '@/shared/utils/safeFormatters';
 import { MfaStepUpModal } from './MfaStepUpModal';
 import {
   CheckSquare,
@@ -95,7 +95,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
             </div>
             <div>
               <span className="text-xs uppercase font-extrabold tracking-wider text-purple-400 block">
-                {action.action_type || 'HIGH_VALUE_WALLET_ADJUSTMENT'}
+                {formatLabel(action.action_type || 'HIGH_VALUE_WALLET_ADJUSTMENT')}
               </span>
               <h3 className="text-sm font-bold text-slate-100 mt-0.5">
                 Target Entity: {action.target_entity} ({action.target_id})
@@ -130,7 +130,7 @@ export const FourEyesActionCard: React.FC<FourEyesActionCardProps> = ({
             <span className="text-slate-400 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-slate-500" /> Initiated At
             </span>
-            <span className="text-slate-400">{safeFormatDate(action.created_at)}</span>
+            <span className="text-slate-400">{formatDateEAT(action.created_at)}</span>
           </div>
 
           {action.details && (

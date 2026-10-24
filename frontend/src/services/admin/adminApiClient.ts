@@ -153,6 +153,7 @@ export interface RiskMetrics {
 export interface SymbolExposure {
   symbol: string;
   display_name: string;
+  asset_type?: string;
   open_call_volume: number;
   open_put_volume: number;
   net_exposure: number;

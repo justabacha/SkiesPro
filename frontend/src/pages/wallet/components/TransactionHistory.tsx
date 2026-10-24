@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { formatKES } from '@/shared/utils/currencyUtils';
+import { formatDateEAT } from '@/shared/utils/safeFormatters';
 import { Badge, Button, Modal, Stack } from '@/shared/components';
 import { Eye, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react';
 
@@ -81,7 +82,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                 <div className="min-w-0">
                   <div>{getStatusBadge(entry.entry_type)}</div>
                   <p className="mt-1 text-[11px] text-text-light-secondary dark:text-text-dark-secondary">
-                    {new Date(entry.created_at).toLocaleString()}
+                    {formatDateEAT(entry.created_at)}
                   </p>
                 </div>
                 <Button
@@ -141,7 +142,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(entry.entry_type)}</td>
                   <td className="px-4 py-3 text-xs text-text-light-secondary">
-                    {new Date(entry.created_at).toLocaleString()}
+                    {formatDateEAT(entry.created_at)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button
@@ -202,7 +203,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
 
             <div className="flex items-center gap-2 text-xs text-text-light-tertiary">
               <Clock className="h-3 w-3" />
-              <span>Processed at {new Date(selectedTx.created_at).toLocaleString()}</span>
+              <span>Processed at {formatDateEAT(selectedTx.created_at)}</span>
             </div>
           </Stack>
         )}

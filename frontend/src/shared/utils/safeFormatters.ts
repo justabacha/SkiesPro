@@ -7,6 +7,15 @@ export const safeFormatNumber = (val: unknown, options?: Intl.NumberFormatOption
   return isNaN(num) ? '0.00' : num.toLocaleString(undefined, options);
 };
 
+export const formatLabel = (value: unknown): string => {
+  if (value == null || value === '') return 'N/A';
+  return String(value)
+    .replace(/[_\s]+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+};
+
 /**
  * Safe helper function for formatting dates.
  * Safeguards against null, undefined, or invalid date values.

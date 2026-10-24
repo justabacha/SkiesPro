@@ -1,6 +1,6 @@
 import React from 'react';
 import { WithdrawalRequest } from '@/services/admin/adminApiClient';
-import { safeFormatNumber, safeFormatDate } from '@/shared/utils/safeFormatters';
+import { safeFormatNumber, formatDateEAT, formatLabel } from '@/shared/utils/safeFormatters';
 import { TableLoading, TableEmpty } from '@/shared/components';
 import { CheckCircle2, XCircle, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
 
@@ -47,7 +47,7 @@ export const PendingWithdrawalsTable: React.FC<PendingWithdrawalsTableProps> = (
     return (
       <div className="flex flex-col items-end gap-1">
         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold uppercase border ${badgeStyle}`}>
-          {status}
+          {formatLabel(status)}
         </span>
         {isFlagged && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
@@ -100,7 +100,7 @@ export const PendingWithdrawalsTable: React.FC<PendingWithdrawalsTableProps> = (
                     ${safeFormatNumber(usdVal, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="py-3.5 px-4 text-slate-400">
-                    {safeFormatDate(item.created_at)}
+                    {formatDateEAT(item.created_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <div className="flex flex-col items-end gap-2">

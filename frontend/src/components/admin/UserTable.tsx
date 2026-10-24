@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserSummary } from '@/services/admin/adminApiClient';
-import { safeFormatDate } from '@/shared/utils/safeFormatters';
+import { formatDateOnlyEAT, formatLabel } from '@/shared/utils/safeFormatters';
 import { TableLoading, TableEmpty } from '@/shared/components';
 import { Eye, UserX, ShieldAlert } from 'lucide-react';
 
@@ -46,7 +46,7 @@ export const RoleBadge: React.FC<{ user: any }> = ({ user }) => {
 
   return (
     <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${style}`}>
-      {roleStr}
+      {formatLabel(roleStr)}
     </span>
   );
 };
@@ -109,14 +109,14 @@ export const UserTable: React.FC<UserTableProps> = ({
                           : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                       }`}
                     >
-                      {user.status || 'active'}
+                      {formatLabel(user.status || 'active')}
                     </span>
                   </td>
                   <td className="py-3.5 px-4">
                     <span className="text-slate-300 font-medium">{kycStatus}</span>
                   </td>
                   <td className="py-3.5 px-4 text-slate-400">
-                    {safeFormatDate(user.created_at, { dateOnly: true })}
+                    {formatDateOnlyEAT(user.created_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <div className="flex items-center justify-end gap-2">

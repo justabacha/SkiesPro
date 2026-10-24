@@ -1,16 +1,69 @@
+import { PoolClient } from 'pg';
+import { Decimal } from 'decimal.js';
+import { pgPool } from '../../../config/database.js';
 import { AdminAuditService } from './AdminAuditService.js';
 import { AdminRepository } from '../repositories/AdminRepository.js';
 import { TokenService } from '../../auth/services/tokenService.js';
 import { MfaService } from '../../auth/services/mfaService.js';
 import { MfaRepository } from '../../auth/repositories/mfaRepository.js';
+import { WalletService } from '../../wallet/services/walletService.js';
 
 export class AdminWalletService {
   private readonly repo: AdminRepository;
   private readonly audit: AdminAuditService;
+  private readonly walletServiceFactory: (client: PoolClient) => WalletService;
 
-  constructor(repo?: AdminRepository, audit?: AdminAuditService) {
+  constructor(
+    repo?: AdminRepository,
+    audit?: AdminAuditService,
+    walletServiceFactory: (client: PoolClient) => WalletService = (client) => new WalletService(client)
+  ) {
     this.repo = repo || new AdminRepository();
     this.audit = audit || new AdminAuditService();
+    this.walletServiceFactory = walletServiceFactory;
+  }
+
+  private async withMoneyTransaction<T>(
+    operation: (
+      client: PoolClient,
+      repository: AdminRepository,
+      audit: AdminAuditService,
+      wallet: WalletService
+    ) => Promise<T>
+  ): Promise<T> {
+    const client = await pgPool.connect();
+    try {
+      await client.query('BEGIN');
+      const repository = new AdminRepository(client);
+      const result = await operation(
+        client,
+        repository,
+        new AdminAuditService(repository),
+        this.walletServiceFactory(client)
+      );
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async applyWalletAdjustment(
+    wallet: WalletService,
+    userId: string,
+    amount: Decimal,
+    type: 'credit' | 'debit',
+    referenceId: string,
+    description: string
+  ): Promise<void> {
+    if (type === 'credit') {
+      await wallet.credit(userId, 'real', amount, 'admin_adjustment', referenceId, description);
+    } else {
+      await wallet.debit(userId, 'real', amount, 'admin_adjustment', referenceId, description);
+    }
   }
 
   static requiresSecondApproval(amount: number): boolean {
@@ -25,103 +78,133 @@ export class AdminWalletService {
     reason: string;
     idempotencyKey: string;
   }): Promise<{ status: string; actionId?: string; amount: number; type: string; userId: string }> {
-    const requiresApproval = AdminWalletService.requiresSecondApproval(input.amount);
+    const amount = new Decimal(input.amount);
+    if (!amount.isFinite() || !amount.greaterThan(0)) {
+      throw new Error('Wallet adjustment amount must be positive');
+    }
+    return this.withMoneyTransaction(async (client, repository, audit, wallet) => {
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [input.idempotencyKey]);
+      const existing = await repository.getAdminActionByIdempotencyKey(input.idempotencyKey);
+      if (existing) {
+        const details = typeof existing.details === 'string'
+          ? JSON.parse(existing.details)
+          : existing.details;
+        if (
+          existing.target_user_id !== input.userId ||
+          Number(details.amount) !== input.amount ||
+          details.type !== input.type
+        ) {
+          throw new Error('Idempotency key was already used for a different wallet adjustment');
+        }
+        return {
+          status: existing.status === 'rejected'
+            ? 'rejected'
+            : existing.requires_approval && existing.status === 'pending'
+              ? 'pending_second_approval'
+              : 'applied',
+          actionId: existing.id,
+          amount: input.amount,
+          type: input.type,
+          userId: input.userId,
+        };
+      }
 
-    const action = await this.repo.createAdminAction({
-      adminId: input.actorId,
-      actionType: 'wallet_adjustment',
-      targetUserId: input.userId,
-      details: {
-        user_id: input.userId,
-        amount: input.amount,
-        type: input.type,
-        reason: input.reason,
-        idempotency_key: input.idempotencyKey,
-      },
-      requiresApproval,
-    });
-
-    if (requiresApproval) {
-      await this.audit.createEntry({
-        actorId: input.actorId,
-        action: 'wallet_adjustment_pending_approval',
-        affectedEntity: 'wallet',
-        entityId: input.userId,
+      const requiresApproval = AdminWalletService.requiresSecondApproval(input.amount);
+      const action = await repository.createAdminAction({
+        adminId: input.actorId,
+        actionType: 'wallet_adjustment',
+        targetUserId: input.userId,
         details: {
-          action_id: action.id,
+          user_id: input.userId,
           amount: input.amount,
           type: input.type,
           reason: input.reason,
+          idempotency_key: input.idempotencyKey,
         },
+        requiresApproval,
       });
+      if (!action) throw new Error('Unable to create wallet adjustment action');
 
+      if (requiresApproval) {
+        await audit.createEntry({
+          actorId: input.actorId,
+          action: 'wallet_adjustment_pending_approval',
+          affectedEntity: 'wallet',
+          entityId: input.userId,
+          details: { action_id: action.id, amount: input.amount, type: input.type, reason: input.reason },
+        });
+        return {
+          status: 'pending_second_approval',
+          actionId: action.id,
+          amount: input.amount,
+          type: input.type,
+          userId: input.userId,
+        };
+      }
+
+      await this.applyWalletAdjustment(wallet, input.userId, amount, input.type, action.id, input.reason);
+      const completedAction = await repository.approveAdminAction(action.id, input.actorId);
+      if (!completedAction) throw new Error('Unable to mark wallet adjustment as completed');
+      await audit.createEntry({
+        actorId: input.actorId,
+        action: 'wallet_adjustment_applied',
+        affectedEntity: 'wallet',
+        entityId: input.userId,
+        details: { action_id: action.id, amount: input.amount, type: input.type, reason: input.reason },
+      });
       return {
-        status: 'pending_second_approval',
+        status: 'applied',
         actionId: action.id,
         amount: input.amount,
         type: input.type,
         userId: input.userId,
       };
-    }
-
-    await this.audit.createEntry({
-      actorId: input.actorId,
-      action: 'wallet_adjustment_applied',
-      affectedEntity: 'wallet',
-      entityId: input.userId,
-      details: {
-        action_id: action.id,
-        amount: input.amount,
-        type: input.type,
-        reason: input.reason,
-      },
     });
-
-    return {
-      status: 'applied',
-      actionId: action.id,
-      amount: input.amount,
-      type: input.type,
-      userId: input.userId,
-    };
   }
 
   async approveAction(
     actionId: string,
     approvedBy: string
   ): Promise<{ status: string; actionId: string; approvedBy: string }> {
-    const action = await this.repo.getAdminActionForUpdate(actionId);
-    if (!action) {
-      throw new Error('Action not found');
-    }
-    const currentStatus =
-      action.status ||
-      (action.approved_at ? 'approved' : action.rejected_at ? 'rejected' : 'pending');
-    if (currentStatus !== 'pending') {
-      throw new Error(`Cannot approve action with status '${currentStatus}'`);
-    }
+    return this.withMoneyTransaction(async (_client, repository, audit, wallet) => {
+      const action = await repository.getAdminActionForUpdate(actionId);
+      if (!action) throw new Error('Action not found');
+      const currentStatus =
+        action.status ||
+        (action.approved_at ? 'approved' : action.rejected_at ? 'rejected' : 'pending');
+      if (currentStatus !== 'pending') {
+        throw new Error(`Cannot approve action with status '${currentStatus}'`);
+      }
 
-    const updated = await this.repo.approveAdminAction(actionId, approvedBy);
-    if (!updated) {
-      throw new Error('Cannot approve action');
-    }
+      if (String(action.action_type).toLowerCase() === 'wallet_adjustment') {
+        const details = typeof action.details === 'string' ? JSON.parse(action.details) : action.details;
+        const userId = details?.user_id || action.target_user_id;
+        const type = details?.type;
+        const amount = new Decimal(details?.amount);
+        if (!userId || (type !== 'credit' && type !== 'debit') || !amount.isFinite() || !amount.greaterThan(0)) {
+          throw new Error('Pending wallet adjustment details are invalid');
+        }
+        await this.applyWalletAdjustment(
+          wallet,
+          userId,
+          amount,
+          type,
+          actionId,
+          details.reason || 'Approved admin wallet adjustment'
+        );
+      }
 
-    await this.audit.createEntry({
-      actorId: approvedBy,
-      action: 'admin_action_approved',
-      affectedEntity: 'admin_action',
-      entityId: actionId,
-      details: {
-        approved_by: approvedBy,
-        action_type: updated.action_type,
-      },
+      const updated = await repository.approveAdminAction(actionId, approvedBy);
+      if (!updated) throw new Error('Cannot approve action');
+      await audit.createEntry({
+        actorId: approvedBy,
+        action: 'admin_action_approved',
+        affectedEntity: 'admin_action',
+        entityId: actionId,
+        details: { approved_by: approvedBy, action_type: updated.action_type },
+      });
+      return { status: 'approved', actionId, approvedBy };
     });
-
-    return {
-      status: 'approved',
-      actionId,
-      approvedBy,
-    };
   }
 
   async rejectAction(

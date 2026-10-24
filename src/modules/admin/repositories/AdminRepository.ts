@@ -899,6 +899,18 @@ export class AdminRepository extends BaseRepository {
     return result.rows[0] || null;
   }
 
+  async getAdminActionByIdempotencyKey(key: string): Promise<any | null> {
+    const result = await this.query<any>(
+      `SELECT * FROM admin.admin_actions
+       WHERE action_type = 'wallet_adjustment'
+         AND details->>'idempotency_key' = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [key]
+    );
+    return result.rows[0] || null;
+  }
+
   async approveAdminAction(actionId: string, approvedBy: string): Promise<any> {
     const result = await this.query<any>(
       `UPDATE admin.admin_actions

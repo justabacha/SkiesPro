@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { adminApiClient, PlatformSetting } from '@/services/admin/adminApiClient';
 import { MfaStepUpModal } from '@/components/admin/MfaStepUpModal';
+import { TableEmpty, TableLoading } from '@/shared/components';
+import { safeFormatNumber } from '@/shared/utils/safeFormatters';
 import { Settings, RefreshCw, Save, AlertCircle } from 'lucide-react';
 
 const categories = ['General', 'Trading', 'Fees & Referrals', 'KYC', 'Deposits', 'Withdrawals'] as const;
@@ -23,6 +25,14 @@ function getCategory(key: string): SettingsCategory {
 
 function isNumericSetting(key: string, value: unknown): boolean {
   return typeof value === 'number' || /(?:amount|duration_seconds|percentage|ratio)$/.test(key);
+}
+
+function getSettingUnit(key: string): string {
+  if (key.endsWith('_amount')) return 'KES';
+  if (key.endsWith('duration_seconds')) return 'seconds';
+  if (key.endsWith('percentage')) return 'fraction';
+  if (key.endsWith('ratio')) return 'ratio';
+  return '';
 }
 
 function validateSettings(settings: PlatformSetting[]): string | null {
@@ -184,7 +194,9 @@ export const PlatformSettingsPage: React.FC = () => {
 
       {/* Settings Form List */}
       <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-6 shadow-2xl space-y-4">
-        {visibleSettings.length > 0 ? (
+        {isLoading ? (
+          <TableLoading message="Loading platform settings..." />
+        ) : visibleSettings.length > 0 ? (
           visibleSettings.map((setting) => (
             <div key={setting.key} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg space-y-2">
               <div className="flex justify-between items-center">
@@ -242,13 +254,26 @@ export const PlatformSettingsPage: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-100 font-mono focus:outline-none focus:border-blue-500"
                 />
               )}
-              <p className="text-[10px] text-slate-500">Current value: {String(setting.value)}</p>
+              <p className="text-[10px] text-slate-500">
+                Current value: {isNumericSetting(setting.key, setting.value)
+                  ? safeFormatNumber(setting.value)
+                  : String(setting.value)}
+                {getSettingUnit(setting.key) ? ` ${getSettingUnit(setting.key)}` : ''}
+              </p>
             </div>
           ))
+        ) : settings.length === 0 ? (
+          <TableEmpty
+            icon={Settings}
+            title="No platform settings configured"
+            description="There are no platform settings available to display."
+          />
         ) : (
-          <div className="p-8 text-center text-xs text-slate-500">
-            No settings are configured in this category.
-          </div>
+          <TableEmpty
+            icon={Settings}
+            title={`No ${activeCategory} settings`}
+            description="No settings are configured in this category."
+          />
         )}
       </div>
 

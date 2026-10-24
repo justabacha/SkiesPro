@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAdminSupport } from '@/hooks/admin/useAdminSupport';
-import { safeFormatDate } from '@/shared/utils/safeFormatters';
+import { formatDateEAT, formatLabel } from '@/shared/utils/safeFormatters';
 import { TicketDetailDrawer } from '@/components/admin/TicketDetailDrawer';
 import { Headphones, RefreshCw, MessageSquare, AlertCircle } from 'lucide-react';
 import { FilterTabs, TableEmpty, TableLoading } from '@/shared/components';
@@ -11,6 +11,14 @@ const TICKET_STATUS_TABS = [
   { id: 'in_progress', label: 'In Progress' },
   { id: 'resolved', label: 'Resolved' },
   { id: 'closed', label: 'Closed' },
+] as const;
+
+const TICKET_PRIORITY_TABS = [
+  { id: '', label: 'All Priorities' },
+  { id: 'low', label: 'Low' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'high', label: 'High' },
+  { id: 'urgent', label: 'Urgent' },
 ] as const;
 
 export const SupportTicketsPage: React.FC = () => {
@@ -75,17 +83,12 @@ export const SupportTicketsPage: React.FC = () => {
           activeTab={statusFilter}
           onChange={setStatusFilter}
         />
-        <select
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-cyan-500/80"
-        >
-          <option value="">All Priorities</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-        </select>
+        <FilterTabs
+          tabs={TICKET_PRIORITY_TABS}
+          activeTab={priorityFilter}
+          onChange={setPriorityFilter}
+          variant="pills"
+        />
       </div>
 
       {/* Tickets List */}
@@ -134,7 +137,7 @@ export const SupportTicketsPage: React.FC = () => {
                               : 'bg-slate-800 text-slate-300 border border-slate-700'
                         }`}
                       >
-                        {ticket.priority}
+                        {formatLabel(ticket.priority)}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">
@@ -147,11 +150,11 @@ export const SupportTicketsPage: React.FC = () => {
                               : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         }`}
                       >
-                        {ticket.status}
+                        {formatLabel(ticket.status)}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                      {safeFormatDate(ticket.updated_at)}
+                      {formatDateEAT(ticket.updated_at)}
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button

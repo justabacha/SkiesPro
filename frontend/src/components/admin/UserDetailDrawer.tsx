@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserDetail, UserLedgerEntry } from '@/services/admin/adminApiClient';
-import { safeFormatNumber, safeFormatDate } from '@/shared/utils/safeFormatters';
+import { safeFormatNumber, formatDateEAT, formatLabel } from '@/shared/utils/safeFormatters';
 import { RoleBadge } from './UserTable';
 import { X, Wallet, Award } from 'lucide-react';
 
@@ -173,7 +173,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                 </div>
                 <div className="flex justify-between border-b border-slate-800/60 pb-2">
                   <span className="text-slate-400">Account Status</span>
-                  <span className="capitalize text-slate-200 font-medium">{user.status || 'active'}</span>
+                  <span className="text-slate-200 font-medium">{formatLabel(user.status || 'active')}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-800/60 pb-2">
                   <span className="text-slate-400">KYC Status</span>
@@ -229,7 +229,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                             </div>
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono">
-                            {safeFormatDate(trade.created_at)}
+                            {formatDateEAT(trade.created_at)}
                           </div>
                         </div>
                       );
@@ -272,7 +272,7 @@ export const UserDetailDrawer: React.FC<UserDetailDrawerProps> = ({
                         <p className="text-slate-400 text-[11px]">{description}</p>
                         <div className="flex justify-between text-[10px] text-slate-500 font-mono">
                           <span>Balance after: {safeFormatNumber(balanceAfter)}</span>
-                          <span>{safeFormatDate(createdAt)}</span>
+                          <span>{formatDateEAT(createdAt)}</span>
                         </div>
                       </div>
                     );

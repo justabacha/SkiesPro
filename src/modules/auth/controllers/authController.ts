@@ -7,8 +7,8 @@ import { AuthenticatedRequest } from '../../../shared/middleware/authMiddleware.
 export class AuthController {
   private authService: AuthService;
 
-  constructor() {
-    this.authService = new AuthService();
+  constructor(authService = new AuthService()) {
+    this.authService = authService;
   }
 
   async register(req: Request, res: Response): Promise<void> {
@@ -239,14 +239,38 @@ export class AuthController {
       res.status(200).json({ data: { admin_mfa_token: adminMfaToken, expires_in: 300 } });
     } catch (error) {
       const code = (error as Error).message;
-      const status = code === 'FORBIDDEN_NOT_ADMIN' ? 403 : 401;
-      logger.warn('[MFA_TRACE] Admin step-up rejected', {
+      const isInvalidTotp = code === 'INVALID_TOTP';
+      const isForbidden = code === 'FORBIDDEN_NOT_ADMIN';
+      const isMfaNotConfigured = code === 'MFA_NOT_CONFIGURED';
+      const status = isForbidden || isMfaNotConfigured ? 403 : isInvalidTotp ? 400 : 500;
+      const responseCode = isInvalidTotp
+        ? 'INVALID_TOTP'
+        : isMfaNotConfigured
+          ? 'MFA_NOT_CONFIGURED'
+          : isForbidden
+            ? code
+            : 'ADMIN_MFA_STEP_UP_FAILED';
+      const logContext = {
         userId: authReq.user.sub,
         role: authReq.user.role,
         status,
         reason: code,
+      };
+      if (status === 500) {
+        logger.error('[MFA_TRACE] Admin step-up failed', logContext);
+      } else {
+        logger.warn('[MFA_TRACE] Admin step-up rejected', logContext);
+      }
+      res.status(status).json({
+        error: isInvalidTotp
+          ? 'Invalid TOTP code'
+          : isMfaNotConfigured
+            ? 'Administrator MFA is not configured'
+            : isForbidden
+              ? code
+              : 'Internal server error',
+        code: responseCode,
       });
-      res.status(status).json({ error: code, code });
     }
   }
 }

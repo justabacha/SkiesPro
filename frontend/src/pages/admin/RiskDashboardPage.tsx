@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminRisk } from '@/hooks/admin/useAdminRisk';
-import { safeFormatNumber } from '@/shared/utils/safeFormatters';
+import { safeFormatNumber, formatLabel } from '@/shared/utils/safeFormatters';
 import { AssetConfigModal } from '@/components/admin/AssetConfigModal';
 import { SymbolExposure } from '@/services/admin/adminApiClient';
 import { TableLoading, TableEmpty } from '@/shared/components';
@@ -117,6 +117,9 @@ export const RiskDashboardPage: React.FC = () => {
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-100">{item.display_name || item.symbol}</div>
                         <div className="text-[10px] text-slate-500 font-mono">{item.symbol}</div>
+                        {item.asset_type && (
+                          <div className="text-[10px] text-slate-500">{formatLabel(item.asset_type)}</div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-blue-400">
                         {item.payout_rate}%

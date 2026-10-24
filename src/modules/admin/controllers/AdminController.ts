@@ -28,97 +28,164 @@ export class AdminController {
     this.audit = new AdminAuditService();
   }
 
+  private async respondToAdminAction<T>(
+    req: Request,
+    res: Response,
+    action: string,
+    operation: () => Promise<T>,
+    status: number | ((result: T) => number) = 200
+  ): Promise<void> {
+    try {
+      const result = await operation();
+      const responseStatus = typeof status === 'function' ? status(result) : status;
+      res.status(responseStatus).json({ data: result, meta: { request_id: req.correlationId } });
+    } catch (error) {
+      logger.error(`${action} failed`, {
+        error: error instanceof Error ? error.message : String(error),
+        request_id: req.correlationId,
+      });
+      res.status(500).json({ error: 'Internal server error', code: 'ADMIN_ACTION_FAILED' });
+    }
+  }
+
   async listUsers(req: Request, res: Response): Promise<void> {
-    const result = await this.users.listUsers({
-      page: Number(req.query.page || 1),
-      perPage: Number(req.query.per_page || 20),
-      status: typeof req.query.status === 'string' ? req.query.status : undefined,
-      search: typeof req.query.search === 'string' ? req.query.search : undefined,
-      role: typeof req.query.role === 'string' ? req.query.role : undefined,
-    });
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin user list', () =>
+      this.users.listUsers({
+        page: Number(req.query.page || 1),
+        perPage: Number(req.query.per_page || 20),
+        status: typeof req.query.status === 'string' ? req.query.status : undefined,
+        search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        role: typeof req.query.role === 'string' ? req.query.role : undefined,
+      })
+    );
   }
 
   async getUserById(req: Request, res: Response): Promise<void> {
-    const result = await this.users.getUserById(req.params.id);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin user lookup', () =>
+      this.users.getUserById(req.params.id)
+    );
   }
 
   async updateUserStatus(req: Request, res: Response): Promise<void> {
     const user = req as AdminAuthenticatedRequest;
-    const result = await this.users.updateUserStatus(req.params.id, req.body, user.user.sub);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin user status update', () =>
+      this.users.updateUserStatus(req.params.id, req.body, user.user.sub)
+    );
   }
 
   async getUserLedger(req: Request, res: Response): Promise<void> {
-    const result = await this.users.getUserLedger(req.params.id, {
-      page: Number(req.query.page || 1),
-      perPage: Number(req.query.per_page || 20),
-    });
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin user ledger fetch', () =>
+      this.users.getUserLedger(req.params.id, {
+        page: Number(req.query.page || 1),
+        perPage: Number(req.query.per_page || 20),
+      })
+    );
   }
 
   async listPendingKyc(req: Request, res: Response): Promise<void> {
-    const result = await this.compliance.listPendingKyc({
-      page: Number(req.query.page || 1),
-      perPage: Number(req.query.per_page || 20),
-      status: typeof req.query.status === 'string' ? req.query.status : 'pending',
-    });
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin KYC list', () =>
+      this.compliance.listPendingKyc({
+        page: Number(req.query.page || 1),
+        perPage: Number(req.query.per_page || 20),
+        status: typeof req.query.status === 'string' ? req.query.status : 'pending',
+      })
+    );
   }
 
   async getKycById(req: Request, res: Response): Promise<void> {
-    const result = await this.compliance.getKycById(req.params.id);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin KYC lookup', () =>
+      this.compliance.getKycById(req.params.id)
+    );
   }
 
   async reviewKyc(req: Request, res: Response): Promise<void> {
     const user = req as AdminAuthenticatedRequest;
-    const result = await this.compliance.reviewKyc(
-      req.params.id,
-      req.body.action,
-      req.body.note || '',
-      user.user.sub
+    return this.respondToAdminAction(req, res, 'Admin KYC review', () =>
+      this.compliance.reviewKyc(req.params.id, req.body.action, req.body.note || '', user.user.sub)
     );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
   async listWithdrawals(req: Request, res: Response): Promise<void> {
-    const result = await this.compliance.listWithdrawals({
-      page: Number(req.query.page || 1),
-      perPage: Number(req.query.per_page || 20),
-      status: typeof req.query.status === 'string' ? req.query.status : 'pending',
-    });
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin withdrawal list', () =>
+      this.compliance.listWithdrawals({
+        page: Number(req.query.page || 1),
+        perPage: Number(req.query.per_page || 20),
+        status: typeof req.query.status === 'string' ? req.query.status : 'pending',
+      })
+    );
   }
 
   async listPendingWithdrawals(req: Request, res: Response): Promise<void> {
-    return this.listWithdrawals(req, res);
+    return this.respondToAdminAction(req, res, 'Admin pending withdrawal list', () =>
+      this.compliance.listPendingWithdrawals({
+        page: Number(req.query.page || 1),
+        perPage: Number(req.query.per_page || 20),
+      })
+    );
   }
 
   async getWithdrawalById(req: Request, res: Response): Promise<void> {
-    const result = await this.compliance.getWithdrawalById(req.params.id);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+    return this.respondToAdminAction(req, res, 'Admin withdrawal lookup', () =>
+      this.compliance.getWithdrawalById(req.params.id)
+    );
   }
 
   async approveWithdrawal(req: Request, res: Response): Promise<void> {
     const user = req as AdminAuthenticatedRequest;
-    const result = await this.compliance.approveWithdrawal(
-      req.params.id,
-      user.user.sub,
-      req.body.note || ''
+    return this.respondToAdminAction(req, res, 'Admin withdrawal approval', () =>
+      this.compliance.approveWithdrawal(req.params.id, user.user.sub, req.body.note || '')
     );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
   async rejectWithdrawal(req: Request, res: Response): Promise<void> {
     const user = req as AdminAuthenticatedRequest;
-    const result = await this.compliance.rejectWithdrawal(
-      req.params.id,
-      user.user.sub,
-      req.body.reason || ''
+    return this.respondToAdminAction(req, res, 'Admin withdrawal rejection', () =>
+      this.compliance.rejectWithdrawal(req.params.id, user.user.sub, req.body.reason || '')
     );
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
+  }
+
+  async listPendingActions(req: Request, res: Response): Promise<void> {
+    return this.respondToAdminAction(req, res, 'Admin pending actions list', () =>
+      this.wallets.listPendingActions()
+    );
+  }
+
+  async updateAssetConfig(req: Request, res: Response): Promise<void> {
+    const user = req as AdminAuthenticatedRequest;
+    return this.respondToAdminAction(req, res, 'Admin asset configuration update', () =>
+      this.risk.updateAssetConfig(req.params.symbol, req.body, user.user.sub)
+    );
+  }
+
+  async adjustWallet(req: Request, res: Response): Promise<void> {
+    const idempotencyKey = req.get('Idempotency-Key');
+    if (!idempotencyKey) {
+      res.status(400).json({ error: 'Idempotency-Key header is required' });
+      return;
+    }
+    const authReq = req as AdminAuthenticatedRequest;
+    return this.respondToAdminAction(
+      req,
+      res,
+      'Admin wallet adjustment',
+      () =>
+        this.wallets.adjustWallet({
+          actorId: authReq.user.sub,
+          userId: req.body.user_id,
+          amount: Number(req.body.amount),
+          type: req.body.type,
+          reason: req.body.reason || 'admin adjustment',
+          idempotencyKey,
+        }),
+      (result) => result.status === 'pending_second_approval' ? 202 : 200
+    );
+  }
+
+  async approveAction(req: Request, res: Response): Promise<void> {
+    const authReq = req as AdminAuthenticatedRequest;
+    return this.respondToAdminAction(req, res, 'Admin action approval', () =>
+      this.wallets.approveAction(req.params.id, authReq.user.sub)
+    );
   }
 
   async retryWithdrawal(req: Request, res: Response): Promise<void> {
@@ -186,12 +253,6 @@ export class AdminController {
       logger.error('Risk exposure fetch failed', { error: error.message, code: error.code });
       res.status(500).json({ error: 'Internal server error', code: 'RISK_FETCH_FAILED' });
     }
-  }
-
-  async updateAssetConfig(req: Request, res: Response): Promise<void> {
-    const user = req as AdminAuthenticatedRequest;
-    const result = await this.risk.updateAssetConfig(req.params.symbol, req.body, user.user.sub);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
   async listSettings(req: Request, res: Response): Promise<void> {
@@ -369,34 +430,6 @@ export class AdminController {
     }
   }
 
-  async adjustWallet(req: Request, res: Response): Promise<void> {
-    const idempotencyKey = req.get('Idempotency-Key');
-    if (!idempotencyKey) {
-      res.status(400).json({ error: 'Idempotency-Key header is required' });
-      return;
-    }
-
-    const authReq = req as AdminAuthenticatedRequest;
-    const result = await this.wallets.adjustWallet({
-      actorId: authReq.user.sub,
-      userId: req.body.user_id,
-      amount: Number(req.body.amount),
-      type: req.body.type,
-      reason: req.body.reason || 'admin adjustment',
-      idempotencyKey,
-    });
-
-    res
-      .status(result.status === 'pending_second_approval' ? 202 : 200)
-      .json({ data: result, meta: { request_id: req.correlationId } });
-  }
-
-  async approveAction(req: Request, res: Response): Promise<void> {
-    const authReq = req as AdminAuthenticatedRequest;
-    const result = await this.wallets.approveAction(req.params.id, authReq.user.sub);
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
-  }
-
   async rejectAction(req: Request, res: Response): Promise<void> {
     const authReq = req as AdminAuthenticatedRequest;
     try {
@@ -443,11 +476,6 @@ export class AdminController {
 
       res.status(500).json({ error: 'Internal server error', code: 'INTERNAL_ERROR' });
     }
-  }
-
-  async listPendingActions(req: Request, res: Response): Promise<void> {
-    const result = await this.wallets.listPendingActions();
-    res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
   }
 
   async verifyAuditChain(req: Request, res: Response): Promise<void> {
