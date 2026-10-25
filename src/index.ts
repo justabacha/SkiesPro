@@ -2,7 +2,7 @@ import express, { Application } from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import http from 'http';
-import { config, validateB2cConfig } from './config/app.js';
+import { config, validateB2cConfig, validateIntasendConfig } from './config/app.js';
 import { corsMiddleware } from './config/cors.js';
 import { correlationIdMiddleware } from './shared/middleware/correlationId.js';
 import { requestLogger } from './shared/middleware/logger.js';
@@ -13,6 +13,9 @@ import { pgPool } from './config/database.js';
 
 if (process.env.NODE_ENV !== 'test') {
   validateB2cConfig();
+  if (process.env.PAYMENT_GATEWAY_MODE === 'INTASEND') {
+    validateIntasendConfig();
+  }
 }
 
 const app: Application = express();

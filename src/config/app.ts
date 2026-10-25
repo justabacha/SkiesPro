@@ -70,6 +70,35 @@ export function validateB2cConfig(): void {
   }
 }
 
+export function validateIntasendConfig(): void {
+  const errors: string[] = [];
+
+  const secretKey = process.env.INTASEND_SECRET_KEY;
+  if (!secretKey) {
+    errors.push('INTASEND_SECRET_KEY is required');
+  } else if (!secretKey.startsWith('ISSecretKey_')) {
+    errors.push('INTASEND_SECRET_KEY must start with ISSecretKey_');
+  }
+
+  const publishableKey = process.env.INTASEND_PUBLISHABLE_KEY;
+  if (!publishableKey) {
+    errors.push('INTASEND_PUBLISHABLE_KEY is required');
+  } else if (!publishableKey.startsWith('ISPubKey_')) {
+    errors.push('INTASEND_PUBLISHABLE_KEY must start with ISPubKey_');
+  }
+
+  const environment = process.env.INTASEND_ENVIRONMENT;
+  if (!environment) {
+    errors.push('INTASEND_ENVIRONMENT is required');
+  } else if (environment !== 'sandbox' && environment !== 'live') {
+    errors.push('INTASEND_ENVIRONMENT must be sandbox or live');
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Invalid IntaSend config: ${errors.join('; ')}`);
+  }
+}
+
 export function validateWebhookUrls(): void {
   const urlVars = [
     { name: 'MPESA_CALLBACK_URL', value: process.env.MPESA_CALLBACK_URL },

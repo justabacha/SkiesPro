@@ -81,7 +81,7 @@ export class B2CReconciliationJob {
                END,
              next_attempt_at = CASE
                WHEN stale.attempt_count + 1 >= stale.max_attempts THEN o.next_attempt_at
-               ELSE NOW() + ((LEAST(60 * POWER(2, stale.attempt_count), 900)) || ' seconds')::INTERVAL
+               ELSE NOW() + ((LEAST(60 * POWER(2, stale.attempt_count - 1), 900)) || ' seconds')::INTERVAL
              END,
              updated_at = NOW()
          FROM stale

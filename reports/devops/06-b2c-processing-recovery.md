@@ -4,7 +4,7 @@
 - Date: 2026-10-25
 - Branch: `main`
 - Commit hash: `63a2ae0`
-- Audit Type: Phase 1 Test Authenticity Audit & Verification Pass
+- Audit Type: Phase 1 Correction / Gate Evidence
 
 ## 2. Integration Point Decision
 Selected: Option B — recovery in `B2CReconciliationJob.runTick()`.
