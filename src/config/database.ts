@@ -4,10 +4,18 @@ import pg from 'pg';
 const { Pool } = pg;
 
 export const databaseConfig = {
-  url: process.env.DATABASE_URL || '',
-  supabaseUrl: process.env.SUPABASE_URL || '',
-  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  get url() {
+    return process.env.DATABASE_URL || '';
+  },
+  get supabaseUrl() {
+    return process.env.SUPABASE_URL || '';
+  },
+  get supabaseAnonKey() {
+    return process.env.SUPABASE_ANON_KEY || '';
+  },
+  get supabaseServiceRoleKey() {
+    return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  },
 };
 
 // Supabase client for application queries

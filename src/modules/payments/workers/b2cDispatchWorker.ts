@@ -3,6 +3,7 @@ import { Decimal } from 'decimal.js';
 import { pgPool } from '../../../config/database.js';
 import { config } from '../../../config/app.js';
 import { logger } from '../../../shared/middleware/logger.js';
+import { WalletService } from '../../wallet/services/walletService.js';
 import { IB2CPayoutGateway, B2CPayoutRequest } from '../adapters/mpesa/IB2CPayoutGateway.js';
 import { getB2CGateway } from '../adapters/mpesa/B2CGatewayFactory.js';
 
@@ -123,6 +124,60 @@ export class B2CDispatchWorker {
     }
   }
 
+  private async finalizeFailedDeadLetter(row: any): Promise<void> {
+    const withdrawalRes = await this.pool.query(
+      `SELECT w.id, w.user_id, w.amount, w.status
+       FROM payments.withdrawals w
+       WHERE w.id = $1
+       FOR UPDATE`,
+      [row.withdrawal_id]
+    );
+
+    const withdrawal = withdrawalRes.rows[0];
+    if (!withdrawal) {
+      logger.warn('B2C dead-letter cleanup skipped: withdrawal not found', {
+        outboxId: row.id,
+        withdrawalId: row.withdrawal_id,
+      });
+      return;
+    }
+
+    if (withdrawal.status !== 'dispatched') {
+      logger.info('B2C dead-letter cleanup skipped: withdrawal not dispatched', {
+        outboxId: row.id,
+        withdrawalId: row.withdrawal_id,
+        withdrawalStatus: withdrawal.status,
+      });
+      return;
+    }
+
+    try {
+      const walletService = new WalletService();
+      await walletService.unlockFunds(withdrawal.user_id, 'real', new Decimal(withdrawal.amount));
+
+      await this.pool.query(
+        `UPDATE payments.withdrawals
+         SET status = 'failed'
+         WHERE id = $1 AND status = 'dispatched'`,
+        [withdrawal.id]
+      );
+
+      logger.warn('B2C dead-letter cleanup unlocked funds and failed withdrawal', {
+        outboxId: row.id,
+        withdrawalId: row.withdrawal_id,
+        userId: withdrawal.user_id,
+        amount: withdrawal.amount,
+      });
+    } catch (err: any) {
+      logger.error('B2C dead-letter cleanup failed', {
+        outboxId: row.id,
+        withdrawalId: row.withdrawal_id,
+        error: err.message,
+      });
+      throw err;
+    }
+  }
+
   private async dispatchRow(row: any): Promise<void> {
     if (!config.enableB2cDisbursement) {
       logger.warn('B2C worker skipping dispatch — ENABLE_B2C_DISBURSEMENT is false', {
@@ -197,6 +252,8 @@ export class B2CDispatchWorker {
            WHERE id = $3`,
           [attemptCount, errorMessage, row.id]
         );
+
+        await this.finalizeFailedDeadLetter(row);
 
         logger.warn('B2C Dispatch Worker outbox row reached max attempts, marked dead-letter', {
           outboxId: row.id,

@@ -2,7 +2,7 @@ import express, { Application } from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import http from 'http';
-import { config } from './config/app.js';
+import { config, validateB2cConfig } from './config/app.js';
 import { corsMiddleware } from './config/cors.js';
 import { correlationIdMiddleware } from './shared/middleware/correlationId.js';
 import { requestLogger } from './shared/middleware/logger.js';
@@ -10,6 +10,10 @@ import routes from './infrastructure/routes.js';
 import { logger } from './shared/middleware/logger.js';
 import { attachWebSocketServer } from './infrastructure/websocket/wsServer.js';
 import { pgPool } from './config/database.js';
+
+if (process.env.NODE_ENV !== 'test') {
+  validateB2cConfig();
+}
 
 const app: Application = express();
 

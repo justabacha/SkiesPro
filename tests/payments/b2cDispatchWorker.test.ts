@@ -2,8 +2,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { Decimal } from 'decimal.js';
 import { pgPool } from '../../src/config/database.js';
 import { B2CDispatchWorker } from '../../src/modules/payments/workers/b2cDispatchWorker.js';
+import { B2CReconciliationJob } from '../../src/modules/payments/jobs/b2cReconciliation.job.js';
 import { MpesaB2CMockAdapter } from '../../src/modules/payments/adapters/mpesa/MpesaB2CMockAdapter.js';
 import { IB2CPayoutGateway } from '../../src/modules/payments/adapters/mpesa/IB2CPayoutGateway.js';
+import { validateB2cConfig } from '../../src/config/app.js';
 
 process.env.PAYMENT_GATEWAY_MODE = 'MOCK';
 process.env.MPESA_ENVIRONMENT = 'mock';
@@ -44,6 +46,9 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
     if (skipDatabaseTests) return;
 
     try {
+      if (testUserId) {
+        await pgPool.query(`DELETE FROM wallet.wallets WHERE user_id = $1`, [testUserId]);
+      }
       if (testOutboxIds.length > 0) {
         await pgPool.query(`DELETE FROM payments.b2c_outbox WHERE id = ANY($1::uuid[])`, [testOutboxIds]);
       }
@@ -67,11 +72,14 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
     maxAttempts?: number;
     nextAttemptAt?: Date;
     payload?: any;
+    withdrawalStatus?: string;
+    updatedAt?: Date;
+    originatorConversationId?: string;
   }) {
     const withdrawalId = uuidv4();
     const idempotencyKey = `ik_${uuidv4()}`;
     const outboxId = uuidv4();
-    const originatorConvId = `orig_${uuidv4()}`;
+    const originatorConvId = opts?.originatorConversationId || `orig_${uuidv4()}`;
 
     testWithdrawalIds.push(withdrawalId);
     testIdempotencyKeys.push(idempotencyKey);
@@ -85,8 +93,8 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
 
     await pgPool.query(
       `INSERT INTO payments.withdrawals (id, user_id, gateway_id, amount, fee, net_amount, currency, status, idempotency_key, created_at)
-       VALUES ($1, $2, 1, 1000, 20, 980, 'KES', 'approved', $3, NOW())`,
-      [withdrawalId, testUserId, idempotencyKey]
+       VALUES ($1, $2, 1, 1000, 20, 980, 'KES', $3, $4, NOW())`,
+      [withdrawalId, testUserId, opts?.withdrawalStatus || 'approved', idempotencyKey]
     );
 
     const payload = opts?.payload || {
@@ -97,36 +105,24 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
       occasion: 'Weekly',
     };
 
-    if (opts?.nextAttemptAt) {
-      await pgPool.query(
-        `INSERT INTO payments.b2c_outbox (id, withdrawal_id, originator_conversation_id, status, attempt_count, max_attempts, next_attempt_at, payload, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
-        [
-          outboxId,
-          withdrawalId,
-          originatorConvId,
-          opts?.status || 'pending',
-          opts?.attemptCount || 0,
-          opts?.maxAttempts || 5,
-          opts.nextAttemptAt.toISOString(),
-          JSON.stringify(payload),
-        ]
-      );
-    } else {
-      await pgPool.query(
-        `INSERT INTO payments.b2c_outbox (id, withdrawal_id, originator_conversation_id, status, attempt_count, max_attempts, next_attempt_at, payload, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW() - INTERVAL '1 minute', $7, NOW(), NOW())`,
-        [
-          outboxId,
-          withdrawalId,
-          originatorConvId,
-          opts?.status || 'pending',
-          opts?.attemptCount || 0,
-          opts?.maxAttempts || 5,
-          JSON.stringify(payload),
-        ]
-      );
-    }
+    const nextAttemptAt = opts?.nextAttemptAt || new Date(Date.now() - 60000);
+    const updatedAt = opts?.updatedAt || new Date(Date.now() - 60000);
+
+    await pgPool.query(
+      `INSERT INTO payments.b2c_outbox (id, withdrawal_id, originator_conversation_id, status, attempt_count, max_attempts, next_attempt_at, payload, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)`,
+      [
+        outboxId,
+        withdrawalId,
+        originatorConvId,
+        opts?.status || 'pending',
+        opts?.attemptCount || 0,
+        opts?.maxAttempts || 5,
+        nextAttemptAt.toISOString(),
+        JSON.stringify(payload),
+        updatedAt.toISOString(),
+      ]
+    );
 
     return { outboxId, withdrawalId, originatorConvId };
   }
@@ -445,5 +441,216 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
     const row = res.rows[0];
 
     expect(row.last_error).toContain('netAmount missing');
+  });
+
+  test('14. Recovery resets stale processing row to pending and next dispatch succeeds', async () => {
+    if (skipDatabaseTests) return;
+
+    process.env.B2C_PROCESSING_TIMEOUT_SECONDS = '300';
+    const fixture = await createOutboxFixture({
+      status: 'processing',
+      attemptCount: 1,
+      maxAttempts: 5,
+      withdrawalStatus: 'dispatched',
+      updatedAt: new Date(Date.now() - 301000),
+    });
+
+    await pgPool.query(
+      `INSERT INTO wallet.wallets (user_id, account_type, balance, locked_balance, currency, version, created_at, updated_at)
+       VALUES ($1, 'real', '1000', '1000', 'KES', 1, NOW(), NOW())
+       ON CONFLICT (user_id, account_type) DO UPDATE
+       SET balance = EXCLUDED.balance,
+           locked_balance = EXCLUDED.locked_balance,
+           updated_at = NOW()`,
+      [testUserId]
+    );
+
+    const job = new B2CReconciliationJob(pgPool, 1000, () => true);
+    await job.runTick();
+
+    const recovered = await pgPool.query(`SELECT * FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+    const row = recovered.rows[0];
+
+    expect(row.status).toBe('pending');
+    expect(row.attempt_count).toBe(2);
+    expect(new Date(row.next_attempt_at).getTime()).toBeGreaterThan(Date.now());
+
+    await pgPool.query(
+      `UPDATE payments.b2c_outbox SET next_attempt_at = NOW() - INTERVAL '1 minute' WHERE id = $1`,
+      [fixture.outboxId]
+    );
+
+    const worker = new B2CDispatchWorker(
+      pgPool,
+      new MpesaB2CMockAdapter('success'),
+      10000,
+      5
+    );
+    await worker.processBatch();
+
+    const finalRow = await pgPool.query(`SELECT * FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+    expect(finalRow.rows[0].status).toBe('sent');
+    expect(finalRow.rows[0].conversation_id).toMatch(/^AG_/);
+    expect(finalRow.rows[0].originator_conversation_id).toBe(fixture.originatorConvId);
+  });
+
+  test('15. Recovery ignores stale processing rows that are not yet beyond the timeout', async () => {
+    if (skipDatabaseTests) return;
+
+    process.env.B2C_PROCESSING_TIMEOUT_SECONDS = '300';
+    const fixture = await createOutboxFixture({
+      status: 'processing',
+      attemptCount: 2,
+      maxAttempts: 5,
+      withdrawalStatus: 'dispatched',
+      updatedAt: new Date(Date.now() - 60000),
+    });
+
+    const job = new B2CReconciliationJob(pgPool, 1000, () => true);
+    await job.runTick();
+
+    const row = await pgPool.query(`SELECT * FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+    expect(row.rows[0].status).toBe('processing');
+    expect(row.rows[0].attempt_count).toBe(2);
+  });
+
+  test('16. Recovery moves max-attempt processing rows to dead and unlocks funds', async () => {
+    if (skipDatabaseTests) return;
+
+    process.env.B2C_PROCESSING_TIMEOUT_SECONDS = '300';
+    const fixture = await createOutboxFixture({
+      status: 'processing',
+      attemptCount: 4,
+      maxAttempts: 5,
+      withdrawalStatus: 'dispatched',
+      updatedAt: new Date(Date.now() - 301000),
+    });
+
+    await pgPool.query(
+      `INSERT INTO wallet.wallets (user_id, account_type, balance, locked_balance, currency, version, created_at, updated_at)
+       VALUES ($1, 'real', '1000', '1000', 'KES', 1, NOW(), NOW())
+       ON CONFLICT (user_id, account_type) DO UPDATE
+       SET balance = EXCLUDED.balance,
+           locked_balance = EXCLUDED.locked_balance,
+           updated_at = NOW()`,
+      [testUserId]
+    );
+
+    const job = new B2CReconciliationJob(pgPool, 1000, () => true);
+    await job.runTick();
+
+    const outboxRow = await pgPool.query(`SELECT * FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+    expect(outboxRow.rows[0].status).toBe('dead');
+    expect(outboxRow.rows[0].attempt_count).toBe(5);
+
+    const walletRow = await pgPool.query(
+      `SELECT balance, locked_balance FROM wallet.wallets WHERE user_id = $1 AND account_type = 'real'`,
+      [testUserId]
+    );
+    expect(Number(walletRow.rows[0].locked_balance)).toBe(0);
+
+    const withdrawal = await pgPool.query(`SELECT status FROM payments.withdrawals WHERE id = $1`, [fixture.withdrawalId]);
+    expect(withdrawal.rows[0].status).toBe('failed');
+  });
+
+  test('17. Recovery preserves the same originator_conversation_id without creating duplicate rows', async () => {
+    if (skipDatabaseTests) return;
+
+    process.env.B2C_PROCESSING_TIMEOUT_SECONDS = '300';
+    const fixture = await createOutboxFixture({
+      status: 'processing',
+      attemptCount: 0,
+      maxAttempts: 5,
+      withdrawalStatus: 'dispatched',
+      updatedAt: new Date(Date.now() - 301000),
+      originatorConversationId: 'idempotent-originator',
+    });
+
+    await pgPool.query(
+      `INSERT INTO wallet.wallets (user_id, account_type, balance, locked_balance, currency, version, created_at, updated_at)
+       VALUES ($1, 'real', '1000', '1000', 'KES', 1, NOW(), NOW())
+       ON CONFLICT (user_id, account_type) DO UPDATE
+       SET balance = EXCLUDED.balance,
+           locked_balance = EXCLUDED.locked_balance,
+           updated_at = NOW()`,
+      [testUserId]
+    );
+
+    const job = new B2CReconciliationJob(pgPool, 1000, () => true);
+    await job.runTick();
+
+    const outboxCount = await pgPool.query(
+      `SELECT COUNT(*)::int AS count FROM payments.b2c_outbox WHERE withdrawal_id = $1`,
+      [fixture.withdrawalId]
+    );
+    const sameOriginator = await pgPool.query(
+      `SELECT originator_conversation_id FROM payments.b2c_outbox WHERE id = $1`,
+      [fixture.outboxId]
+    );
+
+    expect(outboxCount.rows[0].count).toBe(1);
+    expect(sameOriginator.rows[0].originator_conversation_id).toBe('idempotent-originator');
+  });
+
+  test('18. Config validation rejects non-positive or non-numeric B2C processing timeout values', () => {
+    const original = process.env.B2C_PROCESSING_TIMEOUT_SECONDS;
+    try {
+      for (const value of ['0', '-1', 'abc']) {
+        process.env.B2C_PROCESSING_TIMEOUT_SECONDS = value;
+        expect(() => validateB2cConfig()).toThrow(/B2C_PROCESSING_TIMEOUT_SECONDS must be a positive integer/);
+      }
+    } finally {
+      if (original === undefined) {
+        delete process.env.B2C_PROCESSING_TIMEOUT_SECONDS;
+      } else {
+        process.env.B2C_PROCESSING_TIMEOUT_SECONDS = original;
+      }
+    }
+  });
+
+  test('19. Recovery only touches stale processing rows and leaves pending, sent, and dead rows alone', async () => {
+    if (skipDatabaseTests) return;
+
+    process.env.B2C_PROCESSING_TIMEOUT_SECONDS = '300';
+    const pendingRow = await createOutboxFixture({
+      status: 'pending',
+      attemptCount: 1,
+      updatedAt: new Date(Date.now() - 301000),
+      nextAttemptAt: new Date(Date.now() + 3600000),
+    });
+    const sentRow = await createOutboxFixture({
+      status: 'sent',
+      attemptCount: 1,
+      updatedAt: new Date(Date.now() - 301000),
+      nextAttemptAt: new Date(Date.now() + 3600000),
+    });
+    const deadRow = await createOutboxFixture({
+      status: 'dead',
+      attemptCount: 5,
+      updatedAt: new Date(Date.now() - 301000),
+      nextAttemptAt: new Date(Date.now() + 3600000),
+    });
+    const staleProcessingRow = await createOutboxFixture({
+      status: 'processing',
+      attemptCount: 0,
+      maxAttempts: 5,
+      updatedAt: new Date(Date.now() - 301000),
+      nextAttemptAt: new Date(Date.now() - 60000),
+      withdrawalStatus: 'dispatched',
+    });
+
+    const job = new B2CReconciliationJob(pgPool, 1000, () => true);
+    await job.runTick();
+
+    const pendingRes = await pgPool.query(`SELECT status, attempt_count FROM payments.b2c_outbox WHERE id = $1`, [pendingRow.outboxId]);
+    const sentRes = await pgPool.query(`SELECT status, attempt_count FROM payments.b2c_outbox WHERE id = $1`, [sentRow.outboxId]);
+    const deadRes = await pgPool.query(`SELECT status, attempt_count FROM payments.b2c_outbox WHERE id = $1`, [deadRow.outboxId]);
+    const processingRes = await pgPool.query(`SELECT status, attempt_count FROM payments.b2c_outbox WHERE id = $1`, [staleProcessingRow.outboxId]);
+
+    expect(pendingRes.rows[0].status).toBe('pending');
+    expect(sentRes.rows[0].status).toBe('sent');
+    expect(deadRes.rows[0].status).toBe('dead');
+    expect(processingRes.rows[0].status).toBe('pending');
+    expect(processingRes.rows[0].attempt_count).toBe(1);
   });
 });

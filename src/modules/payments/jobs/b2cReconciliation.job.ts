@@ -1,5 +1,9 @@
+import { randomUUID } from 'crypto';
 import { Pool } from 'pg';
+import { Decimal } from 'decimal.js';
+import { config } from '../../../config/app.js';
 import { logger } from '../../../shared/middleware/logger.js';
+import { WalletService } from '../../wallet/services/walletService.js';
 
 export class B2CReconciliationJob {
   private timer: NodeJS.Timeout | null = null;
@@ -44,6 +48,93 @@ export class B2CReconciliationJob {
 
     this.isRunning = true;
     try {
+      const processingTimeoutSeconds = Number(
+        process.env.B2C_PROCESSING_TIMEOUT_SECONDS ?? config.b2cProcessingTimeoutSeconds ?? 300
+      );
+
+      const recoveringRows = await this.pgPool.query<{
+        outbox_id: string;
+        withdrawal_id: string;
+        originator_conversation_id: string;
+        old_attempt_count: number;
+        new_attempt_count: number;
+        new_status: 'pending' | 'dead';
+      }>(
+        `WITH stale AS (
+           SELECT id, withdrawal_id, originator_conversation_id, attempt_count, max_attempts
+           FROM payments.b2c_outbox
+           WHERE status = 'processing'
+             AND updated_at < NOW() - ($1::int || ' seconds')::INTERVAL
+           ORDER BY updated_at ASC
+           FOR UPDATE SKIP LOCKED
+         )
+         UPDATE payments.b2c_outbox o
+         SET status = CASE
+               WHEN stale.attempt_count + 1 >= stale.max_attempts THEN 'dead'
+               ELSE 'pending'
+             END,
+             attempt_count = stale.attempt_count + 1,
+             last_error = 'Processing timed out; worker crash lost the in-flight payout; ' ||
+               CASE
+                 WHEN stale.attempt_count + 1 >= stale.max_attempts THEN 'dead-lettered'
+                 ELSE 'retry scheduled'
+               END,
+             next_attempt_at = CASE
+               WHEN stale.attempt_count + 1 >= stale.max_attempts THEN o.next_attempt_at
+               ELSE NOW() + ((LEAST(60 * POWER(2, stale.attempt_count), 900)) || ' seconds')::INTERVAL
+             END,
+             updated_at = NOW()
+         FROM stale
+         WHERE o.id = stale.id
+         RETURNING
+           o.id AS outbox_id,
+           o.withdrawal_id,
+           o.originator_conversation_id,
+           stale.attempt_count AS old_attempt_count,
+           stale.attempt_count + 1 AS new_attempt_count,
+           CASE
+             WHEN stale.attempt_count + 1 >= stale.max_attempts THEN 'dead'
+             ELSE 'pending'
+           END AS new_status`,
+        [processingTimeoutSeconds]
+      );
+
+      for (const row of recoveringRows.rows) {
+        const correlationId = randomUUID();
+
+        if (row.new_status === 'dead') {
+          const withdrawalRes = await this.pgPool.query<{ user_id: string; amount: string; status: string }>(
+            `SELECT user_id, amount, status
+             FROM payments.withdrawals
+             WHERE id = $1
+             FOR UPDATE`,
+            [row.withdrawal_id]
+          );
+
+          const withdrawal = withdrawalRes.rows[0];
+          if (withdrawal && withdrawal.status === 'dispatched') {
+            const walletService = new WalletService();
+            await walletService.unlockFunds(withdrawal.user_id, 'real', new Decimal(withdrawal.amount));
+            await this.pgPool.query(
+              `UPDATE payments.withdrawals
+               SET status = 'failed'
+               WHERE id = $1 AND status = 'dispatched'`,
+              [row.withdrawal_id]
+            );
+          }
+        }
+
+        logger.warn('Recovered stale B2C processing row', {
+          correlationId,
+          outboxId: row.outbox_id,
+          originatorConversationId: row.originator_conversation_id,
+          withdrawalId: row.withdrawal_id,
+          oldAttemptCount: row.old_attempt_count,
+          newAttemptCount: row.new_attempt_count,
+          newStatus: row.new_status,
+        });
+      }
+
       // Query 1: Flag stuck > 2h (unreviewed)
       const res2h = await this.pgPool.query<{ id: string; withdrawal_id: string }>(
         `UPDATE payments.b2c_outbox o

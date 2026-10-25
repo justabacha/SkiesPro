@@ -30,6 +30,7 @@ export const config = {
     process.env.ENABLE_B2C_RECONCILIATION_INTERVAL_MS || '300000',
     10
   ),
+  b2cProcessingTimeoutSeconds: parseInt(process.env.B2C_PROCESSING_TIMEOUT_SECONDS || '300', 10),
   b2c: {
     shortcode: process.env.MPESA_B2C_SHORTCODE || '',
     initiatorName: process.env.MPESA_B2C_INITIATOR_NAME || '',
@@ -41,6 +42,16 @@ export const config = {
 };
 
 export function validateB2cConfig(): void {
+  const processingTimeoutRaw = process.env.B2C_PROCESSING_TIMEOUT_SECONDS ?? '300';
+  const processingTimeout = Number(processingTimeoutRaw);
+
+  if (!Number.isInteger(processingTimeout) || processingTimeout <= 0) {
+    throw new Error(
+      `B2C_PROCESSING_TIMEOUT_SECONDS must be a positive integer. Received: ${processingTimeoutRaw}`
+    );
+  }
+  config.b2cProcessingTimeoutSeconds = processingTimeout;
+
   if (config.enableB2cDisbursement) {
     const requiredVars = [
       { name: 'MPESA_B2C_SHORTCODE', value: config.b2c.shortcode },
