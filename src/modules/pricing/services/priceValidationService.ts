@@ -11,13 +11,19 @@ export class PriceValidationService {
     this.staleThresholdMs = parseInt(process.env.STALE_PRICE_THRESHOLD_SEC || '30') * 1000;
   }
 
-  validate(symbol: string, newPrice: string, time: Date): boolean {
-    const last = this.lastPrices.get(symbol);
+  validate(
+    symbol: string,
+    newPrice: string,
+    time: Date,
+    source: 'live' | 'demo' = 'live'
+  ): boolean {
+    const key = `${symbol}:${source}`;
+    const last = this.lastPrices.get(key);
     const price = new Decimal(newPrice);
 
     // If first tick, just store and return true
     if (!last) {
-      this.lastPrices.set(symbol, { price, time });
+      this.lastPrices.set(key, { price, time });
       return true;
     }
 
@@ -39,12 +45,13 @@ export class PriceValidationService {
     }
 
     // Update last price
-    this.lastPrices.set(symbol, { price, time });
+    this.lastPrices.set(key, { price, time });
     return true;
   }
 
-  isStale(symbol: string): boolean {
-    const last = this.lastPrices.get(symbol);
+  isStale(symbol: string, source: 'live' | 'demo' = 'live'): boolean {
+    const key = `${symbol}:${source}`;
+    const last = this.lastPrices.get(key);
     if (!last) return true;
 
     const now = new Date();

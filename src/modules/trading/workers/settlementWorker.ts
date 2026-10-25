@@ -47,14 +47,21 @@ export class SettlementWorker {
         await this.settle(contractId);
         ack();
       } catch (error: any) {
+        const messageText = String(error?.message || '');
         logger.error('Failed to process settlement message', {
-          error: error.message,
+          error: messageText,
           contractId,
         });
 
         // Clear idempotency key on failure to allow retry
         if (contractId) {
           await this.idempotencyService.clearKey(`settle:${contractId}`);
+        }
+
+        if (messageText.toLowerCase().includes('not found')) {
+          logger.warn('Dropping settlement message for missing contract', { contractId });
+          ack();
+          return;
         }
 
         // Nack with requeue so it can be retried

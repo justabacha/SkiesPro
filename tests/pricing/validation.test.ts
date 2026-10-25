@@ -20,6 +20,14 @@ describe('PriceValidationService', () => {
     expect(isValid).toBe(true);
   });
 
+  it('should not compare a live tick against a prior demo tick', () => {
+    const liveTime = new Date('2024-01-01T00:00:00.000Z');
+    const demoTime = new Date('2024-01-01T00:00:01.000Z');
+
+    expect(service.validate('EUR/USD', '1.3300', liveTime, 'live')).toBe(true);
+    expect(service.validate('EUR/USD', '1.2600', demoTime, 'demo')).toBe(true);
+  });
+
   it('should reject tick with > 5% deviation', () => {
     service.validate('EUR/USD', '1.1000', new Date());
     const isValid = service.validate('EUR/USD', '1.2000', new Date()); // ~9% change

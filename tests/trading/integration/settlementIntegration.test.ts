@@ -137,6 +137,20 @@ describe('Trade Settlement Integration', () => {
     return await tradingService.placeTrade(testUserId, tradeRequest);
   };
 
+  test('should drop a settlement message when the contract is already deleted', async () => {
+    const ack = jest.fn();
+    const nack = jest.fn();
+    const settleSpy = jest.spyOn(settlementWorker as any, 'settle').mockRejectedValue(new Error('Contract 42b41de6 not found'));
+
+    await settlementWorker.start();
+    const subscription = (require('../../../src/infrastructure/message-queue/MessageQueueClient.js').messageQueueClient.subscribe as jest.Mock).mock.calls.at(-1)[1];
+    await subscription({ contractId: '42b41de6' }, ack, nack);
+
+    expect(ack).toHaveBeenCalledTimes(1);
+    expect(nack).not.toHaveBeenCalled();
+    settleSpy.mockRestore();
+  });
+
   test('SET-001: should settle a winning contract and credit user', async () => {
     const contract = await placeTestTrade('1.10000');
 
