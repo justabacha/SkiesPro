@@ -1,10 +1,15 @@
 import bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { PoolClient } from 'pg';
+import { pgPool } from '../../../config/database.js';
+import { logger } from '../../../shared/middleware/logger.js';
 import { UserRepository, UserRow } from '../../auth/repositories/userRepository.js';
 import { OutboxRepository } from '../../auth/repositories/outboxRepository.js';
 import { storageClient } from '../../../shared/storage/supabaseStorage.js';
 import { UpdateProfileDto } from '../dto/UpdateProfileDto.js';
 import { ProfileResponseDto } from '../dto/ProfileResponseDto.js';
+import { KycRepository } from '../repositories/KycRepository.js';
 
 export class UserService {
   private userRepo: UserRepository;
@@ -57,6 +62,63 @@ export class UserService {
     return user.kyc_status;
   }
 
+  async uploadKycDocument(
+    userId: string,
+    file: Buffer,
+    originalName: string,
+    mimeType: string,
+    documentType: string,
+    documentNumber: string
+  ): Promise<void> {
+    const fileHash = createHash('sha256').update(file).digest('hex');
+    let fileStoragePath: string | null = null;
+    let client: PoolClient | undefined;
+    let transactionStarted = false;
+
+    try {
+      fileStoragePath = await storageClient.uploadKycDocument(file, originalName, mimeType);
+      client = await pgPool.connect();
+      await client.query('BEGIN');
+      transactionStarted = true;
+
+      const kycRepository = new KycRepository(client);
+      await kycRepository.insertDocument({
+        userId,
+        documentType,
+        documentNumber,
+        fileStoragePath,
+        fileHash,
+      });
+      await kycRepository.setUserKycPending(userId);
+      await client.query('COMMIT');
+      transactionStarted = false;
+    } catch (error) {
+      if (client && transactionStarted) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rollbackError) {
+          logger.error('Failed to roll back KYC document database transaction', {
+            userId,
+            error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+          });
+        }
+      }
+      if (fileStoragePath) {
+        try {
+          await storageClient.deleteKycDocument(fileStoragePath);
+        } catch (cleanupError) {
+          logger.error('Failed to remove KYC document after upload failure', {
+            userId,
+            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+          });
+        }
+      }
+      throw error;
+    } finally {
+      client?.release();
+    }
+  }
+
   async changePassword(
     userId: string,
     currentPassword: string,
@@ -100,7 +162,12 @@ export class UserService {
 
     const secret = process.env.JWT_SECRET || 'secret';
     const token = jwt.sign(
-      { sub: userId, old_email: user.email, new_email: normalizedNewEmail, purpose: 'email_change' },
+      {
+        sub: userId,
+        old_email: user.email,
+        new_email: normalizedNewEmail,
+        purpose: 'email_change',
+      },
       secret,
       { expiresIn: '15m' }
     );

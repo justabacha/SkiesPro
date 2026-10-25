@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { body } from 'express-validator';
 import { UserController } from './controllers/UserController.js';
@@ -24,6 +24,32 @@ const upload = multer({
     }
   },
 });
+
+const kycDocumentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG and PNG are allowed.'));
+    }
+  },
+});
+
+const parseKycDocumentUpload = (req: Request, res: Response, next: NextFunction): void => {
+  kycDocumentUpload.single('image')(req, res, (error) => {
+    if (error) {
+      const isSizeLimitError =
+        error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE';
+      res.status(isSizeLimitError ? 413 : 400).json({ error: error.message });
+      return;
+    }
+    next();
+  });
+};
 
 // Profile routes
 router.get('/profile', authenticate, rateLimit('authenticated'), (req: Request, res: Response) =>
@@ -123,6 +149,25 @@ router.post(
   authenticate,
   rateLimit('authenticated'),
   (req: Request, res: Response) => controller.initiateKyc(req, res)
+);
+
+router.post(
+  '/kyc/documents',
+  authenticate,
+  rateLimit('authenticated'),
+  parseKycDocumentUpload,
+  [
+    body('document_type')
+      .isIn(['passport', 'national_id', 'drivers_license', 'proof_of_address', 'selfie'])
+      .withMessage('A supported document_type is required'),
+    body('document_number')
+      .isString()
+      .trim()
+      .isLength({ min: 1, max: 100 })
+      .withMessage('document_number must be between 1 and 100 characters'),
+  ],
+  validate,
+  (req: Request, res: Response) => controller.uploadKycDocument(req, res)
 );
 
 export default router;

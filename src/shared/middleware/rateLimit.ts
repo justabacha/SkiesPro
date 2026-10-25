@@ -84,6 +84,8 @@ export function rateLimit(configName: keyof typeof RATE_LIMIT_CONFIGS) {
       if (currentHits > config.maxRequests) {
         const origin = req.headers.origin;
         const allowedOrigins = [
+          'https://skiespro.co.ke',
+          'https://www.skiespro.co.ke',
           'https://skies-pro.vercel.app',
           'http://localhost:5173',
           'http://localhost:3000',

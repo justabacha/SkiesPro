@@ -91,6 +91,55 @@ export class UserController {
     }
   }
 
+  async uploadKycDocument(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthenticatedRequest;
+    if (!req.file) {
+      res.status(400).json({ error: 'No document image uploaded' });
+      return;
+    }
+
+    const image = req.file.buffer;
+    const isJpeg =
+      req.file.mimetype === 'image/jpeg' &&
+      image.length >= 3 &&
+      image[0] === 0xff &&
+      image[1] === 0xd8 &&
+      image[2] === 0xff;
+    const isPng =
+      req.file.mimetype === 'image/png' &&
+      image.length >= 8 &&
+      image.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    if (!isJpeg && !isPng) {
+      res
+        .status(400)
+        .json({ error: 'Invalid image content. Only JPEG and PNG files are allowed.' });
+      return;
+    }
+
+    try {
+      await this.userService.uploadKycDocument(
+        authReq.user.sub,
+        image,
+        req.file.originalname,
+        req.file.mimetype,
+        req.body.document_type,
+        req.body.document_number.trim()
+      );
+      res.status(201).json({
+        data: {
+          message: 'Document uploaded successfully',
+          kyc_status: 'pending',
+        },
+      });
+    } catch (error) {
+      logger.error('KYC document upload failed', {
+        userId: authReq.user.sub,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ error: 'Unable to upload KYC document' });
+    }
+  }
+
   async changePassword(req: Request, res: Response): Promise<void> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -177,11 +226,7 @@ export class UserController {
   async revokeSession(req: Request, res: Response): Promise<void> {
     const authReq = req as AuthenticatedRequest;
     try {
-      await this.userService.revokeSession(
-        authReq.user.sub,
-        req.params.id,
-        authReq.user.jti
-      );
+      await this.userService.revokeSession(authReq.user.sub, req.params.id, authReq.user.jti);
       res.status(200).json({
         data: { message: 'Session revoked successfully' },
         meta: { request_id: req.correlationId },

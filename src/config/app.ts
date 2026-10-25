@@ -5,7 +5,7 @@ dotenv.config();
 const parseCorsOrigins = (): string[] => {
   const raw =
     process.env.CORS_ORIGIN ||
-    'http://localhost:5173,http://localhost:3000,https://skies-pro.vercel.app';
+    'http://localhost:5173,http://localhost:3000,https://skiespro.co.ke,https://www.skiespro.co.ke,https://skies-pro.vercel.app';
   return raw
     .split(',')
     .map((origin) => origin.trim())

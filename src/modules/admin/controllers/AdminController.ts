@@ -8,6 +8,7 @@ import { AdminReportService } from '../services/AdminReportService.js';
 import { AdminSupportService } from '../services/AdminSupportService.js';
 import { AdminAuditService } from '../services/AdminAuditService.js';
 import { AdminAuthenticatedRequest } from '../middleware/adminAuthMiddleware.js';
+import { storageClient } from '../../../shared/storage/supabaseStorage.js';
 
 export class AdminController {
   private readonly users: AdminUserService;
@@ -83,19 +84,39 @@ export class AdminController {
   }
 
   async listPendingKyc(req: Request, res: Response): Promise<void> {
-    return this.respondToAdminAction(req, res, 'Admin KYC list', () =>
-      this.compliance.listPendingKyc({
+    return this.respondToAdminAction(req, res, 'Admin KYC list', async () => {
+      const result = await this.compliance.listPendingKyc({
         page: Number(req.query.page || 1),
         perPage: Number(req.query.per_page || 20),
         status: typeof req.query.status === 'string' ? req.query.status : 'pending',
-      })
-    );
+      });
+      return {
+        ...result,
+        rows: await Promise.all(result.rows.map((row) => this.signKycDocumentUrls(row))),
+      };
+    });
   }
 
   async getKycById(req: Request, res: Response): Promise<void> {
-    return this.respondToAdminAction(req, res, 'Admin KYC lookup', () =>
-      this.compliance.getKycById(req.params.id)
-    );
+    return this.respondToAdminAction(req, res, 'Admin KYC lookup', async () => {
+      const result = await this.compliance.getKycById(req.params.id);
+      return result ? this.signKycDocumentUrls(result) : result;
+    });
+  }
+
+  private async signKycDocumentUrls(
+    row: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    const documentUrlFields = ['id_front_url', 'proof_of_address_url', 'selfie_url'] as const;
+    const signedRow: Record<string, unknown> = { ...row };
+
+    for (const field of documentUrlFields) {
+      const path = signedRow[field];
+      if (typeof path === 'string' && path && !/^https?:\/\//i.test(path)) {
+        signedRow[field] = await storageClient.createKycDocumentSignedUrl(path);
+      }
+    }
+    return signedRow;
   }
 
   async reviewKyc(req: Request, res: Response): Promise<void> {
@@ -177,7 +198,7 @@ export class AdminController {
           reason: req.body.reason || 'admin adjustment',
           idempotencyKey,
         }),
-      (result) => result.status === 'pending_second_approval' ? 202 : 200
+      (result) => (result.status === 'pending_second_approval' ? 202 : 200)
     );
   }
 

@@ -1,7 +1,9 @@
+import { randomUUID } from 'crypto';
 import { supabaseAdmin } from '../../config/database.js';
 
 export class SupabaseStorageClient {
   private readonly bucketName = 'avatars';
+  private readonly kycBucketName = 'kyc-documents';
 
   /**
    * Uploads an avatar to Supabase Storage.
@@ -26,6 +28,54 @@ export class SupabaseStorageClient {
     }
 
     return this.getPublicUrl(data.path);
+  }
+
+  async uploadKycDocument(file: Buffer, originalName: string, mimeType: string): Promise<string> {
+    if (mimeType !== 'image/jpeg' && mimeType !== 'image/png') {
+      throw new Error('KYC documents must be JPEG or PNG images');
+    }
+
+    const timestamp = Date.now();
+    const extension = mimeType === 'image/png' ? 'png' : 'jpg';
+    const safeName =
+      originalName
+        .split(/[\\/]/)
+        .pop()
+        ?.replace(/[^a-zA-Z0-9._-]/g, '_')
+        .slice(-100) || `document.${extension}`;
+    const filePath = `${timestamp}-${randomUUID()}-${safeName}`;
+    const { data, error } = await supabaseAdmin.storage
+      .from(this.kycBucketName)
+      .upload(filePath, file, {
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(`Failed to upload KYC document: ${error.message}`);
+    }
+
+    return data.path;
+  }
+
+  async deleteKycDocument(filePath: string): Promise<void> {
+    const { error } = await supabaseAdmin.storage.from(this.kycBucketName).remove([filePath]);
+    if (error) {
+      throw new Error(`Failed to remove KYC document: ${error.message}`);
+    }
+  }
+
+  async createKycDocumentSignedUrl(filePath: string): Promise<string> {
+    const { data, error } = await supabaseAdmin.storage
+      .from(this.kycBucketName)
+      .createSignedUrl(filePath, 60 * 60);
+
+    if (error || !data?.signedUrl) {
+      throw new Error(
+        `Failed to create KYC document signed URL: ${error?.message || 'No URL returned'}`
+      );
+    }
+    return data.signedUrl;
   }
 
   /**

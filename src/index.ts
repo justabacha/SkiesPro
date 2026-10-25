@@ -53,6 +53,8 @@ const setCorsHeadersOnResponse = (req: express.Request, res: express.Response) =
   const origin = req.headers.origin;
   const allowedOrigins = Array.from(
     new Set([
+      'https://skiespro.co.ke',
+      'https://www.skiespro.co.ke',
       'https://skies-pro.vercel.app',
       'http://localhost:5173',
       'http://localhost:3000',
