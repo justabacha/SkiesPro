@@ -83,7 +83,24 @@ export class IntaSendB2CAdapter implements IB2CPayoutGateway {
         error.message ||
         'IntaSend payout initiation failed';
 
-      throw new B2CPayoutError(message, code, raw);
+      let outcome: 'definitely_not_sent' | 'possibly_sent' | 'server_rejected' = 'possibly_sent';
+
+      if (error.response) {
+        outcome = 'server_rejected';
+      } else if (error.request) {
+        const errCode = String(error.code || '').toUpperCase();
+        if (['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN'].includes(errCode)) {
+          outcome = 'definitely_not_sent';
+        } else if (['ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET'].includes(errCode)) {
+          outcome = 'possibly_sent';
+        } else {
+          outcome = 'possibly_sent';
+        }
+      } else {
+        outcome = 'possibly_sent';
+      }
+
+      throw new B2CPayoutError(message, code, raw, outcome);
     }
   }
 

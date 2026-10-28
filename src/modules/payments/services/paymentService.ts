@@ -18,8 +18,8 @@ export class PaymentService {
   private userRepo: UserRepository;
   private settingsService: SettingsService;
 
-  constructor(settingsService = new SettingsService()) {
-    this.paymentRepo = new PaymentRepository();
+  constructor(settingsService = new SettingsService(), paymentRepo = new PaymentRepository()) {
+    this.paymentRepo = paymentRepo;
     this.userRepo = new UserRepository();
     this.settingsService = settingsService;
   }
@@ -30,7 +30,17 @@ export class PaymentService {
     idempotencyKey: string
   ): Promise<DepositResponseDto> {
     const cached = await this.paymentRepo.findIdempotencyKey(idempotencyKey);
-    if (cached && cached.status !== 'processing') return cached;
+    if (cached) {
+      if (cached.status === 'ambiguous') {
+        const err: any = new Error(
+          'Deposit is in ambiguous state — manual reconciliation required before retry'
+        );
+        err.status = 409;
+        err.statusCode = 409;
+        throw err;
+      }
+      if (cached.status !== 'processing') return cached;
+    }
 
     const amount = new Decimal(data.amount);
     const minDeposit = new Decimal(
@@ -92,8 +102,24 @@ export class PaymentService {
       return response;
     } catch (error: any) {
       logger.error('Deposit initiation failed', { error: error.message, userId, idempotencyKey });
-      await this.paymentRepo.saveIdempotencyKey(idempotencyKey, null);
-      throw error;
+
+      if (error.outcome === 'possibly_sent') {
+        await this.paymentRepo.saveIdempotencyKey(idempotencyKey, {
+          status: 'ambiguous',
+          error: error.message,
+          timestamp: new Date().toISOString(),
+        });
+        const ambiguousErr: any = new Error(
+          `DEPOSIT_STATUS_AMBIGUOUS — check IntaSend dashboard before retrying: ${error.message}`
+        );
+        ambiguousErr.status = 409;
+        ambiguousErr.statusCode = 409;
+        ambiguousErr.outcome = 'possibly_sent';
+        throw ambiguousErr;
+      } else {
+        await this.paymentRepo.saveIdempotencyKey(idempotencyKey, null);
+        throw error;
+      }
     }
   }
 

@@ -113,6 +113,73 @@ describe('IntaSendB2CAdapter', () => {
       name: 'B2CPayoutError',
       code: 403,
       raw: { message: 'Forbidden' },
+      outcome: 'server_rejected',
+    });
+  });
+
+  it("throws with outcome='possibly_sent' on Axios ETIMEDOUT", async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      message: 'timeout of 30000ms exceeded',
+      code: 'ETIMEDOUT',
+      request: {},
+    });
+
+    const adapter = new IntaSendB2CAdapter();
+
+    await expect(
+      adapter.initiateB2CPayout({
+        originatorConversationId: 'orig-timeout',
+        amount: new Decimal('1000'),
+        recipientPhone: '0712345678',
+        remarks: 'Timeout',
+      })
+    ).rejects.toMatchObject({
+      name: 'B2CPayoutError',
+      outcome: 'possibly_sent',
+    });
+  });
+
+  it("throws with outcome='definitely_not_sent' on Axios ECONNREFUSED", async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      message: 'connect ECONNREFUSED 127.0.0.1:443',
+      code: 'ECONNREFUSED',
+      request: {},
+    });
+
+    const adapter = new IntaSendB2CAdapter();
+
+    await expect(
+      adapter.initiateB2CPayout({
+        originatorConversationId: 'orig-refused',
+        amount: new Decimal('1000'),
+        recipientPhone: '0712345678',
+        remarks: 'Refused',
+      })
+    ).rejects.toMatchObject({
+      name: 'B2CPayoutError',
+      outcome: 'definitely_not_sent',
+    });
+  });
+
+  it("throws with outcome='server_rejected' on 400 response", async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      message: 'Bad Request',
+      code: 'ERR_BAD_REQUEST',
+      response: { status: 400, data: { error: 'Invalid recipient' } },
+    });
+
+    const adapter = new IntaSendB2CAdapter();
+
+    await expect(
+      adapter.initiateB2CPayout({
+        originatorConversationId: 'orig-bad',
+        amount: new Decimal('1000'),
+        recipientPhone: '0712345678',
+        remarks: 'Bad Request',
+      })
+    ).rejects.toMatchObject({
+      name: 'B2CPayoutError',
+      outcome: 'server_rejected',
     });
   });
 

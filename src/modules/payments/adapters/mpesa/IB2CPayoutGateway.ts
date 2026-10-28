@@ -33,12 +33,19 @@ export interface IB2CPayoutGateway {
 export class B2CPayoutError extends Error {
   public readonly code?: string | number;
   public readonly raw?: unknown;
+  public readonly outcome?: 'definitely_not_sent' | 'possibly_sent' | 'server_rejected';
 
-  constructor(message: string, code?: string | number, raw?: unknown) {
+  constructor(
+    message: string,
+    code?: string | number,
+    raw?: unknown,
+    outcome?: 'definitely_not_sent' | 'possibly_sent' | 'server_rejected'
+  ) {
     super(message);
     this.name = 'B2CPayoutError';
     this.code = code;
     this.raw = raw;
+    this.outcome = outcome;
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }

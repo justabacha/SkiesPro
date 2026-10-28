@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import app from '../../src/index.js';
 import { pgPool } from '../../src/config/database.js';
 import { WalletService } from '../../src/modules/wallet/services/walletService.js';
+import { logger } from '../../src/shared/middleware/logger.js';
 
 const skipDatabaseTests = process.env.SKIP_DB_TESTS === 'true' || !process.env.DATABASE_URL;
 
@@ -332,5 +333,24 @@ describe('IntaSend B2C Webhook Integration Tests', () => {
 
     const wRes = await pgPool.query(`SELECT status FROM payments.withdrawals WHERE id = $1`, [fixture.withdrawalId]);
     expect(wRes.rows[0].status).toBe('dispatched');
+  });
+
+  it('10. Logs B2C webhook received message', async () => {
+    if (skipDatabaseTests) return;
+
+    const infoSpy = jest.spyOn(logger, 'info');
+
+    await supertest(app)
+      .post('/api/v1/payments/intasend/b2c/callback')
+      .send({
+        challenge: validChallenge,
+        tracking_id: 'track_log_123',
+        transactions: [],
+      });
+
+    const infoMessages = infoSpy.mock.calls.map((call) => call[0]);
+    expect(infoMessages).toContain('IntaSend B2C callback received');
+
+    infoSpy.mockRestore();
   });
 });

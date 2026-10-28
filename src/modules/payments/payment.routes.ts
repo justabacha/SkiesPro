@@ -30,6 +30,13 @@ const handleIntaSendCollectionCallback = async (req: Request, res: Response): Pr
       return;
     }
 
+    logger.info('IntaSend collection callback received', {
+      correlationId: (req as any).correlationId,
+      invoiceId,
+      state,
+      apiRef,
+    });
+
     const paymentRepo = new PaymentRepository();
     const deposit = await paymentRepo.findDepositByReference(String(invoiceId));
     if (!deposit) {
@@ -74,6 +81,14 @@ const handleIntaSendCollectionCallback = async (req: Request, res: Response): Pr
           `IntaSend deposit: ${invoiceId}`
         );
         await client.query('COMMIT');
+
+        logger.info('IntaSend collection callback credited wallet', {
+          correlationId: (req as any).correlationId,
+          depositId: lockDeposit.id,
+          userId: lockDeposit.user_id,
+          amount: lockDeposit.net_amount,
+          invoiceId,
+        });
       } catch (error: any) {
         await client.query('ROLLBACK');
         throw error;
@@ -112,6 +127,13 @@ const handleIntaSendCollectionCallback = async (req: Request, res: Response): Pr
 const handleIntaSendB2CCallback = async (req: Request, res: Response): Promise<void> => {
   try {
     const payload = req.body || {};
+
+    logger.info('IntaSend B2C callback received', {
+      correlationId: (req as any).correlationId,
+      trackingId: payload.tracking_id,
+      transactionCount: Array.isArray(payload.transactions) ? payload.transactions.length : 0,
+    });
+
     const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
 
     if (!transactions.length) {

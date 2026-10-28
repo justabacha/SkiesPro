@@ -62,9 +62,27 @@ export class IntaSendCollectionAdapter implements IPaymentGateway {
         error.message ||
         'IntaSend STK push initiation failed';
 
+      let outcome: 'definitely_not_sent' | 'possibly_sent' | 'server_rejected' = 'possibly_sent';
+
+      if (error.response) {
+        outcome = 'server_rejected';
+      } else if (error.request) {
+        const errCode = String(error.code || '').toUpperCase();
+        if (['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN'].includes(errCode)) {
+          outcome = 'definitely_not_sent';
+        } else if (['ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET'].includes(errCode)) {
+          outcome = 'possibly_sent';
+        } else {
+          outcome = 'possibly_sent';
+        }
+      } else {
+        outcome = 'possibly_sent';
+      }
+
       const wrapped: any = new Error(message);
       wrapped.code = code;
       wrapped.raw = raw;
+      wrapped.outcome = outcome;
       throw wrapped;
     }
   }

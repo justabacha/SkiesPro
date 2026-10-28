@@ -50,9 +50,12 @@ export function validateB2cConfig(): void {
       `B2C_PROCESSING_TIMEOUT_SECONDS must be a positive integer. Received: ${processingTimeoutRaw}`
     );
   }
+
   config.b2cProcessingTimeoutSeconds = processingTimeout;
 
-  if (config.enableB2cDisbursement) {
+  const mode = String(process.env.PAYMENT_GATEWAY_MODE || '').trim().toUpperCase();
+
+  if (config.enableB2cDisbursement && mode === 'DARAJA') {
     const requiredVars = [
       { name: 'MPESA_B2C_SHORTCODE', value: config.b2c.shortcode },
       { name: 'MPESA_B2C_INITIATOR_NAME', value: config.b2c.initiatorName },

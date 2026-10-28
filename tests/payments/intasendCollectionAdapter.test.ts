@@ -106,6 +106,63 @@ describe('IntaSendCollectionAdapter', () => {
         phone: '0712345678',
         idempotencyKey: 'idem-456',
       })
-    ).rejects.toMatchObject({ code: 400, raw: { message: 'Invalid payload' } });
+    ).rejects.toMatchObject({ code: 400, raw: { message: 'Invalid payload' }, outcome: 'server_rejected' });
+  });
+
+  it("throws with outcome='possibly_sent' on Axios ETIMEDOUT", async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      message: 'timeout of 30000ms exceeded',
+      code: 'ETIMEDOUT',
+      request: {},
+    });
+
+    const adapter = new IntaSendCollectionAdapter();
+
+    await expect(
+      adapter.initiateStkPush({
+        userId: 'user_timeout',
+        amount: 1000,
+        phone: '0712345678',
+        idempotencyKey: 'idem-timeout',
+      })
+    ).rejects.toMatchObject({ outcome: 'possibly_sent' });
+  });
+
+  it("throws with outcome='definitely_not_sent' on Axios ECONNREFUSED", async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      message: 'connect ECONNREFUSED 127.0.0.1:443',
+      code: 'ECONNREFUSED',
+      request: {},
+    });
+
+    const adapter = new IntaSendCollectionAdapter();
+
+    await expect(
+      adapter.initiateStkPush({
+        userId: 'user_refused',
+        amount: 1000,
+        phone: '0712345678',
+        idempotencyKey: 'idem-refused',
+      })
+    ).rejects.toMatchObject({ outcome: 'definitely_not_sent' });
+  });
+
+  it("throws with outcome='server_rejected' on 400 response", async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      message: 'Bad Request',
+      code: 'ERR_BAD_REQUEST',
+      response: { status: 400, data: { error: 'Invalid phone' } },
+    });
+
+    const adapter = new IntaSendCollectionAdapter();
+
+    await expect(
+      adapter.initiateStkPush({
+        userId: 'user_bad',
+        amount: 1000,
+        phone: '0712345678',
+        idempotencyKey: 'idem-400',
+      })
+    ).rejects.toMatchObject({ outcome: 'server_rejected' });
   });
 });

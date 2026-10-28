@@ -206,6 +206,7 @@ export class B2CDispatchWorker {
       const amount = new Decimal(payload.netAmount);
 
       logger.info('B2C Dispatch Worker processing payout dispatch', {
+        correlationId: row.id,
         outboxId: row.id,
         withdrawalId: row.withdrawal_id,
         originatorConversationId: row.originator_conversation_id,
@@ -239,6 +240,7 @@ export class B2CDispatchWorker {
 
       if (!trackingId.trim()) {
         logger.warn('B2C response missing tracking_id; leaving gateway_tracking_id unset', {
+          correlationId: row.id,
           outboxId: row.id,
           withdrawalId: row.withdrawal_id,
           conversationId: response.conversationId,
@@ -246,6 +248,7 @@ export class B2CDispatchWorker {
       }
 
       logger.info('B2C Dispatch Worker successfully dispatched payout', {
+        correlationId: row.id,
         outboxId: row.id,
         withdrawalId: row.withdrawal_id,
         conversationId: response.conversationId,
@@ -254,6 +257,29 @@ export class B2CDispatchWorker {
       const attemptCount = (row.attempt_count || 0) + 1;
       const maxAttempts = row.max_attempts || 5;
       const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (error?.outcome === 'possibly_sent') {
+        await this.pool.query(
+          `UPDATE payments.b2c_outbox
+           SET status = 'needs_review',
+               attempt_count = attempt_count + 1,
+               last_error = $1,
+               updated_at = NOW()
+           WHERE id = $2`,
+          [
+            `AMBIGUOUS — payout may have been sent. Check IntaSend dashboard before manual retry. Original: ${errorMessage}`,
+            row.id,
+          ]
+        );
+
+        logger.error('B2C dispatch AMBIGUOUS — marked needs_review', {
+          correlationId: row.id,
+          outboxId: row.id,
+          withdrawalId: row.withdrawal_id,
+          error: errorMessage,
+        });
+        return;
+      }
 
       if (attemptCount >= maxAttempts) {
         await this.pool.query(
@@ -269,6 +295,7 @@ export class B2CDispatchWorker {
         await this.finalizeFailedDeadLetter(row);
 
         logger.warn('B2C Dispatch Worker outbox row reached max attempts, marked dead-letter', {
+          correlationId: row.id,
           outboxId: row.id,
           withdrawalId: row.withdrawal_id,
           attemptCount,
@@ -290,6 +317,7 @@ export class B2CDispatchWorker {
         );
 
         logger.error('B2C Dispatch Worker payout dispatch failed, scheduled retry', {
+          correlationId: row.id,
           outboxId: row.id,
           withdrawalId: row.withdrawal_id,
           attemptCount,

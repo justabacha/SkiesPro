@@ -350,6 +350,7 @@ describe('B2C Payout Adapter & Components (Slice 1)', () => {
     });
 
     it('throws error on boot if ENABLE_B2C_DISBURSEMENT is true but required env vars are missing', () => {
+      process.env.PAYMENT_GATEWAY_MODE = 'DARAJA';
       config.enableB2cDisbursement = true;
       config.b2c.shortcode = '';
       config.b2c.initiatorName = '';
