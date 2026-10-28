@@ -240,7 +240,7 @@ const handleIntaSendB2CCallback = async (req: Request, res: Response): Promise<v
         }
 
         const isSuccess = ['COMPLETE', 'COMPLETED', 'SUCCESS', 'SUCCEEDED'].includes(txState);
-        const isFailure = ['FAILED', 'CANCELED', 'CANCELLED'].includes(txState);
+        const isFailure = ['FAILED', 'CANCELED', 'CANCELLED', 'UNSUCCESSFUL'].includes(txState);
 
         if (isSuccess) {
           await walletServiceTx.finalizeWithdrawalDebit(

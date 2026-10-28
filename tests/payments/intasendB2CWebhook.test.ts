@@ -353,4 +353,36 @@ describe('IntaSend B2C Webhook Integration Tests', () => {
 
     infoSpy.mockRestore();
   });
+
+  it('11. handles UNSUCCESSFUL transaction state by unlocking funds and marking failed', async () => {
+    if (skipDatabaseTests) return;
+
+    const unlockSpy = jest.spyOn(WalletService.prototype, 'unlockFunds');
+    const fixture = await createB2CFixture();
+
+    const response = await supertest(app)
+      .post('/api/v1/payments/intasend/b2c/callback')
+      .send({
+        challenge: validChallenge,
+        tracking_id: 'batch_unsuccessful',
+        transactions: [
+          {
+            idempotency_key: fixture.originatorConvId,
+            transaction_id: 'txn_unsuccessful',
+            status: 'UNSUCCESSFUL',
+          },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(unlockSpy).toHaveBeenCalledTimes(1);
+
+    const wRes = await pgPool.query(`SELECT status FROM payments.withdrawals WHERE id = $1`, [fixture.withdrawalId]);
+    expect(wRes.rows[0].status).toBe('failed');
+
+    const outboxRes = await pgPool.query(`SELECT status FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+    expect(outboxRes.rows[0].status).toBe('failed');
+
+    unlockSpy.mockRestore();
+  });
 });

@@ -4,7 +4,7 @@
 - Date: 2026-10-28
 - Branch: `main`
 - Commit: `f68e148`
-- Scope: Step 1 Phase 2C Code Hardening (Fix 1 Boot Blocker, Fix 2 Idempotency Ambiguity with Migration 047, Fix 3 Logging Additions, Webhook Race Condition Hotfix)
+- Scope: Step 1 Phase 2C Code Hardening (Fix 1 Boot Blocker, Fix 2 Idempotency Ambiguity with Migration 047, Fix 3 Logging Additions, Webhook Race Condition Hotfix, B2C UNSUCCESSFUL State Hotfix)
 
 ---
 
@@ -293,6 +293,7 @@ WHERE status = 'processing'
 | 13 | `reconciliation does not reset needs_review rows` | `tests/payments/b2cDispatchWorker.test.ts` | PASS |
 | 14 | `Logs webhook received and wallet credited messages` | `tests/payments/intasendCollectionWebhook.test.ts` | PASS |
 | 15 | `Logs B2C webhook received message` | `tests/payments/intasendB2CWebhook.test.ts` | PASS |
+| 16 | `handles UNSUCCESSFUL transaction state by unlocking funds and marking failed` | `tests/payments/intasendB2CWebhook.test.ts` | PASS |
 
 ---
 
@@ -301,9 +302,9 @@ WHERE status = 'processing'
 ### Run 1 Output
 ```text
 Test Suites: 70 passed, 70 total
-Tests:       479 passed, 479 total
+Tests:       480 passed, 480 total
 Snapshots:   0 total
-Time:        547.644 s
+Time:        541.913 s
 Ran all test suites.
 Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
 ```
@@ -311,9 +312,9 @@ Force exiting Jest: Have you considered using `--detectOpenHandles` to detect as
 ### Run 2 Output
 ```text
 Test Suites: 70 passed, 70 total
-Tests:       479 passed, 479 total
+Tests:       480 passed, 480 total
 Snapshots:   0 total
-Time:        516.985 s, estimated 539 s
+Time:        532.783 s, estimated 535 s
 Ran all test suites.
 Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
 ```
@@ -322,8 +323,8 @@ Force exiting Jest: Have you considered using `--detectOpenHandles` to detect as
 
 ## 9. Test Count Delta
 - **Previous test count**: 464 tests
-- **New test count**: 479 tests
-- **Delta**: **+15 tests** (13 new tests in adapter, config, and worker test files + 2 logging verification tests in webhook suites).
+- **New test count**: 480 tests
+- **Delta**: **+16 tests** (13 new tests in adapter, config, and worker test files + 2 logging verification tests + 1 B2C UNSUCCESSFUL state test).
 
 ---
 
@@ -417,31 +418,57 @@ During live sandbox testing, `POST /api/v1/payments/deposit/initiate` took up to
     }
 ```
 
-### Full-Suite 2× Runs Verification
+---
 
-#### Run 1 Output
-```text
-Test Suites: 70 passed, 70 total
-Tests:       479 passed, 479 total
-Snapshots:   0 total
-Time:        547.644 s
-Ran all test suites.
-Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+## 12. B2C UNSUCCESSFUL State Hotfix
+
+### Problem
+During live sandbox testing of B2C payouts, IntaSend Sandbox sent a callback payload containing `status: "UNSUCCESSFUL"`. The `handleIntaSendB2CCallback` handler previously evaluated `isFailure` against `['FAILED', 'CANCELED', 'CANCELLED']`, missing `"UNSUCCESSFUL"`, which caused the webhook to be ignored and user funds to remain locked.
+
+### Quoted Implementation (`src/modules/payments/payment.routes.ts`)
+```typescript
+const isSuccess = ['COMPLETE', 'COMPLETED', 'SUCCESS', 'SUCCEEDED'].includes(txState);
+const isFailure = ['FAILED', 'CANCELED', 'CANCELLED', 'UNSUCCESSFUL'].includes(txState);
 ```
 
-#### Run 2 Output
-```text
-Test Suites: 70 passed, 70 total
-Tests:       479 passed, 479 total
-Snapshots:   0 total
-Time:        516.985 s, estimated 539 s
-Ran all test suites.
-Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+### Unit Test Verification (`tests/payments/intasendB2CWebhook.test.ts`, Test #11)
+```typescript
+  it('11. handles UNSUCCESSFUL transaction state by unlocking funds and marking failed', async () => {
+    if (skipDatabaseTests) return;
+
+    const unlockSpy = jest.spyOn(WalletService.prototype, 'unlockFunds');
+    const fixture = await createB2CFixture();
+
+    const response = await supertest(app)
+      .post('/api/v1/payments/intasend/b2c/callback')
+      .send({
+        challenge: validChallenge,
+        tracking_id: 'batch_unsuccessful',
+        transactions: [
+          {
+            idempotency_key: fixture.originatorConvId,
+            transaction_id: 'txn_unsuccessful',
+            status: 'UNSUCCESSFUL',
+          },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(unlockSpy).toHaveBeenCalledTimes(1);
+
+    const wRes = await pgPool.query(`SELECT status FROM payments.withdrawals WHERE id = $1`, [fixture.withdrawalId]);
+    expect(wRes.rows[0].status).toBe('failed');
+
+    const outboxRes = await pgPool.query(`SELECT status FROM payments.b2c_outbox WHERE id = $1`, [fixture.outboxId]);
+    expect(outboxRes.rows[0].status).toBe('failed');
+
+    unlockSpy.mockRestore();
+  });
 ```
 
 ---
 
-## 12. Out-of-Scope Confirmation
+## 13. Out-of-Scope Confirmation
 - No Phase 1 reconciliation logic modified.
 - No Phase 2A/2B adapter core logic changed beyond error outcome classification.
 - No new API endpoints created.
@@ -451,4 +478,4 @@ Force exiting Jest: Have you considered using `--detectOpenHandles` to detect as
 
 ---
 
-RACE CONDITION HOTFIX COMPLETE — AWAITING DEPLOY
+HOTFIX COMPLETE — AWAITING DEPLOY
