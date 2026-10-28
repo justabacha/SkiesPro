@@ -11,13 +11,6 @@ import { logger } from './shared/middleware/logger.js';
 import { attachWebSocketServer } from './infrastructure/websocket/wsServer.js';
 import { pgPool } from './config/database.js';
 
-if (process.env.NODE_ENV !== 'test') {
-  validateB2cConfig();
-  if (process.env.PAYMENT_GATEWAY_MODE === 'INTASEND') {
-    validateIntasendConfig();
-  }
-}
-
 const app: Application = express();
 
 // Trust Render Proxy
@@ -110,65 +103,8 @@ const server = http.createServer(app);
 // Attach WebSocket server
 attachWebSocketServer(server);
 
-// Automatically start price feed if enabled
-if (config.enablePriceFeed) {
-  import('./modules/pricing/bootstrap.js')
-    .then((m) => m.bootstrapPriceFeed())
-    .catch((err) => {
-      logger.error('Failed to auto-start price feed', { error: err.message });
-    });
-}
-
-if (process.env.DEMO_ENABLED === 'true') {
-  import('./modules/pricing/services/DemoPriceFeedService.js')
-    .then(({ demoPriceFeedService }) => demoPriceFeedService.start())
-    .catch((err) => {
-      logger.error('Failed to start isolated demo price feed', { error: err.message });
-    });
-}
-
-// Automatically start settlement worker if enabled
-if (config.enableSettlementWorker) {
-  import('./modules/trading/workers/settlementWorker.js')
-    .then((m) => {
-      const worker = new m.SettlementWorker();
-      return worker.start();
-    })
-    .catch((err) => {
-      logger.error('Failed to start settlement worker', { error: err.message });
-    });
-}
-
 let activeB2cWorker: any = null;
 let activeB2cReconciliationJob: any = null;
-
-// Automatically start B2C dispatch worker if enabled
-if (config.enableB2cWorker) {
-  import('./modules/payments/workers/b2cDispatchWorker.js')
-    .then((m) => {
-      activeB2cWorker = new m.B2CDispatchWorker();
-      return activeB2cWorker.start();
-    })
-    .catch((err) => {
-      logger.error('Failed to start B2C dispatch worker', { error: err.message });
-    });
-}
-
-// Automatically start B2C reconciliation job if enabled
-if (config.enableB2cReconciliation) {
-  import('./modules/payments/jobs/b2cReconciliation.job.js')
-    .then((m) => {
-      activeB2cReconciliationJob = new m.B2CReconciliationJob(
-        pgPool,
-        config.b2cReconciliationIntervalMs,
-        () => config.enableB2cReconciliation
-      );
-      return activeB2cReconciliationJob.start();
-    })
-    .catch((err) => {
-      logger.error('Failed to start B2C reconciliation job', { error: err.message });
-    });
-}
 
 const handleShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, initiating graceful shutdown...`);
@@ -194,12 +130,83 @@ const handleShutdown = async (signal: string) => {
   });
 };
 
-if (process.env.NODE_ENV !== 'test') {
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-  process.on('SIGINT', () => handleShutdown('SIGINT'));
+async function bootstrap(): Promise<void> {
+  if (process.env.NODE_ENV !== 'test') {
+    validateB2cConfig();
+    if (process.env.PAYMENT_GATEWAY_MODE === 'INTASEND') {
+      await validateIntasendConfig(pgPool);
+    }
 
-  server.listen(PORT, () => {
-    logger.info(`Server started on port ${PORT} in ${config.nodeEnv} mode`);
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+
+    // Automatically start price feed if enabled
+    if (config.enablePriceFeed) {
+      import('./modules/pricing/bootstrap.js')
+        .then((m) => m.bootstrapPriceFeed())
+        .catch((err) => {
+          logger.error('Failed to auto-start price feed', { error: err.message });
+        });
+    }
+
+    if (process.env.DEMO_ENABLED === 'true') {
+      import('./modules/pricing/services/DemoPriceFeedService.js')
+        .then(({ demoPriceFeedService }) => demoPriceFeedService.start())
+        .catch((err) => {
+          logger.error('Failed to start isolated demo price feed', { error: err.message });
+        });
+    }
+
+    // Automatically start settlement worker if enabled
+    if (config.enableSettlementWorker) {
+      import('./modules/trading/workers/settlementWorker.js')
+        .then((m) => {
+          const worker = new m.SettlementWorker();
+          return worker.start();
+        })
+        .catch((err) => {
+          logger.error('Failed to start settlement worker', { error: err.message });
+        });
+    }
+
+    // Automatically start B2C dispatch worker if enabled
+    if (config.enableB2cWorker) {
+      import('./modules/payments/workers/b2cDispatchWorker.js')
+        .then((m) => {
+          activeB2cWorker = new m.B2CDispatchWorker();
+          return activeB2cWorker.start();
+        })
+        .catch((err) => {
+          logger.error('Failed to start B2C dispatch worker', { error: err.message });
+        });
+    }
+
+    // Automatically start B2C reconciliation job if enabled
+    if (config.enableB2cReconciliation) {
+      import('./modules/payments/jobs/b2cReconciliation.job.js')
+        .then((m) => {
+          activeB2cReconciliationJob = new m.B2CReconciliationJob(
+            pgPool,
+            config.b2cReconciliationIntervalMs,
+            () => config.enableB2cReconciliation
+          );
+          return activeB2cReconciliationJob.start();
+        })
+        .catch((err) => {
+          logger.error('Failed to start B2C reconciliation job', { error: err.message });
+        });
+    }
+
+    server.listen(PORT, () => {
+      logger.info(`Server started on port ${PORT} in ${config.nodeEnv} mode`);
+    });
+  }
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  bootstrap().catch((err) => {
+    logger.error('Boot failed', { error: err.message });
+    process.exit(1);
   });
 }
 

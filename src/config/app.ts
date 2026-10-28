@@ -70,7 +70,7 @@ export function validateB2cConfig(): void {
   }
 }
 
-export function validateIntasendConfig(): void {
+export async function validateIntasendConfig(pool?: any): Promise<void> {
   const errors: string[] = [];
 
   const secretKey = process.env.INTASEND_SECRET_KEY;
@@ -94,8 +94,29 @@ export function validateIntasendConfig(): void {
     errors.push('INTASEND_ENVIRONMENT must be sandbox or live');
   }
 
+  const webhookChallenge = process.env.INTASEND_WEBHOOK_CHALLENGE;
+  if (!webhookChallenge || String(webhookChallenge).trim() === '') {
+    errors.push('INTASEND_WEBHOOK_CHALLENGE is required when PAYMENT_GATEWAY_MODE=INTASEND');
+  }
+
   if (errors.length > 0) {
     throw new Error(`Invalid IntaSend config: ${errors.join('; ')}`);
+  }
+
+  if (pool) {
+    const res = await pool.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'payments'
+         AND table_name = 'b2c_outbox'
+         AND column_name = 'gateway_tracking_id'`
+    );
+
+    if (!res.rows || res.rows.length === 0) {
+      throw new Error(
+        'MIGRATION 046 NOT APPLIED — gateway_tracking_id column missing on payments.b2c_outbox. Run migration 046 before enabling PAYMENT_GATEWAY_MODE=INTASEND.'
+      );
+    }
   }
 }
 

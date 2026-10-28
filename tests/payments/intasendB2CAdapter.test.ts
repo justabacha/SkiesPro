@@ -116,10 +116,45 @@ describe('IntaSendB2CAdapter', () => {
     });
   });
 
-  it('throws the unverified endpoint error for B2C status queries', async () => {
+  it('maps batch status responses and treats unknown states as pending', async () => {
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { state: 'COMPLETE' },
+    });
     const adapter = new IntaSendB2CAdapter();
-    await expect(adapter.queryB2CStatus('txn_123')).rejects.toThrow(
-      'IntaSend B2C status query endpoint unverified — must be confirmed in Phase 2B before use'
-    );
+    const completed = await adapter.queryB2CStatus('batch_complete');
+    expect(completed.status).toBe('completed');
+
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { state: 'FAILED' },
+    });
+    const failed = await adapter.queryB2CStatus('batch_failed');
+    expect(failed.status).toBe('failed');
+
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { state: 'TP111' },
+    });
+    const tp111 = await adapter.queryB2CStatus('batch_tp111');
+    expect(tp111.status).toBe('pending');
+
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { state: 'UNKNOWN' },
+    });
+    const unknown = await adapter.queryB2CStatus('batch_unknown');
+    expect(unknown.status).toBe('pending');
+  });
+
+  it('throws B2CPayoutError with code and raw payload on status query errors', async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      message: 'Status query denied',
+      code: 'ERR_FORBIDDEN',
+      response: { status: 403, data: { message: 'Forbidden' } },
+    });
+
+    const adapter = new IntaSendB2CAdapter();
+    await expect(adapter.queryB2CStatus('txn_123')).rejects.toMatchObject({
+      name: 'B2CPayoutError',
+      code: 403,
+      raw: { message: 'Forbidden' },
+    });
   });
 });

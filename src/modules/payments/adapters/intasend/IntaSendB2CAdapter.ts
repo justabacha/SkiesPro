@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../../../../shared/middleware/logger.js';
 import { normalizeMsisdn } from '../mpesa/DarajaB2CAdapter.js';
 import {
   B2CPayoutError,
@@ -86,7 +87,65 @@ export class IntaSendB2CAdapter implements IB2CPayoutGateway {
     }
   }
 
-  async queryB2CStatus(_conversationId: string): Promise<B2CStatusResponse> {
-    throw new Error('IntaSend B2C status query endpoint unverified — must be confirmed in Phase 2B before use');
+  async queryB2CStatus(trackingId: string): Promise<B2CStatusResponse> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/api/v1/send-money/status/`,
+        { tracking_id: trackingId },
+        {
+          headers: {
+            Authorization: `Bearer ${this.secretKey}`,
+          },
+          timeout: 30000,
+        }
+      );
+
+      const result = response.data ?? {};
+      const batchState = String(result.state ?? result.status ?? 'PENDING').toUpperCase();
+      const rawResultCode = String(result.resultCode ?? result.result_code ?? '');
+      const rawResultDescription = String(
+        result.resultDescription ?? result.result_description ?? result.message ?? 'Pending'
+      );
+
+      let status: B2CStatusResponse['status'] = 'pending';
+      if (batchState === 'COMPLETE' || batchState === 'COMPLETED') {
+        status = 'completed';
+      } else if (batchState === 'FAILED' || batchState === 'CANCELED' || batchState === 'CANCELLED') {
+        status = 'failed';
+      } else if (
+        batchState === 'PENDING' ||
+        batchState === 'PROCESSING' ||
+        batchState === 'RETRY' ||
+        batchState === 'PARTIAL' ||
+        batchState === 'TP111' ||
+        batchState === 'APPROVAL_PENDING' ||
+        batchState === 'APPROVAL-PENDING'
+      ) {
+        status = 'pending';
+      } else {
+        logger.warn('Unhandled IntaSend B2C status state; treating as pending to avoid failed payout', {
+          trackingId,
+          state: batchState,
+        });
+      }
+
+      return {
+        conversationId: String(trackingId),
+        status,
+        resultCode: rawResultCode ? Number(rawResultCode) : undefined,
+        resultDescription: rawResultDescription || batchState || 'pending',
+        raw: result,
+      };
+    } catch (error: any) {
+      const code = error.response?.status ?? error.code ?? 'INTASEND_HTTP_ERROR';
+      const raw = error.response?.data ?? error;
+      const message =
+        error.response?.data?.message ||
+        error.response?.data?.error?.message ||
+        error.message ||
+        'IntaSend B2C status query failed';
+
+      throw new B2CPayoutError(message, code, raw);
+    }
   }
 }

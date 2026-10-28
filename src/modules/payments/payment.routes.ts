@@ -1,13 +1,269 @@
 import { Router, Request, Response } from 'express';
 import { body } from 'express-validator';
+import { Decimal } from 'decimal.js';
 import { PaymentController } from './controllers/paymentController.js';
 import { B2CCallbackController } from './controllers/b2cCallbackController.js';
 import { authenticate } from '../../shared/middleware/authMiddleware.js';
 import { rateLimit } from '../../shared/middleware/rateLimit.js';
+import { verifyIntasendChallenge } from './middleware/verifyIntasendChallenge.js';
+import { logger } from '../../shared/middleware/logger.js';
+import { PaymentRepository } from './repositories/paymentRepository.js';
+import { WalletService } from '../wallet/services/walletService.js';
+import { AdminRepository } from '../admin/repositories/AdminRepository.js';
+import { pgPool } from '../../config/database.js';
 
 const router = Router();
 const controller = new PaymentController();
 const b2cCallbackController = new B2CCallbackController();
+
+const handleIntaSendCollectionCallback = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const invoiceId = req.body?.invoice_id;
+    const state = String(req.body?.state || '').toUpperCase();
+    const apiRef = req.body?.api_ref;
+
+    if (!invoiceId) {
+      logger.warn('IntaSend collection callback missing invoice_id', {
+        correlationId: (req as any).correlationId,
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    const paymentRepo = new PaymentRepository();
+    const deposit = await paymentRepo.findDepositByReference(String(invoiceId));
+    if (!deposit) {
+      logger.warn('IntaSend collection callback matched no deposit', {
+        correlationId: (req as any).correlationId,
+        invoiceId,
+        apiRef,
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (deposit.status !== 'pending') {
+      logger.info('IntaSend collection callback ignored duplicate deposit state', {
+        correlationId: (req as any).correlationId,
+        depositId: deposit.id,
+        status: deposit.status,
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (state === 'COMPLETE') {
+      const client = await pgPool.connect();
+      try {
+        await client.query('BEGIN');
+        const repoTx = new PaymentRepository(client);
+        const walletServiceTx = new WalletService(client);
+        const lockDeposit = await repoTx.findDepositByReferenceForUpdate(String(invoiceId));
+        if (!lockDeposit || lockDeposit.status !== 'pending') {
+          await client.query('COMMIT');
+          res.status(200).json({ ok: true });
+          return;
+        }
+        await repoTx.updateDepositStatus(lockDeposit.id, 'completed', req.body);
+        await walletServiceTx.credit(
+          lockDeposit.user_id,
+          'real',
+          new Decimal(lockDeposit.net_amount),
+          'deposit',
+          lockDeposit.id,
+          `IntaSend deposit: ${invoiceId}`
+        );
+        await client.query('COMMIT');
+      } catch (error: any) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (state === 'FAILED' || state === 'CANCELED' || state === 'CANCELLED') {
+      const client = await pgPool.connect();
+      try {
+        await client.query('BEGIN');
+        const repoTx = new PaymentRepository(client);
+        const lockDeposit = await repoTx.findDepositByReferenceForUpdate(String(invoiceId));
+        if (lockDeposit && lockDeposit.status === 'pending') {
+          await repoTx.updateDepositStatus(lockDeposit.id, 'failed', req.body);
+        }
+        await client.query('COMMIT');
+      } catch (error: any) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (error: any) {
+    logger.error('IntaSend collection callback failed', { error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const handleIntaSendB2CCallback = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = req.body || {};
+    const transactions = Array.isArray(payload.transactions) ? payload.transactions : [];
+
+    if (!transactions.length) {
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    for (const tx of transactions) {
+      const txState = String(tx.status || tx.state || '').toUpperCase();
+      const candidateIdempotencyKey = tx.idempotency_key;
+      const candidateTransactionId = tx.transaction_id;
+      const candidateTrackingId = payload.tracking_id;
+
+      let matchKey: 'idempotency_key' | 'transaction_id' | 'tracking_id' | null = null;
+      let outbox: any = null;
+
+      const client = await pgPool.connect();
+      try {
+        if (candidateIdempotencyKey) {
+          const result = await client.query(
+            `SELECT * FROM payments.b2c_outbox WHERE originator_conversation_id = $1 FOR UPDATE`,
+            [candidateIdempotencyKey]
+          );
+          if (result.rows[0]) {
+            outbox = result.rows[0];
+            matchKey = 'idempotency_key';
+          }
+        }
+        if (!outbox && candidateTransactionId) {
+          const result = await client.query(
+            `SELECT * FROM payments.b2c_outbox WHERE conversation_id = $1 FOR UPDATE`,
+            [candidateTransactionId]
+          );
+          if (result.rows[0]) {
+            outbox = result.rows[0];
+            matchKey = 'transaction_id';
+          }
+        }
+        if (!outbox && candidateTrackingId) {
+          const result = await client.query(
+            `SELECT * FROM payments.b2c_outbox WHERE gateway_tracking_id = $1 FOR UPDATE`,
+            [candidateTrackingId]
+          );
+          if (result.rows[0]) {
+            outbox = result.rows[0];
+            matchKey = 'tracking_id';
+          }
+        }
+      } finally {
+        client.release();
+      }
+
+      if (!outbox) {
+        logger.warn('IntaSend B2C callback saw no outbox match', {
+          correlationId: (req as any).correlationId,
+          idempotencyKey: candidateIdempotencyKey,
+          transactionId: candidateTransactionId,
+          trackingId: candidateTrackingId,
+        });
+        continue;
+      }
+
+      if (outbox.status !== 'sent') {
+        logger.info('IntaSend B2C callback ignored outbox row outside sent state', {
+          correlationId: (req as any).correlationId,
+          outboxId: outbox.id,
+          status: outbox.status,
+          matchKey,
+        });
+        continue;
+      }
+
+      const withdrawalClient = await pgPool.connect();
+      try {
+        await withdrawalClient.query('BEGIN');
+        const repoTx = new PaymentRepository(withdrawalClient);
+        const adminRepoTx = new AdminRepository(withdrawalClient);
+        const walletServiceTx = new WalletService(withdrawalClient);
+        const row = await withdrawalClient.query<any>(
+          `SELECT * FROM payments.b2c_outbox WHERE id = $1 FOR UPDATE`,
+          [outbox.id]
+        );
+        const outboxRow = row.rows[0];
+        if (!outboxRow || outboxRow.status !== 'sent') {
+          await withdrawalClient.query('COMMIT');
+          continue;
+        }
+
+        const withdrawal = await adminRepoTx.getWithdrawalByIdForUpdate(outboxRow.withdrawal_id);
+        if (!withdrawal || withdrawal.status !== 'dispatched') {
+          await withdrawalClient.query('COMMIT');
+          continue;
+        }
+
+        const isSuccess = ['COMPLETE', 'COMPLETED', 'SUCCESS', 'SUCCEEDED'].includes(txState);
+        const isFailure = ['FAILED', 'CANCELED', 'CANCELLED'].includes(txState);
+
+        if (isSuccess) {
+          await walletServiceTx.finalizeWithdrawalDebit(
+            withdrawal.user_id,
+            'real',
+            new Decimal(withdrawal.amount),
+            'withdrawal',
+            withdrawal.id,
+            `IntaSend payout completed: ${candidateTransactionId || payload.tracking_id}`
+          );
+          await repoTx.updateWithdrawalStatusAndRef(withdrawal.id, 'completed', candidateTransactionId || payload.tracking_id);
+          await repoTx.updateOutboxStatus(outboxRow.id, 'sent', candidateTransactionId || payload.tracking_id, null, null);
+          logger.info('IntaSend B2C callback finalized withdrawal', {
+            correlationId: (req as any).correlationId,
+            outboxId: outboxRow.id,
+            withdrawalId: withdrawal.id,
+            matchKey,
+          });
+        } else if (isFailure) {
+          await walletServiceTx.unlockFunds(withdrawal.user_id, 'real', new Decimal(withdrawal.amount));
+          await repoTx.updateWithdrawalStatusAndRef(withdrawal.id, 'failed', candidateTransactionId || payload.tracking_id);
+          await repoTx.updateOutboxStatus(outboxRow.id, 'failed', candidateTransactionId || payload.tracking_id, txState, null);
+          logger.warn('IntaSend B2C callback unlocked funds after failure', {
+            correlationId: (req as any).correlationId,
+            outboxId: outboxRow.id,
+            withdrawalId: withdrawal.id,
+            matchKey,
+          });
+        } else {
+          logger.info('IntaSend B2C callback ignored pending/unknown transaction state', {
+            correlationId: (req as any).correlationId,
+            outboxId: outboxRow.id,
+            state: txState,
+            matchKey,
+          });
+        }
+
+        await withdrawalClient.query('COMMIT');
+      } catch (error: any) {
+        await withdrawalClient.query('ROLLBACK');
+        logger.error('IntaSend B2C callback transaction failure', {
+          correlationId: (req as any).correlationId,
+          error: error.message,
+        });
+        throw error;
+      } finally {
+        withdrawalClient.release();
+      }
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (error: any) {
+    logger.error('IntaSend B2C callback failed', { error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
 // Public Callback Routes (Exempt from JWT)
 router.post('/deposit/callback', (req: Request, res: Response) =>
@@ -24,6 +280,14 @@ router.post('/mpesa/b2c/result', (req: Request, res: Response) =>
 
 router.post('/mpesa/b2c/timeout', (req: Request, res: Response) =>
   b2cCallbackController.handleTimeoutCallback(req, res)
+);
+
+router.post('/intasend/collection/callback', verifyIntasendChallenge, (req: Request, res: Response) =>
+  handleIntaSendCollectionCallback(req, res)
+);
+
+router.post('/intasend/b2c/callback', verifyIntasendChallenge, (req: Request, res: Response) =>
+  handleIntaSendB2CCallback(req, res)
 );
 
 // Protected Routes (Require JWT)

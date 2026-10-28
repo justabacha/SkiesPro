@@ -84,6 +84,7 @@ export class B2CDispatchWorker {
     logger.info('B2C Dispatch Worker stopped');
   }
 
+
   async processBatch(): Promise<void> {
     const client = await this.pool.connect();
     let claimedRows: any[] = [];
@@ -222,15 +223,27 @@ export class B2CDispatchWorker {
 
       const response = await this.gateway.initiateB2CPayout(req);
 
+      const rawObj = response.raw && typeof response.raw === 'object' ? (response.raw as any) : {};
+      const trackingId = String(rawObj.tracking_id || rawObj.batch?.tracking_id || '');
+
       await this.pool.query(
         `UPDATE payments.b2c_outbox
          SET status = 'sent',
              conversation_id = $1,
+             gateway_tracking_id = COALESCE(NULLIF($3::text, ''), gateway_tracking_id),
              processed_at = NOW(),
              updated_at = NOW()
          WHERE id = $2`,
-        [response.conversationId, row.id]
+        [response.conversationId, row.id, trackingId]
       );
+
+      if (!trackingId.trim()) {
+        logger.warn('B2C response missing tracking_id; leaving gateway_tracking_id unset', {
+          outboxId: row.id,
+          withdrawalId: row.withdrawal_id,
+          conversationId: response.conversationId,
+        });
+      }
 
       logger.info('B2C Dispatch Worker successfully dispatched payout', {
         outboxId: row.id,
