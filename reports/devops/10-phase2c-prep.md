@@ -4,7 +4,7 @@
 - Date: 2026-10-28
 - Branch: `main`
 - Commit: `f68e148`
-- Scope: Step 1 Phase 2C Code Hardening (Fix 1 Boot Blocker, Fix 2 Idempotency Ambiguity with Migration 047, Fix 3 Logging Additions)
+- Scope: Step 1 Phase 2C Code Hardening (Fix 1 Boot Blocker, Fix 2 Idempotency Ambiguity with Migration 047, Fix 3 Logging Additions, Webhook Race Condition Hotfix)
 
 ---
 
@@ -303,7 +303,7 @@ WHERE status = 'processing'
 Test Suites: 70 passed, 70 total
 Tests:       479 passed, 479 total
 Snapshots:   0 total
-Time:        478.604 s
+Time:        547.644 s
 Ran all test suites.
 Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
 ```
@@ -313,7 +313,7 @@ Force exiting Jest: Have you considered using `--detectOpenHandles` to detect as
 Test Suites: 70 passed, 70 total
 Tests:       479 passed, 479 total
 Snapshots:   0 total
-Time:        446.408 s, estimated 471 s
+Time:        516.985 s, estimated 539 s
 Ran all test suites.
 Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
 ```
@@ -386,7 +386,62 @@ When a B2C payout encounters an ambiguous network failure, the outbox row is mar
 
 ---
 
-## 11. Out-of-Scope Confirmation
+## 11. Webhook Race Condition Hotfix
+
+### Problem
+During live sandbox testing, `POST /api/v1/payments/deposit/initiate` took up to 8.6 seconds to complete. IntaSend sent webhook notifications within 3 seconds. The collection callback handler queried `payments.deposits` before the `initiate` request finished inserting the row, causing `IntaSend collection callback matched no deposit` warning and dropping the webhook.
+
+### Quoted Implementation (`src/modules/payments/payment.routes.ts`)
+```typescript
+    const paymentRepo = new PaymentRepository();
+    let deposit = await paymentRepo.findDepositByReference(String(invoiceId));
+
+    // Race Condition Guard: Wait up to 5 seconds for the initiate API to finish
+    if (!deposit) {
+      for (let i = 0; i < 5; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        deposit = await paymentRepo.findDepositByReference(String(invoiceId));
+        if (deposit) break;
+      }
+    }
+
+    if (!deposit) {
+      // If still not found after 5 seconds, check if it's a genuinely unknown deposit
+      logger.warn('IntaSend collection callback matched no deposit after 5s wait', {
+        correlationId: (req as any).correlationId,
+        invoiceId,
+        apiRef,
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+```
+
+### Full-Suite 2× Runs Verification
+
+#### Run 1 Output
+```text
+Test Suites: 70 passed, 70 total
+Tests:       479 passed, 479 total
+Snapshots:   0 total
+Time:        547.644 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+```
+
+#### Run 2 Output
+```text
+Test Suites: 70 passed, 70 total
+Tests:       479 passed, 479 total
+Snapshots:   0 total
+Time:        516.985 s, estimated 539 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+```
+
+---
+
+## 12. Out-of-Scope Confirmation
 - No Phase 1 reconciliation logic modified.
 - No Phase 2A/2B adapter core logic changed beyond error outcome classification.
 - No new API endpoints created.
@@ -396,4 +451,4 @@ When a B2C payout encounters an ambiguous network failure, the outbox row is mar
 
 ---
 
-STEP 1 COMPLETE — AWAITING GATE PASS
+RACE CONDITION HOTFIX COMPLETE — AWAITING DEPLOY

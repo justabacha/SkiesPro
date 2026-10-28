@@ -38,9 +38,20 @@ const handleIntaSendCollectionCallback = async (req: Request, res: Response): Pr
     });
 
     const paymentRepo = new PaymentRepository();
-    const deposit = await paymentRepo.findDepositByReference(String(invoiceId));
+    let deposit = await paymentRepo.findDepositByReference(String(invoiceId));
+
+    // Race Condition Guard: Wait up to 5 seconds for the initiate API to finish
     if (!deposit) {
-      logger.warn('IntaSend collection callback matched no deposit', {
+      for (let i = 0; i < 5; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        deposit = await paymentRepo.findDepositByReference(String(invoiceId));
+        if (deposit) break;
+      }
+    }
+
+    if (!deposit) {
+      // If still not found after 5 seconds, check if it's a genuinely unknown deposit
+      logger.warn('IntaSend collection callback matched no deposit after 5s wait', {
         correlationId: (req as any).correlationId,
         invoiceId,
         apiRef,
