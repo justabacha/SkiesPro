@@ -111,8 +111,8 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           </div>
         )}
 
-        <div className="p-4 rounded-md bg-bg-light-tertiary dark:bg-bg-dark-tertiary border border-border-light dark:border-border-dark">
-          <div className="flex justify-between items-center mb-2">
+        <div className="px-3 py-2 rounded-md bg-bg-light-tertiary dark:bg-bg-dark-tertiary border border-border-light dark:border-border-dark">
+          <div className="flex justify-between items-center">
             <span className="text-xs text-text-light-tertiary uppercase font-bold">Available for Withdrawal</span>
             <span className="text-sm font-mono font-bold text-success">{formatKES(availableBalance)}</span>
           </div>

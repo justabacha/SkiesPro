@@ -27,7 +27,7 @@ export const IntaSendTrustBadge: React.FC = () => {
           fontSize: '0.8em',
           marginTop: '0.6em',
           fontWeight: 500,
-          opacity: 0.8,
+          opacity: 0.9,
           textAlign: 'center',
         }}
       >
