@@ -189,4 +189,81 @@ describe('SettlementWorker (SET-UNIT-004 to 010)', () => {
     expect(contractRepo.updateStatusCAS).not.toHaveBeenCalled();
     expect(tickRepo.getPriceAt).not.toHaveBeenCalled();
   });
+
+  test('falls back to getLatest price tick when getPriceAt returns null', async () => {
+    contractRepo.updateStatusCAS.mockResolvedValue(true);
+    contractRepo.findByIdForSettlement.mockResolvedValue(testContract);
+    tickRepo.getPriceAt.mockResolvedValue(null);
+    tickRepo.getLatest.mockResolvedValue({
+      mid_price: '1.09000',
+      tick_time: testContract.expiryTime.toISOString(),
+    } as any);
+
+    const mockClient = {
+      query: jest.fn().mockImplementation((queryText: string) => {
+        if (queryText.includes('FROM wallet.wallets')) {
+          return {
+            rows: [
+              {
+                id: 'wallet-123',
+                balance: '10000',
+                locked_balance: '0',
+                currency: 'KES',
+                version: 1,
+              },
+            ],
+          };
+        }
+        return { rows: [] };
+      }),
+      release: jest.fn(),
+    };
+    (pgPool.connect as jest.Mock).mockResolvedValue(mockClient);
+
+    await worker.settle(testContractId);
+
+    expect(tickRepo.getPriceAt).toHaveBeenCalledWith('EUR/USD', testContract.expiryTime, 'live');
+    expect(tickRepo.getLatest).toHaveBeenCalledWith('EUR/USD', 'live');
+  });
+
+  test('cancels and refunds contract when no price tick is available at all', async () => {
+    contractRepo.updateStatusCAS.mockResolvedValue(true);
+    contractRepo.findByIdForSettlement.mockResolvedValue(testContract);
+    tickRepo.getPriceAt.mockResolvedValue(null);
+    tickRepo.getLatest.mockResolvedValue(null);
+
+    const mockClient = {
+      query: jest.fn().mockImplementation((queryText: string) => {
+        if (queryText.includes('wallet.wallets')) {
+          return {
+            rows: [
+              {
+                id: 'wallet-123',
+                user_id: 'user-123',
+                balance: '10000',
+                locked_balance: '0',
+                available_balance: '10000',
+                currency: 'KES',
+                version: 1,
+              },
+            ],
+          };
+        }
+        return { rows: [{ id: 'mock-id' }] };
+      }),
+      release: jest.fn(),
+    };
+    (pgPool.connect as jest.Mock).mockResolvedValue(mockClient);
+
+    await worker.settle(testContractId);
+
+    expect(tickRepo.getPriceAt).toHaveBeenCalledWith('EUR/USD', testContract.expiryTime, 'live');
+    expect(tickRepo.getLatest).toHaveBeenCalledWith('EUR/USD', 'live');
+
+    expect(ContractRepository.prototype.updateStatus).toHaveBeenCalledWith(
+      testContractId,
+      'real',
+      'cancelled'
+    );
+  });
 });

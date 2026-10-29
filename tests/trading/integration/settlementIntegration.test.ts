@@ -325,22 +325,25 @@ describe('Trade Settlement Integration', () => {
     expect(ledger.length).toBe(1);
   });
 
-  test('SET-008: should handle missing price tick with error (to trigger retry)', async () => {
+  test('SET-008: should gracefully cancel and refund when no price tick is found', async () => {
     const contract = await placeTestTrade('1.10000');
 
     const tickRepo = (settlementWorker as any).tickRepo;
     const originalGetPriceAt = tickRepo.getPriceAt;
+    const originalGetLatest = tickRepo.getLatest;
     tickRepo.getPriceAt = jest.fn().mockResolvedValue(null);
+    tickRepo.getLatest = jest.fn().mockResolvedValue(null);
     try {
-      await expect(settlementWorker.settle(contract.id!)).rejects.toThrow('Price tick not found');
+      await settlementWorker.settle(contract.id!);
 
       const { rows } = await pgPool.query(
         'SELECT status FROM trading.binary_contracts WHERE id = $1',
         [contract.id]
       );
-      expect(rows[0].status).toBe('active');
+      expect(rows[0].status).toBe('cancelled');
     } finally {
       tickRepo.getPriceAt = originalGetPriceAt;
+      tickRepo.getLatest = originalGetLatest;
     }
   });
 

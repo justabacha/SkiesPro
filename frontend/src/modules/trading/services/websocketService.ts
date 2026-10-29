@@ -192,7 +192,7 @@ class WebsocketService {
     this.pingIntervalId = setInterval(() => {
       if (this.client && this.client.isConnected()) {
         this.lastPingTime = Date.now();
-        // Ping is managed by WebSocket client / browser or server message
+        this.client.sendPing();
       }
     }, 10000);
   }

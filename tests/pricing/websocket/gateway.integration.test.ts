@@ -165,6 +165,20 @@ describe('WebSocket Gateway Integration Tests', () => {
   });
 
   describe('Connection lifecycle', () => {
+    it('should allow more than 10 messages per minute up to rate limit', () => {
+      (gateway as any).INBOUND_RATE_LIMIT_PER_MIN = 120;
+      const connectionId = 'conn-rate-limit-test';
+
+      let allowedCount = 0;
+      for (let i = 0; i < 20; i++) {
+        const isAllowed = (gateway as any).checkRateLimit(connectionId);
+        if (isAllowed) allowedCount++;
+      }
+
+      expect(allowedCount).toBeGreaterThan(10);
+      expect(allowedCount).toBe(20);
+    });
+
     it('should handle connection timeout', () => {
       jest.useFakeTimers();
 

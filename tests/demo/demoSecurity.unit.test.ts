@@ -11,6 +11,7 @@ import { WalletService } from '../../src/modules/wallet/services/walletService.j
 import { SettlementWorker } from '../../src/modules/trading/workers/settlementWorker.js';
 
 jest.mock('../../src/modules/trading/repositories/contractRepository.js');
+jest.mock('../../src/modules/trading/repositories/settlementRepository.js');
 jest.mock('../../src/modules/pricing/repositories/tickRepository.js');
 jest.mock('../../src/modules/trading/repositories/assetConfigRepository.js');
 jest.mock('../../src/modules/trading/repositories/assetRepository.js');
@@ -67,7 +68,7 @@ describe('WP-21 demo security routing', () => {
 
   it('DEMO-SEC-004: live settlement requests only live ticks', async () => {
     const contract = {
-      id: 'live-contract',
+      id: '11111111-1111-1111-1111-111111111111',
       userId: 'security-user',
       accountType: 'real' as const,
       assetSymbol: 'EUR/USD',
@@ -85,9 +86,10 @@ describe('WP-21 demo security routing', () => {
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(true);
     (TickRepository.prototype.getPriceAt as jest.Mock).mockResolvedValue(null);
+    (TickRepository.prototype.getLatest as jest.Mock).mockResolvedValue(null);
 
     const worker = new SettlementWorker();
-    await expect(worker.settle(contract.id)).rejects.toThrow('Price tick not found');
+    await worker.settle(contract.id);
 
     expect(TickRepository.prototype.getPriceAt).toHaveBeenCalledWith(
       contract.assetSymbol,

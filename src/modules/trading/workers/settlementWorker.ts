@@ -119,18 +119,27 @@ export class SettlementWorker {
       }
 
       // 3. Fetch settlement price (tick at or just before expiry)
-      const settlementTick = await this.tickRepo.getPriceAt(
+      let settlementTick = await this.tickRepo.getPriceAt(
         contract.assetSymbol,
         contract.expiryTime,
         accountType === 'real' ? 'live' : 'demo'
       );
 
       if (!settlementTick) {
-        // Retry logic for missing ticks could be added here,
-        // for now we throw to trigger RabbitMQ nack/retry
-        throw new Error(
-          `Price tick not found for ${contract.assetSymbol} at ${contract.expiryTime.toISOString()}`
+        logger.warn('Missing settlement tick, falling back to latest tick', { contractId });
+        settlementTick = await this.tickRepo.getLatest(
+          contract.assetSymbol,
+          accountType === 'real' ? 'live' : 'demo'
         );
+      }
+
+      if (!settlementTick) {
+        logger.warn('No price tick available for settlement, cancelling and refunding contract', {
+          contractId,
+          assetSymbol: contract.assetSymbol,
+        });
+        await this.cancelAndRefund(contract, 'MISSING_PRICE_TICK');
+        return;
       }
 
       // 4. Oracle Gap Check (Hardened Security Kill-Switch)

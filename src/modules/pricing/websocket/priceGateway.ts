@@ -18,7 +18,7 @@ export class PriceGateway {
     10
   );
   private readonly INBOUND_RATE_LIMIT_PER_MIN = parseInt(
-    process.env.WS_INBOUND_RATE_LIMIT_PER_MIN || '10',
+    process.env.WS_INBOUND_RATE_LIMIT_PER_MIN || '120',
     10
   );
   private rateLimitMap: Map<string, { count: number; resetTime: Date }> = new Map();

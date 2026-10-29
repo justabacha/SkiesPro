@@ -98,6 +98,12 @@ export class WebSocketClient {
     }
   }
 
+  sendPing(): void {
+    this.send({
+      type: 'ping',
+    });
+  }
+
   private sendSubscribe(channels: SubscribeChannel[]): void {
     this.send({
       type: 'subscribe',

@@ -105,6 +105,7 @@ attachWebSocketServer(server);
 
 let activeB2cWorker: any = null;
 let activeB2cReconciliationJob: any = null;
+let activeSettlementRecoveryJob: any = null;
 
 const handleShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, initiating graceful shutdown...`);
@@ -120,6 +121,13 @@ const handleShutdown = async (signal: string) => {
       await activeB2cReconciliationJob.stop();
     } catch (err: any) {
       logger.error('Error stopping B2C reconciliation job', { error: err.message });
+    }
+  }
+  if (activeSettlementRecoveryJob) {
+    try {
+      await activeSettlementRecoveryJob.stop();
+    } catch (err: any) {
+      logger.error('Error stopping settlement recovery job', { error: err.message });
     }
   }
   server.close(() => {
@@ -166,6 +174,18 @@ async function bootstrap(): Promise<void> {
         })
         .catch((err) => {
           logger.error('Failed to start settlement worker', { error: err.message });
+        });
+    }
+
+    // Automatically start settlement recovery job if enabled
+    if (config.enableSettlementRecovery) {
+      import('./modules/trading/workers/settlementRecovery.job.js')
+        .then((m) => {
+          activeSettlementRecoveryJob = new m.SettlementRecoveryJob();
+          return activeSettlementRecoveryJob.start();
+        })
+        .catch((err) => {
+          logger.error('Failed to start settlement recovery job', { error: err.message });
         });
     }
 

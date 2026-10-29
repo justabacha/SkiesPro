@@ -19,6 +19,7 @@ export const config = {
   logLevel: process.env.LOG_LEVEL || 'info',
   enablePriceFeed: process.env.ENABLE_PRICE_FEED === 'true',
   enableSettlementWorker: process.env.ENABLE_SETTLEMENT_WORKER === 'true',
+  enableSettlementRecovery: process.env.ENABLE_SETTLEMENT_RECOVERY === 'true',
   useMockPrices: process.env.USE_MOCK_PRICES === 'true',
   enableB2cDisbursement:
     process.env.ENABLE_B2C_DISBURSEMENT === 'true' || process.env.NODE_ENV === 'test',
