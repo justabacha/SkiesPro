@@ -8,6 +8,7 @@ import {
   FormGroup,
   Stack,
   PhoneInput,
+  IntaSendTrustBadge,
 } from '@/shared/components';
 import { useWallet } from '@/shared/hooks/useWallet';
 import { usePublicConfig } from '@/shared/hooks/usePublicConfig';
@@ -152,6 +153,8 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
             'Deposit via M-Pesa'
           )}
         </Button>
+
+        <IntaSendTrustBadge />
       </Stack>
     </form>
   );

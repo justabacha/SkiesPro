@@ -17,4 +17,5 @@ export * from './PublicRoute';
 export * from './FilterTabs';
 export { TableLoading } from './TableLoading';
 export { TableEmpty } from './TableEmpty';
+export { IntaSendTrustBadge } from './IntaSendTrustBadge';
 

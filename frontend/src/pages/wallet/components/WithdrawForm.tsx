@@ -7,9 +7,10 @@ import {
   Input,
   FormGroup,
   Stack,
-  PhoneInput,
+  IntaSendTrustBadge,
 } from '@/shared/components';
 import { useWallet } from '@/shared/hooks/useWallet';
+import { useAuth } from '@/shared/hooks/useAuth';
 import { usePublicConfig } from '@/shared/hooks/usePublicConfig';
 import { formatKES } from '@/shared/utils/currencyUtils';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
@@ -20,9 +21,6 @@ const createWithdrawSchema = (min: number, max: number) =>
       const amount = Number(value);
       return Number.isFinite(amount) && amount >= min && amount <= max;
     }, { message: `Withdrawal amount must be between KES ${min} and KES ${max}` }),
-    phone: z.string().regex(/^(?:254|\+254|0)?([71][0-9]{8})$/, {
-      message: 'Please enter a valid Safaricom phone number',
-    }),
   });
 
 interface WithdrawFormProps {
@@ -31,6 +29,7 @@ interface WithdrawFormProps {
 }
 
 export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, onSuccess }) => {
+  const { user } = useAuth();
   const { requestWithdrawal } = useWallet({ accountMode: 'real' });
   const config = usePublicConfig();
   const [status, setState] = useState<'idle' | 'success' | 'error'>('idle');
@@ -63,6 +62,12 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
   const netAmount = numAmount - fee;
 
   const onSubmit = async (data: WithdrawInput) => {
+    if (!user?.phone) {
+      setError('No M-Pesa number registered. Please update your profile in settings.');
+      setState('error');
+      return;
+    }
+
     if (parseFloat(data.amount) > parseFloat(availableBalance)) {
       setError('Insufficient available balance');
       setState('error');
@@ -72,10 +77,12 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
     setState('idle');
     setError(null);
     try {
-      const normalizedPhone = data.phone.replace(/^\+/, '').replace(/^0/, '254');
+      const rawPhone = user.phone;
+      const normalizedPhone = rawPhone.replace(/^\+/, '').replace(/^0/, '254');
+      const finalPhone = normalizedPhone.startsWith('254') ? normalizedPhone : `254${normalizedPhone}`;
       await requestWithdrawal({
         amount: data.amount,
-        phone: normalizedPhone.startsWith('254') ? normalizedPhone : `254${normalizedPhone}`
+        phone: finalPhone,
       });
       setState('success');
       setTimeout(onSuccess, 3000);
@@ -124,12 +131,17 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           />
         </FormGroup>
 
-        <FormGroup label="Receiving M-Pesa Number" error={errors.phone?.message}>
-          <PhoneInput
-            {...register('phone')}
-            placeholder="0712345678"
-            error={!!errors.phone}
-          />
+        <FormGroup label="Receiving M-Pesa Number">
+          <div className="p-3 bg-bg-light-tertiary dark:bg-bg-dark-tertiary border border-border-light dark:border-border-dark rounded-md text-sm text-text-light-secondary dark:text-text-dark-secondary">
+            {user?.phone ? (
+              <span className="font-mono text-text-light-primary dark:text-text-dark-primary">{user.phone}</span>
+            ) : (
+              <div className="flex items-center gap-2 text-danger">
+                <AlertCircle className="h-4 w-4" />
+                <span>No M-Pesa number registered. <a href="/settings?tab=profile" className="underline font-bold">Update Profile</a></span>
+              </div>
+            )}
+          </div>
         </FormGroup>
 
         <div className="space-y-2 p-3 bg-bg-light-secondary dark:bg-bg-dark-secondary rounded border border-border-light dark:border-border-dark">
@@ -154,10 +166,12 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           type="submit"
           className="w-full h-12"
           isLoading={isSubmitting}
-          disabled={numAmount > parseFloat(availableBalance)}
+          disabled={numAmount > parseFloat(availableBalance) || !user?.phone}
         >
           Request Withdrawal
         </Button>
+
+        <IntaSendTrustBadge />
       </Stack>
     </form>
   );

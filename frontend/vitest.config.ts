@@ -12,6 +12,10 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     restoreMocks: true,
-    include: ['src/tests/history/**/*.test.tsx', 'src/tests/settings/**/*.test.tsx'],
+    include: [
+      'src/tests/history/**/*.test.tsx',
+      'src/tests/settings/**/*.test.tsx',
+      'src/tests/wallet/**/*.test.tsx',
+    ],
   },
 });

@@ -11,6 +11,7 @@ interface User {
   kycStatus: string;
   mfaEnabled: boolean;
   avatarUrl?: string | null;
+  phone?: string | null;
 }
 
 const ADMIN_ROLE_SET = new Set([
@@ -66,6 +67,7 @@ interface AuthResponse {
       roles?: string[];
       kyc_status: string;
       mfa_enabled?: boolean;
+      phone?: string | null;
     };
   };
 }
@@ -102,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       kycStatus: userData.kyc_status,
       mfaEnabled: userData.mfa_enabled === true,
       avatarUrl: (userData as any).avatar_url || (userData as any).avatarUrl || null,
+      phone: userData.phone || (userData as any).phone || null,
     };
   };
 
