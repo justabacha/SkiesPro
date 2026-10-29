@@ -12,7 +12,7 @@ export const IntaSendTrustBadge: React.FC = () => {
   const textColor = isDark ? '#fafafa' : '#454545';
 
   return (
-    <div className="flex flex-col items-center justify-center mt-6">
+    <div className="flex flex-col items-center justify-center mt-2">
       <a href="https://intasend.com/security" target="_blank" rel="noopener noreferrer">
         <img
           src={badgeSrc}
@@ -21,16 +21,17 @@ export const IntaSendTrustBadge: React.FC = () => {
           className="max-w-full h-auto"
         />
       </a>
-      <strong>
-        <a
-          href="https://intasend.com/security"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ display: 'block', color: textColor, textDecoration: 'none', fontSize: '0.8em', marginTop: '0.6em' }}
-        >
-          Secured by IntaSend Payments
-        </a>
-      </strong>
+      <p
+        style={{
+          color: textColor,
+          fontSize: '0.8em',
+          marginTop: '0.6em',
+          fontWeight: 500,
+          opacity: 0.8,
+        }}
+      >
+        SkiesPro values your account security. Payments are securely processed by IntaSend.
+      </p>
     </div>
   );
 };

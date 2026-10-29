@@ -153,7 +153,7 @@ export const WalletPage = () => {
         isOpen={isDepositOpen}
         onClose={() => setIsDepositOpen(false)}
         title="Deposit Funds via M-Pesa"
-        className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-hide p-4 sm:p-6"
       >
         <DepositForm onSuccess={() => {
           setIsDepositOpen(false);
@@ -165,7 +165,7 @@ export const WalletPage = () => {
         isOpen={isWithdrawOpen}
         onClose={() => setIsWithdrawOpen(false)}
         title="Withdraw Funds to M-Pesa"
-        className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-hide p-4 sm:p-6"
       >
         <WithdrawForm
           availableBalance={balance?.available_balance || '0'}

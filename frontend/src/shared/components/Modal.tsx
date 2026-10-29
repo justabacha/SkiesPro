@@ -62,7 +62,7 @@ const Modal: React.FC<ModalProps> = ({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              'relative z-50 w-full max-w-[400px] rounded-lg bg-bg-light-primary p-6 shadow-xl dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark',
+              'relative z-50 w-full max-w-[400px] rounded-lg bg-bg-light-primary p-6 shadow-xl dark:bg-bg-dark-secondary border border-border-light dark:border-border-dark scrollbar-hide',
               className
             )}
             role="dialog"

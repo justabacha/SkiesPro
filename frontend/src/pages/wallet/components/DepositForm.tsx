@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -45,16 +45,15 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
     register,
     handleSubmit,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = useForm<DepositInput>({
     resolver: zodResolver(depositSchema),
+    mode: 'onChange',
     defaultValues: {
-      amount: String(config.minDeposit),
-    }
+      amount: '',
+      phone: '',
+    },
   });
-  useEffect(() => {
-    setValue('amount', String(config.minDeposit), { shouldValidate: true });
-  }, [config.minDeposit, setValue]);
 
   const onSubmit = async (data: DepositInput) => {
     setState('processing');
@@ -112,7 +111,7 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
                 type="button"
                 variant="secondary"
                 size="sm"
-                onClick={() => setValue('amount', String(amt))}
+                onClick={() => setValue('amount', String(amt), { shouldValidate: true, shouldDirty: true, shouldTouch: true })}
               >
                 {formatKES(amt, false)}
               </Button>
@@ -121,7 +120,7 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
           <Input
             {...register('amount')}
             type="number"
-            placeholder={`KES ${config.minDeposit}–${config.maxDeposit}`}
+            placeholder={`Min KES ${config.minDeposit}`}
             className="font-mono"
             error={!!errors.amount}
           />
@@ -142,7 +141,7 @@ export const DepositForm: React.FC<DepositFormProps> = ({ onSuccess }) => {
           type="submit"
           className="w-full h-12"
           isLoading={status === 'processing'}
-          disabled={isSubmitting}
+          disabled={!isValid || isSubmitting || status === 'processing'}
         >
           {status === 'processing' ? (
             <span className="flex items-center gap-2">

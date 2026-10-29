@@ -41,11 +41,15 @@ describe('WithdrawForm', () => {
     expect(screen.getByText('0712345678')).toBeTruthy();
     expect(screen.getByAltText('IntaSend Secure Payments (PCI-DSS Compliant)')).toBeTruthy();
 
-    const amountInput = screen.getByPlaceholderText('KES 100–70000');
+    const submitBtn = screen.getByRole('button', { name: 'Request Withdrawal' });
+    expect(submitBtn.hasAttribute('disabled')).toBe(true);
+
+    const amountInput = screen.getByPlaceholderText('Min KES 100');
     fireEvent.change(amountInput, { target: { value: '500' } });
 
-    const submitBtn = screen.getByRole('button', { name: 'Request Withdrawal' });
-    expect(submitBtn.hasAttribute('disabled')).toBe(false);
+    await waitFor(() => {
+      expect(submitBtn.hasAttribute('disabled')).toBe(false);
+    });
 
     fireEvent.click(submitBtn);
 
@@ -63,7 +67,7 @@ describe('WithdrawForm', () => {
     render(<WithdrawForm availableBalance="5000" onSuccess={vi.fn()} />);
 
     expect(screen.getByText(/No M-Pesa number registered/i)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Update Profile' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Add number in settings' })).toBeTruthy();
 
     const submitBtn = screen.getByRole('button', { name: 'Request Withdrawal' });
     expect(submitBtn.hasAttribute('disabled')).toBe(true);

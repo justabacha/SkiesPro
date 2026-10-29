@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -44,17 +44,14 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
     register,
     handleSubmit,
     control,
-    setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = useForm<WithdrawInput>({
     resolver: zodResolver(withdrawSchema),
+    mode: 'onChange',
     defaultValues: {
-      amount: String(config.minWithdrawal),
-    }
+      amount: '',
+    },
   });
-  useEffect(() => {
-    setValue('amount', String(config.minWithdrawal), { shouldValidate: true });
-  }, [config.minWithdrawal, setValue]);
 
   const amount = useWatch({ control, name: 'amount' });
   const numAmount = parseFloat(amount) || 0;
@@ -125,24 +122,26 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           <Input
             {...register('amount')}
             type="number"
-            placeholder={`KES ${config.minWithdrawal}–${config.maxWithdrawal}`}
+            placeholder={`Min KES ${config.minWithdrawal}`}
             className="font-mono"
             error={!!errors.amount}
           />
         </FormGroup>
 
-        <FormGroup label="Receiving M-Pesa Number">
-          <div className="p-3 bg-bg-light-tertiary dark:bg-bg-dark-tertiary border border-border-light dark:border-border-dark rounded-md text-sm text-text-light-secondary dark:text-text-dark-secondary">
-            {user?.phone ? (
-              <span className="font-mono text-text-light-primary dark:text-text-dark-primary">{user.phone}</span>
-            ) : (
-              <div className="flex items-center gap-2 text-danger">
-                <AlertCircle className="h-4 w-4" />
-                <span>No M-Pesa number registered. <a href="/settings?tab=profile" className="underline font-bold">Update Profile</a></span>
-              </div>
-            )}
-          </div>
-        </FormGroup>
+        <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary mt-1 mb-3">
+          {user?.phone ? (
+            <span>
+              Funds will be sent to <strong className="font-mono text-text-light-primary dark:text-text-dark-primary">{user.phone}</strong>.{' '}
+              <a href="/settings?tab=profile" className="text-brand hover:underline ml-1 font-medium">Change in settings</a>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-danger">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              No M-Pesa number registered.{' '}
+              <a href="/settings?tab=profile" className="underline font-bold ml-1">Add number in settings</a>
+            </span>
+          )}
+        </div>
 
         <div className="space-y-2 p-3 bg-bg-light-secondary dark:bg-bg-dark-secondary rounded border border-border-light dark:border-border-dark">
           <div className="flex justify-between text-xs">
@@ -166,7 +165,7 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           type="submit"
           className="w-full h-12"
           isLoading={isSubmitting}
-          disabled={numAmount > parseFloat(availableBalance) || !user?.phone}
+          disabled={!isValid || isSubmitting || numAmount > parseFloat(availableBalance) || !user?.phone}
         >
           Request Withdrawal
         </Button>
