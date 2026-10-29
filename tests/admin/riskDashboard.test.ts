@@ -100,6 +100,7 @@ describe('Risk Dashboard & Asset Config Backend Tests (WP-20 Phase 4)', () => {
   it('Zero Division: 0 settled contracts returns 0 win ratio without crash', async () => {
     if (skipDatabaseTests) return;
 
+    await pgPool.query('DELETE FROM trading.binary_contracts');
     const res = await adminRepo.getRiskDashboard();
     expect(res.platform_win_loss_ratio).toBe(0);
     expect(typeof res.platform_win_loss_ratio).toBe('number');

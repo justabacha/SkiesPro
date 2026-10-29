@@ -59,6 +59,12 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
     await pgPool.query('DELETE FROM app_auth.users WHERE id = $1', [adminUserId]);
   });
 
+  function createTestIdempotencyKey(): string {
+    const ik = uuidv4();
+    usedKeys.push(ik);
+    return ik;
+  }
+
   it('should fail if KYC is not verified', async () => {
     const unverifiedEmail = `unverified-${Date.now()}@example.com`;
     const unverifiedPhone = generateUniquePhone();
@@ -68,8 +74,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
     );
     const unverifiedId = res.rows[0].id;
 
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     await expect(
       paymentService.requestWithdrawal(unverifiedId, {
@@ -84,8 +89,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   });
 
   it('should process a valid withdrawal request and lock funds with 2% fee', async () => {
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     const withdrawal = await paymentService.requestWithdrawal(testUserId, {
       amount: '5000',
@@ -112,8 +116,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   });
 
   it('should approve withdrawal successfully (Slice 3: sets status to dispatched, enqueues b2c_outbox, leaves wallet unchanged)', async () => {
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     const wReq = await paymentService.requestWithdrawal(testUserId, {
       amount: '3000',
@@ -161,8 +164,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   });
 
   it('should enforce idempotency on sequential approve calls', async () => {
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     const wReq = await paymentService.requestWithdrawal(testUserId, {
       amount: '2000',
@@ -185,8 +187,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   });
 
   it('should handle concurrent racy approve calls cleanly (only one succeeds, exactly one outbox row)', async () => {
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     const wReq = await paymentService.requestWithdrawal(testUserId, {
       amount: '2500',
@@ -225,8 +226,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
     await walletService.createWallet(noPhoneUserId, 'real', 'KES');
     await walletService.credit(noPhoneUserId, 'real', new Decimal('5000'), 'admin_adjustment', uuidv4(), 'Funding');
 
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     const wReq = await paymentService.requestWithdrawal(noPhoneUserId, {
       amount: '2000',
@@ -257,8 +257,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
     await walletService.createWallet(badPhoneUserId, 'real', 'KES');
     await walletService.credit(badPhoneUserId, 'real', new Decimal('5000'), 'admin_adjustment', uuidv4(), 'Funding');
 
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     const wReq = await paymentService.requestWithdrawal(badPhoneUserId, {
       amount: '2000',
@@ -289,8 +288,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
     await walletService.createWallet(zeroUserId, 'real', 'KES');
     await walletService.credit(zeroUserId, 'real', new Decimal('1000'), 'admin_adjustment', uuidv4(), 'Funding');
 
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = createTestIdempotencyKey();
     await pgPool.query("INSERT INTO payments.idempotency_keys (key, response) VALUES ($1, '{}'::jsonb) ON CONFLICT DO NOTHING", [ik]);
 
     // Insert dummy withdrawal directly with fee equal to amount
@@ -318,8 +316,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
     const lowLockUserId = userRes.rows[0].id;
     await walletService.createWallet(lowLockUserId, 'real', 'KES');
 
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = createTestIdempotencyKey();
     await pgPool.query("INSERT INTO payments.idempotency_keys (key, response) VALUES ($1, '{}'::jsonb) ON CONFLICT DO NOTHING", [ik]);
 
     // Insert dummy withdrawal directly without locking funds in wallet
@@ -337,8 +334,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   });
 
   it('should fail if amount is below minimum (1500 KES)', async () => {
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
     const minimum = await new SettingsService().getSetting(
       'withdrawal.min_amount',
       Number(process.env.MIN_WITHDRAWAL_KES || '1500')
@@ -355,8 +351,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   });
 
   it('should fail if amount exceeds maximum (60000 KES)', async () => {
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
     const maximum = await new SettingsService().getSetting(
       'withdrawal.max_amount',
       Number(process.env.MAX_WITHDRAWAL_KES || '60000')
@@ -373,8 +368,7 @@ describe('Payment Service & Admin Compliance - Withdrawals (Slice 3)', () => {
   });
 
   it('should process withdrawal rejection correctly (refund + ledger + status rejected)', async () => {
-    const ik = uuidv4();
-    usedKeys.push(ik);
+    const ik = await createTestIdempotencyKey();
 
     const withdrawal = await paymentService.requestWithdrawal(testUserId, {
       amount: '4000',

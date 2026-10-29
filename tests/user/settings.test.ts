@@ -48,11 +48,12 @@ describe('Settings Backend APIs Integration Tests (Slice 1)', () => {
       [testUserId, testUserJti]
     );
 
-    // Create another active session
+    // Create another active session with unique JTI
+    const otherJti = `jti_other_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
     await pgPool.query(
       `INSERT INTO app_auth.sessions (user_id, token_hash, access_token_jti, expires_at, is_revoked)
-       VALUES ($1, 'hash_other', 'jti_other_session_123', NOW() + INTERVAL '1 hour', FALSE)`,
-      [testUserId]
+       VALUES ($1, 'hash_other', $2, NOW() + INTERVAL '1 hour', FALSE)`,
+      [testUserId, otherJti]
     );
   });
 

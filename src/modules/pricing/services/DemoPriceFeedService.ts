@@ -160,7 +160,7 @@ export class DemoPriceFeedService {
 
   private async pruneExpiredTicks(): Promise<void> {
     try {
-      const retentionDays = Number(process.env.DEMO_TICK_RETENTION_DAYS || '30');
+      const retentionDays = Number(process.env.DEMO_TICK_RETENTION_DAYS || '1');
       if (!Number.isInteger(retentionDays) || retentionDays < 1) {
         throw new Error('DEMO_TICK_RETENTION_DAYS must be a positive integer');
       }

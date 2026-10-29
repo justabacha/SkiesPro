@@ -106,6 +106,7 @@ attachWebSocketServer(server);
 let activeB2cWorker: any = null;
 let activeB2cReconciliationJob: any = null;
 let activeSettlementRecoveryJob: any = null;
+let activeTickRetentionJob: any = null;
 
 const handleShutdown = async (signal: string) => {
   logger.info(`Received ${signal}, initiating graceful shutdown...`);
@@ -128,6 +129,13 @@ const handleShutdown = async (signal: string) => {
       await activeSettlementRecoveryJob.stop();
     } catch (err: any) {
       logger.error('Error stopping settlement recovery job', { error: err.message });
+    }
+  }
+  if (activeTickRetentionJob) {
+    try {
+      await activeTickRetentionJob.stop();
+    } catch (err: any) {
+      logger.error('Error stopping tick retention job', { error: err.message });
     }
   }
   server.close(() => {
@@ -186,6 +194,18 @@ async function bootstrap(): Promise<void> {
         })
         .catch((err) => {
           logger.error('Failed to start settlement recovery job', { error: err.message });
+        });
+    }
+
+    // Automatically start tick retention job if enabled or price feed enabled
+    if (config.enablePriceFeed || process.env.ENABLE_TICK_RETENTION === 'true') {
+      import('./modules/pricing/jobs/TickRetentionJob.js')
+        .then((m) => {
+          activeTickRetentionJob = new m.TickRetentionJob();
+          return activeTickRetentionJob.start();
+        })
+        .catch((err) => {
+          logger.error('Failed to start tick retention job', { error: err.message });
         });
     }
 

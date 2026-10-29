@@ -47,10 +47,9 @@ describe('B2CDispatchWorker Integration Tests (Slice 2 + Correction)', () => {
   beforeEach(async () => {
     config.enableB2cDisbursement = true;
     process.env.ENABLE_B2C_DISBURSEMENT = 'true';
-    if (!skipDatabaseTests) {
-      await pgPool.query(`DELETE FROM payments.b2c_outbox`);
-      await pgPool.query(`DELETE FROM payments.withdrawals`);
-      await pgPool.query(`DELETE FROM payments.idempotency_keys`);
+    if (!skipDatabaseTests && testUserId) {
+      await pgPool.query(`DELETE FROM payments.b2c_outbox WHERE withdrawal_id IN (SELECT id FROM payments.withdrawals WHERE user_id = $1)`, [testUserId]);
+      await pgPool.query(`DELETE FROM payments.withdrawals WHERE user_id = $1`, [testUserId]);
     }
   });
 
