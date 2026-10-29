@@ -28,6 +28,7 @@ export const IntaSendTrustBadge: React.FC = () => {
           marginTop: '0.6em',
           fontWeight: 500,
           opacity: 0.8,
+          textAlign: 'center',
         }}
       >
         SkiesPro values your account security. Payments are securely processed by IntaSend.

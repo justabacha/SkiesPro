@@ -128,7 +128,7 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           />
         </FormGroup>
 
-        <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary mt-1 mb-3">
+        <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary mt-1 mb-1">
           {user?.phone ? (
             <span>
               Funds will be sent to <strong className="font-mono text-text-light-primary dark:text-text-dark-primary">{user.phone}</strong>.{' '}
