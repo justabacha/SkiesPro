@@ -51,7 +51,7 @@ class WebsocketService {
         this.notifyConnectionState(false);
         this.notifyLatency({
           latencyMs: 0,
-          status: 'disconnected',
+          status: 'connecting',
           isConnected: false,
         });
       },

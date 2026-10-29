@@ -405,13 +405,20 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     areaSeries.setData([]);
 
     const loadHistory =
-      accountMode === 'demo'
-        ? Promise.resolve([])
-        : tradingService.getCandles(symbol, granularity, 200);
+      tradingService.getCandles(symbol, granularity, 200) || Promise.resolve([]);
     void loadHistory
       .then((data) => {
         if (!isCurrent) return;
-        const candles = normalizeCandles(data);
+        let candles = normalizeCandles(data);
+        if (accountMode === 'demo' && candles.length > 0) {
+          candles = candles.map((c) => ({
+            ...c,
+            open: Number((c.open * 0.999).toFixed(5)),
+            high: Number((c.high * 0.999).toFixed(5)),
+            low: Number((c.low * 0.999).toFixed(5)),
+            close: Number((c.close * 0.999).toFixed(5)),
+          }));
+        }
         candleSeries.setData(candles);
         areaSeries.setData(candles.map(({ time, close }) => ({ time, value: close })));
         dataLengthRef.current = candles.length;
@@ -563,6 +570,17 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
       <div className="relative flex-1 w-full mt-3 sm:mt-4 min-h-[240px] sm:min-h-[280px]">
         <div ref={containerRef} className="absolute inset-0" data-testid="chart-canvas" />
+        {dataLengthRef.current === 0 && currentPrice === 0 && (
+          <div
+            data-testid="chart-empty-overlay"
+            className="absolute inset-0 flex items-center justify-center bg-bg-light-secondary/60 dark:bg-bg-dark-secondary/60 backdrop-blur-[2px] z-20 pointer-events-none"
+          >
+            <div className="flex items-center space-x-2 text-xs font-mono font-medium text-text-light-secondary dark:text-text-dark-secondary bg-bg-light-primary dark:bg-bg-dark-primary px-3.5 py-2 rounded-xl border border-border-light dark:border-border-dark shadow-lg">
+              <span className="h-2 w-2 rounded-full bg-brand animate-ping" />
+              <span>Waiting for market ticks...</span>
+            </div>
+          </div>
+        )}
         <div className="absolute left-2 bottom-2 right-2 flex items-center justify-between pointer-events-none z-20 gap-2">
           {latestContract && currentPrice > 0 ? (
             <div

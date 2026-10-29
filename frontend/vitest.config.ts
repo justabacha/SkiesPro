@@ -16,6 +16,7 @@ export default defineConfig({
       'src/tests/history/**/*.test.tsx',
       'src/tests/settings/**/*.test.tsx',
       'src/tests/wallet/**/*.test.tsx',
+      'src/tests/trading/**/*.test.tsx',
     ],
   },
 });

@@ -28,7 +28,7 @@ export class WebSocketClient {
   private clientId: string | null = null;
   private isManualDisconnect: boolean = false;
 
-  private readonly DEFAULT_RECONNECT_DELAYS = [1000, 5000, 15000, 30000]; // 1s, 5s, 15s, 30s
+  private readonly DEFAULT_RECONNECT_DELAYS = [1000, 2000, 4000, 8000]; // 1s, 2s, 4s, 8s max exponential backoff
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
 
   constructor(config: WebSocketClientConfig) {

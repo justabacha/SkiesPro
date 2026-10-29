@@ -31,7 +31,7 @@ export const TradingPage: React.FC = () => {
 
   const initialSymbol = useMemo(() => getInitialSymbol(), []);
 
-  const { currentPrice, isPriceAvailable, priceHistory, latencyState, subscribeToSymbol } =
+  const { currentPrice, isPriceAvailable, isStale, priceHistory, latencyState, isConnected, subscribeToSymbol } =
     usePriceStream(initialSymbol);
 
   const {
@@ -184,6 +184,8 @@ export const TradingPage: React.FC = () => {
             selectedSymbol={selectedAsset?.symbol || initialSymbol}
             currentPrice={currentPrice}
             isPriceAvailable={isPriceAvailable}
+            isStale={isStale}
+            isConnected={isConnected}
             userBalance={numericBalance}
             isPlacingTrade={isPlacingTrade}
             onPlaceTrade={(contractType, stake, expirySeconds, _symbol, strikePrice) => {

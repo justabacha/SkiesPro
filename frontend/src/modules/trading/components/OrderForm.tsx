@@ -12,6 +12,8 @@ export interface OrderFormProps {
   selectedSymbol?: string;
   currentPrice: number;
   isPriceAvailable: boolean;
+  isStale?: boolean;
+  isConnected?: boolean;
   userBalance: number;
   isPlacingTrade: boolean;
   onPlaceTrade: (
@@ -23,6 +25,7 @@ export interface OrderFormProps {
   ) => void;
   tradeError: string | null;
   onClearError: () => void;
+  onRefreshQuote?: () => void;
 }
 
 const formatDuration = (seconds: number): string => {
@@ -37,11 +40,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   selectedSymbol,
   currentPrice,
   isPriceAvailable,
+  isStale = false,
+  isConnected = true,
   userBalance,
   isPlacingTrade,
   onPlaceTrade,
   tradeError,
   onClearError,
+  onRefreshQuote,
 }) => {
   const config = usePublicConfig();
   const { user } = useAuth();
@@ -52,6 +58,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     const saved = localStorage.getItem('skies_trade_expiry');
     return saved ? parseInt(saved, 10) || 60 : 60;
   });
+  const [localFeedback, setLocalFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('skies_trade_stake', stake);
@@ -151,22 +158,35 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     return null;
   }, [hasTradingConfig, payoutRate, stake, numericStake, minStake, maxStake, userBalance]);
 
+  // Disable button ONLY if isStale && !isConnected (meaning WebSocket is disconnected AND price is stale for >10s)
   const isDisabled =
     !hasTradingConfig ||
     requiresTradingKyc ||
     config.isLoading ||
     !isMarketOpen ||
-    !isPriceAvailable ||
+    (isStale && !isConnected) ||
     isPlacingTrade ||
     Boolean(validationError);
 
   const handleHigher = () => {
     if (isDisabled) return;
+    if (isStale || !isPriceAvailable || currentPrice <= 0) {
+      setLocalFeedback('Price feed delayed. Refreshing quote...');
+      onRefreshQuote?.();
+      return;
+    }
+    setLocalFeedback(null);
     onPlaceTrade('higher', stake, expirySeconds, activeSymbol, currentPrice);
   };
 
   const handleLower = () => {
     if (isDisabled) return;
+    if (isStale || !isPriceAvailable || currentPrice <= 0) {
+      setLocalFeedback('Price feed delayed. Refreshing quote...');
+      onRefreshQuote?.();
+      return;
+    }
+    setLocalFeedback(null);
     onPlaceTrade('lower', stake, expirySeconds, activeSymbol, currentPrice);
   };
 
@@ -219,26 +239,35 @@ export const OrderForm: React.FC<OrderFormProps> = ({
           </div>
         )}
 
-        {!isPriceAvailable && isMarketOpen && (
+        {isStale && isConnected && isMarketOpen && (
+          <div className="flex items-center space-x-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-700 dark:text-amber-300 text-xs font-medium">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>Price feed delayed. Refreshing quote...</span>
+          </div>
+        )}
+
+        {!isPriceAvailable && !isStale && isMarketOpen && (
           <div className="flex items-center space-x-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-700 dark:text-amber-300 text-xs font-medium">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>
-              Waiting for a {accountMode === 'demo' ? 'demo' : 'live'} market quote. Orders are
-              temporarily disabled.
+              Waiting for a {accountMode === 'demo' ? 'demo' : 'live'} market quote...
             </span>
           </div>
         )}
 
-        {/* Trade Error Banner */}
-        {tradeError && (
+        {/* Trade Error / Feedback Banner */}
+        {(tradeError || localFeedback) && (
           <div className="flex items-start justify-between p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-600 dark:text-rose-400 text-xs">
             <div className="flex items-center space-x-2">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{tradeError}</span>
+              <span>{tradeError || localFeedback}</span>
             </div>
             <button
               type="button"
-              onClick={onClearError}
+              onClick={() => {
+                onClearError();
+                setLocalFeedback(null);
+              }}
               className="text-text-light-secondary dark:text-text-dark-secondary hover:text-text-light-primary dark:hover:text-text-dark-primary font-bold ml-2"
             >
               ×

@@ -30,6 +30,7 @@ interface LatestPriceResponse {
 export interface UsePriceStreamReturn {
   currentPrice: number;
   isPriceAvailable: boolean;
+  isStale: boolean;
   priceHistory: PriceTick[];
   latencyState: LatencyState;
   isConnected: boolean;
@@ -44,6 +45,7 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
   const [symbol, setSymbol] = useState<string>(initialSymbol);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [isPriceAvailable, setIsPriceAvailable] = useState(false);
+  const [isStale, setIsStale] = useState(false);
   const [quoteUpdatedAt, setQuoteUpdatedAt] = useState(0);
   const [priceHistory, setPriceHistory] = useState<PriceTick[]>([]);
   const [latencyState, setLatencyState] = useState<LatencyState>({
@@ -82,6 +84,7 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     };
     setCurrentPrice(liveTick.price);
     setIsPriceAvailable(true);
+    setIsStale(false);
     setQuoteUpdatedAt(now);
     if (accountModeRef.current === 'demo') {
       setIsConnected(true);
@@ -200,12 +203,13 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     if (!isPriceAvailable || quoteUpdatedAt === 0) return;
     const interval = setInterval(() => {
       if (Date.now() - quoteUpdatedAt > MAX_QUOTE_AGE_MS) {
-        setIsPriceAvailable(false);
-        setCurrentPrice(0);
+        setIsStale(true);
         if (accountModeRef.current === 'demo') {
           setIsConnected(false);
           setLatencyState({ latencyMs: 0, status: 'disconnected', isConnected: false });
         }
+      } else {
+        setIsStale(false);
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -217,6 +221,7 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     setSymbol(newSymbol);
     setCurrentPrice(0);
     setIsPriceAvailable(false);
+    setIsStale(false);
     setQuoteUpdatedAt(0);
     setPriceHistory([]);
   }, []);
@@ -224,11 +229,13 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
   useEffect(() => {
     setLatencyState({ latencyMs: 0, status: 'disconnected', isConnected: false });
     setIsConnected(false);
+    setIsStale(false);
   }, [accountMode, generation]);
 
   return {
     currentPrice,
     isPriceAvailable,
+    isStale,
     priceHistory,
     latencyState,
     isConnected,
