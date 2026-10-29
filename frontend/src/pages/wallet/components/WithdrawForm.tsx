@@ -58,6 +58,14 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
   const fee = numAmount * config.withdrawalFeePercentage;
   const netAmount = numAmount - fee;
 
+  const displayPhone = user?.phone
+    ? user.phone.startsWith('254')
+      ? user.phone
+      : user.phone.startsWith('0')
+        ? user.phone.replace(/^0/, '254')
+        : `254${user.phone}`
+    : null;
+
   const onSubmit = async (data: WithdrawInput) => {
     if (!user?.phone) {
       setError('No M-Pesa number registered. Please update your profile in settings.');
@@ -118,29 +126,31 @@ export const WithdrawForm: React.FC<WithdrawFormProps> = ({ availableBalance, on
           </div>
         </div>
 
-        <FormGroup label="Withdrawal Amount (KES)" error={errors.amount?.message}>
-          <Input
-            {...register('amount')}
-            type="number"
-            placeholder={`Min KES ${config.minWithdrawal}`}
-            className="font-mono"
-            error={!!errors.amount}
-          />
-        </FormGroup>
+        <div className="flex flex-col gap-1">
+          <FormGroup label="Withdrawal Amount (KES)" error={errors.amount?.message}>
+            <Input
+              {...register('amount')}
+              type="number"
+              placeholder={`Min KES ${config.minWithdrawal}`}
+              className="font-mono"
+              error={!!errors.amount}
+            />
+          </FormGroup>
 
-        <div className="text-sm text-text-light-secondary dark:text-text-dark-secondary mt-1 mb-1">
-          {user?.phone ? (
-            <span>
-              Funds will be sent to <strong className="font-mono text-text-light-primary dark:text-text-dark-primary">{user.phone}</strong>.{' '}
-              <a href="/settings?tab=profile" className="text-brand hover:underline ml-1 font-medium">Change in settings</a>
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-danger">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              No M-Pesa number registered.{' '}
-              <a href="/settings?tab=profile" className="underline font-bold ml-1">Add number in settings</a>
-            </span>
-          )}
+          <div className="text-xs text-text-light-secondary dark:text-text-dark-secondary ml-1">
+            {displayPhone ? (
+              <span>
+                Funds will be sent to <span className="font-mono">{displayPhone}</span>.{' '}
+                <a href="/settings?tab=profile" className="text-brand hover:underline ml-1 font-medium">Change in settings</a>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-danger">
+                <AlertCircle className="h-3 w-3 shrink-0" />
+                No M-Pesa number registered.{' '}
+                <a href="/settings?tab=profile" className="underline font-bold ml-1">Add number in settings</a>
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2 p-3 bg-bg-light-secondary dark:bg-bg-dark-secondary rounded border border-border-light dark:border-border-dark">

@@ -38,7 +38,7 @@ describe('WithdrawForm', () => {
 
     render(<WithdrawForm availableBalance="5000" onSuccess={vi.fn()} />);
 
-    expect(screen.getByText('0712345678')).toBeTruthy();
+    expect(screen.getByText('254712345678')).toBeTruthy();
     expect(screen.getByAltText('IntaSend Secure Payments (PCI-DSS Compliant)')).toBeTruthy();
 
     const submitBtn = screen.getByRole('button', { name: 'Request Withdrawal' });
