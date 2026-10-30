@@ -74,7 +74,13 @@ export interface Candle {
   tick_count?: number;
 }
 
-export type LatencyStatus = 'good' | 'moderate' | 'poor' | 'disconnected' | 'connecting';
+export type LatencyStatus =
+  | 'good'
+  | 'moderate'
+  | 'poor'
+  | 'connected'
+  | 'disconnected'
+  | 'connecting';
 
 export interface LatencyState {
   latencyMs: number;

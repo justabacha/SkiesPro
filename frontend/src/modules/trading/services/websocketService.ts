@@ -36,6 +36,7 @@ class WebsocketService {
       onConnected: () => {
         this.isConnected = true;
         this.notifyConnectionState(true);
+        this.notifyLatency({ latencyMs: 0, status: 'connected', isConnected: true });
         this.startPingInterval();
 
         if (this.currentSymbol) {
@@ -51,7 +52,7 @@ class WebsocketService {
         this.notifyConnectionState(false);
         this.notifyLatency({
           latencyMs: 0,
-          status: 'connecting',
+          status: 'disconnected',
           isConnected: false,
         });
       },

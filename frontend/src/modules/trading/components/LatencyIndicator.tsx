@@ -23,6 +23,14 @@ export const LatencyIndicator: React.FC<LatencyIndicatorProps> = ({
       };
     }
 
+    if (status === 'connected') {
+      return {
+        label: 'Connected',
+        colorClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        dotClass: 'bg-emerald-400 animate-pulse',
+      };
+    }
+
     if (status === 'good') {
       return {
         label: `${latencyMs} ms`,

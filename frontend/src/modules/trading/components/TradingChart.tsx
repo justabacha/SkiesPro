@@ -188,6 +188,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       const candleSeries = candleSeriesRef.current;
       const areaSeries = areaSeriesRef.current;
       if (!candleSeries || !areaSeries) return;
+      const chart = chartRef.current;
 
       const time = seconds as Time;
       const tickKey = `${seconds}:${tick.price}`;
@@ -233,6 +234,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         dataLengthRef.current = Math.max(1, dataLengthRef.current + (current ? 1 : 0));
       }
       areaSeries.update({ time: Number(time) as Time, value: tick.price });
+      chart?.timeScale().scrollToRealTime();
       latestCandleTimeRef.current = Math.max(
         latestCandleTimeRef.current ?? Number(candleStart),
         Number(candleStart)
@@ -276,8 +278,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         alignLabels: true,
         borderVisible: false,
         scaleMargins: {
-          top: 0.2,    // 20% margin top
-          bottom: 0.2, // 20% margin bottom
+          top: 0.1,
+          bottom: 0.1,
         },
       },
       timeScale: {
@@ -295,8 +297,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       alignLabels: true,
       borderVisible: false,
       scaleMargins: {
-        top: 0.2,
-        bottom: 0.2,
+        top: 0.1,
+        bottom: 0.1,
       },
     });
 
@@ -320,7 +322,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#00E676',
       downColor: '#FF5252',
-      borderVisible: false,
+      borderVisible: true,
+      borderUpColor: '#00E676',
+      borderDownColor: '#FF5252',
       wickUpColor: '#00E676',
       wickDownColor: '#FF5252',
       visible: false,
@@ -487,14 +491,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         pendingTicksRef.current = [];
         for (const tick of ticks) applyTickRef.current(tick);
 
-        const totalBars = candles.length;
-        if (totalBars > 0) {
-          chart.timeScale().setVisibleLogicalRange({
-            from: Math.max(0, totalBars - 50),
-            to: totalBars + 1,
-          });
-          chart.timeScale().scrollToRealTime?.();
-        }
+        chart.timeScale().scrollToRealTime?.();
       })
       .catch((error: unknown) => {
         if (!isCurrent) return;
@@ -633,20 +630,18 @@ export const TradingChart: React.FC<TradingChartProps> = ({
             </div>
           </div>
         )}
-        <div className="absolute left-2 bottom-2 right-2 flex items-center justify-between pointer-events-none z-20 gap-2">
-          {latestContract && currentPrice > 0 ? (
-            <div
-              data-testid="pip-delta-pill"
-              className={`pointer-events-auto px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-mono font-bold text-white shadow-md flex items-center space-x-1.5 backdrop-blur-sm ${
-                isWinning ? 'bg-emerald-600/95' : 'bg-rose-600/95'
-              }`}
-            >
-              <span>{formattedDelta}</span>
-              <span>({isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})</span>
-            </div>
-          ) : (
-            <div />
-          )}
+        {latestContract && currentPrice > 0 && (
+          <div
+            data-testid="pip-delta-pill"
+            className={`pointer-events-auto absolute left-2 top-2 z-10 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-mono font-bold text-white shadow-md flex items-center space-x-1.5 ${
+              isWinning ? 'bg-emerald-700' : 'bg-rose-700'
+            }`}
+          >
+            <span>{formattedDelta}</span>
+            <span>({isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})</span>
+          </div>
+        )}
+        <div className="absolute left-2 bottom-2 right-2 flex items-center justify-end pointer-events-none z-20 gap-2">
           <div className="pointer-events-auto bg-bg-light-primary/95 dark:bg-bg-dark-tertiary/95 border border-border-light dark:border-border-dark px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-mono flex items-center space-x-1.5 backdrop-blur-sm shadow-md">
             <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-ping" />
             <span className="text-text-light-primary dark:text-text-dark-primary font-bold">

@@ -86,10 +86,8 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     setIsPriceAvailable(true);
     setIsStale(false);
     setQuoteUpdatedAt(now);
-    if (accountModeRef.current === 'demo') {
-      setIsConnected(true);
-      setLatencyState({ latencyMs: 0, status: 'good', isConnected: true });
-    }
+    setIsConnected(true);
+    setLatencyState({ latencyMs: 0, status: 'connected', isConnected: true });
     historyRef.current = [...historyRef.current.slice(-119), liveTick];
     setPriceHistory([...historyRef.current]);
   }, []);
@@ -173,7 +171,14 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     const subscribedMode = accountMode;
     const unsubscribePrice = websocketService.onPriceTick(acceptTick);
     const unsubscribeLatency = websocketService.onLatencyChange(setLatencyState);
-    const unsubscribeConn = websocketService.onConnectionStateChange(setIsConnected);
+    const unsubscribeConn = websocketService.onConnectionStateChange((connected) => {
+      setIsConnected(connected);
+      setLatencyState({
+        latencyMs: 0,
+        status: connected ? 'connected' : 'disconnected',
+        isConnected: connected,
+      });
+    });
     websocketService.subscribeSymbol(subscribedSymbol, subscribedMode);
     const unregisterTransitionCleanup = registerModeCleanup(() => {
       websocketService.unsubscribeSymbol(subscribedSymbol, subscribedMode);

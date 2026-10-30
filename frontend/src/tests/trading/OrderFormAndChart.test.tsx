@@ -33,7 +33,11 @@ vi.mock('lightweight-charts', () => ({
     }),
     applyOptions: vi.fn(),
     priceScale: () => ({ applyOptions: vi.fn() }),
-    timeScale: () => ({ setVisibleLogicalRange: vi.fn(), applyOptions: vi.fn() }),
+    timeScale: () => ({
+      setVisibleLogicalRange: vi.fn(),
+      scrollToRealTime: vi.fn(),
+      applyOptions: vi.fn(),
+    }),
     remove: vi.fn(),
   }),
   ColorType: { Solid: 'solid' },
