@@ -220,11 +220,11 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       if (!candleSeries || !areaSeries) return;
       const chart = chartRef.current;
 
-      const time = seconds as Time;
       const tickKey = `${seconds}:${tick.price}`;
       if (lastAppliedTickRef.current === tickKey) return;
 
-      const candleStart = (Math.floor(seconds / granularity) * granularity) as Time;
+      const rawSeconds = seconds;
+      const candleStart = (Math.floor(rawSeconds / granularity) * granularity) as Time;
       let current = currentCandleRef.current;
       if (!current && dataLengthRef.current === 0) {
         const synthetic = createFlatHistory(Number(candleStart), tick.price, 100, granularity);
@@ -273,7 +273,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         candleSeries.update(next);
         dataLengthRef.current = Math.max(1, dataLengthRef.current + (current ? 1 : 0));
       }
-      areaSeries.update({ time: Number(time) as Time, value: tick.price });
+      areaSeries.update({ time: rawSeconds as Time, value: tick.price });
       chart?.timeScale().scrollToRealTime();
       latestCandleTimeRef.current = Math.max(
         latestCandleTimeRef.current ?? Number(candleStart),
@@ -325,9 +325,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       timeScale: {
         borderColor: 'rgba(148, 163, 184, 0.2)',
         timeVisible: true,
-        barSpacing: window.innerWidth < 640 ? 16 : 10,
-        rightOffset: 2,
-        shiftVisibleRangeOnNewBar: true,
+        barSpacing: 10,
+        rightOffset: 5,
+        shiftVisibleRangeOnNewBar: false,
       },
       crosshair: { mode: 1 },
     });
@@ -346,8 +346,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     const setResponsiveViewport = () => {
       chart.applyOptions({
         timeScale: {
-          barSpacing: window.innerWidth < 640 ? 16 : 10,
-          rightOffset: 2,
+          barSpacing: 10,
+          rightOffset: 5,
         },
       });
     };

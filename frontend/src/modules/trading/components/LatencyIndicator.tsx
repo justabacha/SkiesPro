@@ -12,10 +12,10 @@ export const LatencyIndicator: React.FC<LatencyIndicatorProps> = ({
   isConnected: isConnectedProp,
 }) => {
   const isConnected = isConnectedProp !== undefined ? isConnectedProp : latencyState.isConnected;
-  const { latencyMs, status } = latencyState;
+  const { latencyMs } = latencyState;
 
   const getStatusDetails = () => {
-    if (!isConnected || status === 'disconnected') {
+    if (!isConnected) {
       return {
         label: 'Disconnected',
         colorClass: 'text-gray-400 bg-gray-500/10 border-gray-500/20',
@@ -23,34 +23,10 @@ export const LatencyIndicator: React.FC<LatencyIndicatorProps> = ({
       };
     }
 
-    if (status === 'connected') {
-      return {
-        label: 'Connected',
-        colorClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-        dotClass: 'bg-emerald-400 animate-pulse',
-      };
-    }
-
-    if (status === 'good') {
-      return {
-        label: `${latencyMs} ms`,
-        colorClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-        dotClass: 'bg-emerald-400 animate-pulse',
-      };
-    }
-
-    if (status === 'moderate') {
-      return {
-        label: `${latencyMs} ms`,
-        colorClass: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-        dotClass: 'bg-amber-400',
-      };
-    }
-
     return {
-      label: `${latencyMs} ms`,
-      colorClass: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-      dotClass: 'bg-rose-400',
+      label: latencyMs > 0 ? `${latencyMs} ms` : 'Connected',
+      colorClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+      dotClass: 'bg-emerald-400 animate-pulse',
     };
   };
 
