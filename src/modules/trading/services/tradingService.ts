@@ -12,22 +12,11 @@ import { PlaceTradeRequest } from '../dto/trading.dto.js';
 import { Decimal } from 'decimal.js';
 import { localCache, DEFAULT_PRICE_TTL_MS } from '../../../infrastructure/cache/memoryCache.js';
 import { priceCacheKey, normalizeSymbol } from '../../pricing/utils/symbolNormalizer.js';
-import { AssetRepository } from '../repositories/assetRepository.js';
 import { SettingsService } from '../../../shared/services/settingsService.js';
-
-function getPipDecimalPlaces(symbol: string, configuredPlaces?: number): number {
-  const normalizedSymbol = symbol.replace(/[^a-z0-9]/gi, '').toUpperCase();
-  if (normalizedSymbol.endsWith('JPY')) return 3;
-  if (normalizedSymbol.startsWith('XAU') || normalizedSymbol.startsWith('GOLD')) return 2;
-  if (normalizedSymbol.startsWith('WTI')) return 3;
-  if (normalizedSymbol.startsWith('BTC') || normalizedSymbol.startsWith('ETH')) return 2;
-  return configuredPlaces && configuredPlaces > 0 ? configuredPlaces : 5;
-}
 
 export class TradingService {
   private contractRepo: ContractRepository;
   private assetConfigRepo: AssetConfigRepository;
-  private assetRepo: AssetRepository;
   private stakeValidator: StakeValidator;
   private walletService: WalletService;
   private pricingService: PricingService;
@@ -37,7 +26,6 @@ export class TradingService {
   constructor(pricingService: PricingService, settingsService = new SettingsService()) {
     this.contractRepo = new ContractRepository();
     this.assetConfigRepo = new AssetConfigRepository();
-    this.assetRepo = new AssetRepository();
     this.stakeValidator = new StakeValidator();
     this.walletService = new WalletService();
     this.pricingService = pricingService;
@@ -171,14 +159,9 @@ export class TradingService {
       }
       const clientStrike = new Decimal(request.strikePrice);
       const serverMid = new Decimal(tick.mid);
-      const asset = await this.assetRepo.findBySymbol(assetSymbol);
-      if (!asset) throw new Error(`No configuration found for asset ${assetSymbol}`);
-      const pipDecimalPlaces = getPipDecimalPlaces(assetSymbol, asset.pipDecimalPlaces);
-      const pipSize =
-        pipDecimalPlaces >= 4
-          ? new Decimal(10).pow(1 - pipDecimalPlaces)
-          : new Decimal(10).pow(-pipDecimalPlaces);
-      if (clientStrike.minus(serverMid).abs().gt(pipSize.times(5))) {
+      const maxSlippagePercent = new Decimal(process.env.MAX_PRICE_SLIPPAGE_PERCENT || '0.5');
+      const allowedSlippage = serverMid.times(maxSlippagePercent.dividedBy(100));
+      if (clientStrike.minus(serverMid).abs().gt(allowedSlippage)) {
         throw new Error('PRICE_SLIPPAGE_EXCEEDED');
       }
     }

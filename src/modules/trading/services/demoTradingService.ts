@@ -9,7 +9,6 @@ import { normalizeSymbol } from '../../pricing/utils/symbolNormalizer.js';
 import { DemoWalletService } from '../../wallet/services/demoWalletService.js';
 import { WalletService } from '../../wallet/services/walletService.js';
 import { AssetConfigRepository } from '../repositories/assetConfigRepository.js';
-import { AssetRepository } from '../repositories/assetRepository.js';
 import { BinaryContract, ContractRepository } from '../repositories/contractRepository.js';
 import { StakeValidator } from '../validators/stakeValidator.js';
 import { PlaceTradeRequest } from '../dto/trading.dto.js';
@@ -18,7 +17,6 @@ import { SettingsService } from '../../../shared/services/settingsService.js';
 export class DemoTradingService {
   private readonly userRepository = new UserRepository();
   private readonly assetConfigRepository = new AssetConfigRepository();
-  private readonly assetRepository = new AssetRepository();
   private readonly stakeValidator = new StakeValidator();
   private readonly contractRepository = new ContractRepository();
 
@@ -145,10 +143,9 @@ export class DemoTradingService {
         throw new Error('INVALID_STRIKE_PRICE');
       }
       const clientStrike = new Decimal(request.strikePrice);
-      const asset = await this.assetRepository.findBySymbol(assetSymbol);
-      const places = asset?.pipDecimalPlaces || 5;
-      const pipSize = places >= 4 ? new Decimal(10).pow(1 - places) : new Decimal(10).pow(-places);
-      if (clientStrike.minus(mid).abs().gt(pipSize.times(5))) {
+      const maxSlippagePercent = new Decimal(process.env.MAX_PRICE_SLIPPAGE_PERCENT || '0.5');
+      const allowedSlippage = mid.times(maxSlippagePercent.dividedBy(100));
+      if (clientStrike.minus(mid).abs().gt(allowedSlippage)) {
         throw new Error('PRICE_SLIPPAGE_EXCEEDED');
       }
     }

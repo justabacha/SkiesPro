@@ -53,7 +53,7 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
     status: 'disconnected',
     isConnected: false,
   });
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(() => websocketService.isConnectedState());
 
   const historyRef = useRef<PriceTick[]>([]);
   const activeSymbolRef = useRef<string>(initialSymbol);
@@ -227,8 +227,6 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
   }, []);
 
   useEffect(() => {
-    setLatencyState({ latencyMs: 0, status: 'disconnected', isConnected: false });
-    setIsConnected(false);
     setIsStale(false);
   }, [accountMode, generation]);
 

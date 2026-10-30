@@ -117,6 +117,10 @@ class WebsocketService {
     };
   }
 
+  public isConnectedState(): boolean {
+    return this.isConnected;
+  }
+
   public getLatencyState(): LatencyState {
     if (!this.isConnected) {
       return { latencyMs: 0, status: 'disconnected', isConnected: false };

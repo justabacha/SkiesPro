@@ -100,7 +100,7 @@ describe('TradingService', () => {
     })).rejects.toThrow('MARKET_DATA_UNAVAILABLE');
   });
 
-  test('should reject a client strike more than five symbol pips from server mid', async () => {
+  test('should reject a client strike exceeding max percentage slippage from server mid', async () => {
     (UserRepository.prototype.findById as jest.Mock).mockResolvedValue({
       status: 'active',
       self_excluded_until: null,
@@ -133,7 +133,7 @@ describe('TradingService', () => {
       contractType: 'higher',
       stake: '100',
       expirySeconds: 60,
-      strikePrice: 1.101,
+      strikePrice: 1.115, // 1.36% difference, exceeds 0.5% max slippage
     })).rejects.toThrow('PRICE_SLIPPAGE_EXCEEDED');
   });
 
@@ -192,6 +192,64 @@ describe('TradingService', () => {
       expect(settingsService.overrides['trade.default_payout_ratio']).toBe(0.75);
       expect(contract.payoutRate).toBe('0.75');
       expect(contract.potentialPayout).toBe('175');
+    } finally {
+      connect.mockRestore();
+      publish.mockRestore();
+    }
+  });
+
+  test('allows a BTC/USD trade with a 0.1% price difference without throwing PRICE_SLIPPAGE_EXCEEDED', async () => {
+    (UserRepository.prototype.findById as jest.Mock).mockResolvedValue({
+      status: 'active',
+      kyc_status: 'verified',
+      self_excluded_until: null,
+    });
+    mockPricingService.getMarketStatus.mockResolvedValue({ is_open: true } as any);
+    (AssetConfigRepository.prototype.findBySymbol as jest.Mock).mockResolvedValue({
+      minStake: '100',
+      maxStake: '50000',
+      minDurationSeconds: 60,
+      maxDurationSeconds: 3600,
+      payoutRate: '0.6',
+      maxExposure: '100000',
+    });
+    (WalletService.prototype.getBalance as jest.Mock).mockResolvedValue({
+      available_balance: '10000',
+    });
+    (WalletService.prototype.debit as jest.Mock).mockResolvedValue({});
+    (ContractRepository.prototype.getActiveExposure as jest.Mock).mockResolvedValue('0');
+    (ContractRepository.prototype.create as jest.Mock).mockImplementation(async (contract: unknown) => ({
+      ...(contract as object),
+      id: 'btc-contract-test',
+    }));
+    localCache.set('price:BTCUSD', {
+      bid: '89995',
+      ask: '90005',
+      mid: '90000',
+      time: new Date().toISOString(),
+    });
+
+    const client = {
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+      release: jest.fn(),
+    };
+    const connect = jest
+      .spyOn(pgPool, 'connect')
+      .mockImplementation(async () => client as unknown as PoolClient);
+    const publish = jest.spyOn(messageQueueClient, 'publish').mockResolvedValue();
+
+    try {
+      // 0.1% of $90,000 is $90. Client strike $90,090 is a 0.1% difference, well within 0.5% max limit.
+      const contract = await tradingService.placeTrade('user1', {
+        assetSymbol: 'BTC/USD',
+        contractType: 'higher',
+        stake: '100',
+        expirySeconds: 60,
+        strikePrice: 90090,
+      });
+
+      expect(contract).toBeDefined();
+      expect(contract.id).toBe('btc-contract-test');
     } finally {
       connect.mockRestore();
       publish.mockRestore();

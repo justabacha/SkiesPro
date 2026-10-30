@@ -187,7 +187,7 @@ describe('DemoTradingService validation and mode scoping', () => {
       pipDecimalPlaces: 5,
     });
     await expect(
-      makeService().placeDemoTrade('user-1', { ...validRequest, strikePrice: 1.101 }, 'key-2')
+      makeService().placeDemoTrade('user-1', { ...validRequest, strikePrice: 1.120 }, 'key-2')
     ).rejects.toThrow('PRICE_SLIPPAGE_EXCEEDED');
   });
 

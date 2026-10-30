@@ -170,4 +170,43 @@ describe('TradingChart Empty History Resilience', () => {
     expect(screen.getByTestId('trading-chart')).toBeTruthy();
     expect(screen.getByTestId('chart-empty-overlay')).toBeTruthy();
   });
+
+  it('renders TradingChart successfully when getCandles returns gapped candles', async () => {
+    const { tradingService } = await import('@/modules/trading/services/tradingService');
+    vi.mocked(tradingService.getCandles).mockResolvedValue([
+      {
+        symbol: 'EUR/USD',
+        granularity_seconds: 60,
+        open_time: new Date(Date.now() - 300000).toISOString(),
+        close_time: new Date(Date.now() - 240000).toISOString(),
+        open: 1.1000,
+        high: 1.1010,
+        low: 1.0990,
+        close: 1.1005,
+        volume: 100,
+      },
+      {
+        symbol: 'EUR/USD',
+        granularity_seconds: 60,
+        open_time: new Date(Date.now()).toISOString(),
+        close_time: new Date(Date.now() + 60000).toISOString(),
+        open: 1.1005,
+        high: 1.1020,
+        low: 1.1000,
+        close: 1.1015,
+        volume: 150,
+      },
+    ]);
+
+    render(
+      <TradingChart
+        symbol="EUR/USD"
+        priceHistory={[]}
+        currentPrice={1.1015}
+        activeContracts={[]}
+      />
+    );
+
+    expect(screen.getByTestId('trading-chart')).toBeTruthy();
+  });
 });

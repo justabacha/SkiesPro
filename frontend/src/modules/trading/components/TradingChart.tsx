@@ -68,7 +68,8 @@ const toUnixSeconds = (value: unknown): number | null => {
 };
 
 const normalizeCandles = (
-  candles: Awaited<ReturnType<typeof tradingService.getCandles>>
+  candles: Awaited<ReturnType<typeof tradingService.getCandles>>,
+  granularitySeconds = 60
 ): Array<{ time: Time; open: number; high: number; low: number; close: number }> => {
   const byTime = new Map<
     number,
@@ -94,7 +95,35 @@ const normalizeCandles = (
     });
   }
 
-  return [...byTime.values()].sort((a, b) => Number(a.time) - Number(b.time));
+  const sorted = [...byTime.values()].sort((a, b) => Number(a.time) - Number(b.time));
+  if (sorted.length < 2) return sorted;
+
+  const filled: Array<{ time: Time; open: number; high: number; low: number; close: number }> = [];
+  const step = Math.max(60, granularitySeconds);
+
+  for (let i = 0; i < sorted.length; i++) {
+    const current = sorted[i];
+    if (filled.length > 0) {
+      const last = filled[filled.length - 1];
+      const gap = Number(current.time) - Number(last.time);
+      if (gap > step) {
+        const missingCount = Math.min(Math.floor(gap / step) - 1, 100);
+        for (let j = 1; j <= missingCount; j++) {
+          const filledTime = (Number(last.time) + j * step) as Time;
+          filled.push({
+            time: filledTime,
+            open: last.close,
+            high: last.close,
+            low: last.close,
+            close: last.close,
+          });
+        }
+      }
+    }
+    filled.push(current);
+  }
+
+  return filled;
 };
 
 export const TradingChart: React.FC<TradingChartProps> = ({
@@ -237,7 +266,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         borderColor: 'rgba(148, 163, 184, 0.2)',
         timeVisible: true,
         barSpacing: window.innerWidth < 640 ? 16 : 10,
-        rightOffset: 10,
+        rightOffset: 2,
       },
       crosshair: { mode: 1 },
     });
@@ -257,7 +286,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       chart.applyOptions({
         timeScale: {
           barSpacing: window.innerWidth < 640 ? 16 : 10,
-          rightOffset: 10,
+          rightOffset: 2,
         },
       });
     };
@@ -440,8 +469,9 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         if (totalBars > 0) {
           chart.timeScale().setVisibleLogicalRange({
             from: Math.max(0, totalBars - 50),
-            to: totalBars + 3, // Right-hand margin for incoming ticks
+            to: totalBars + 1,
           });
+          chart.timeScale().scrollToRealTime();
         }
       })
       .catch((error: unknown) => {
