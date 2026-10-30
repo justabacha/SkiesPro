@@ -161,7 +161,7 @@ describe('TradingChart Empty History Resilience', () => {
   beforeEach(() => {
     lightweightChartMocks.candleData.length = 0;
     lightweightChartMocks.scrollToRealTime.mockClear();
-    global.ResizeObserver = class {
+    globalThis.ResizeObserver = class {
       observe() {}
       unobserve() {}
       disconnect() {}
@@ -200,10 +200,10 @@ describe('TradingChart Empty History Resilience', () => {
     );
 
     await waitFor(() => {
-      expect(lightweightChartMocks.candleData.at(-1)).toHaveLength(101);
+      expect(lightweightChartMocks.candleData[lightweightChartMocks.candleData.length - 1]).toHaveLength(101);
     });
 
-    const candles = lightweightChartMocks.candleData.at(-1) as Array<{
+    const candles = lightweightChartMocks.candleData[lightweightChartMocks.candleData.length - 1] as Array<{
       time: number;
       open: number;
       high: number;
@@ -243,10 +243,10 @@ describe('TradingChart Empty History Resilience', () => {
     );
 
     await waitFor(() => {
-      expect(lightweightChartMocks.candleData.at(-1)).toHaveLength(101);
+      expect(lightweightChartMocks.candleData[lightweightChartMocks.candleData.length - 1]).toHaveLength(101);
     });
 
-    const candles = lightweightChartMocks.candleData.at(-1) as Array<{
+    const candles = lightweightChartMocks.candleData[lightweightChartMocks.candleData.length - 1] as Array<{
       time: number;
       open: number;
       high: number;
