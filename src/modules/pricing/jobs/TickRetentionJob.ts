@@ -11,14 +11,10 @@ export class TickRetentionJob {
     logger.info('Tick Retention Job starting...', { intervalMs: this.intervalMs });
     await this.runCleanup();
     this.timer = setInterval(async () => {
-      if (this.isRunning) return;
-      this.isRunning = true;
       try {
         await this.runCleanup();
       } catch (err: any) {
         logger.error('Error running tick retention job', { error: err.message });
-      } finally {
-        this.isRunning = false;
       }
     }, this.intervalMs);
     this.timer.unref?.();
@@ -33,10 +29,14 @@ export class TickRetentionJob {
   }
 
   async runCleanup(): Promise<{ deletedTicks: number; deletedCandles: number }> {
-    const tickRetentionHours = parseInt(process.env.TICK_RETENTION_HOURS || '48', 10);
-    const candleRetentionDays = parseInt(process.env.CANDLE_RETENTION_DAYS || '30', 10);
+    if (this.isRunning) return { deletedTicks: 0, deletedCandles: 0 };
+    this.isRunning = true;
 
-    const tickQuery = `
+    try {
+      const tickRetentionHours = parseInt(process.env.TICK_RETENTION_HOURS || '48', 10);
+      const candleRetentionDays = parseInt(process.env.CANDLE_RETENTION_DAYS || '30', 10);
+
+      const tickQuery = `
       WITH expired AS (
         SELECT id
         FROM pricing.price_ticks
@@ -49,7 +49,7 @@ export class TickRetentionJob {
       USING expired
       WHERE ticks.id = expired.id
     `;
-    const candleQuery = `
+      const candleQuery = `
       WITH expired AS (
         SELECT id
         FROM pricing.candles
@@ -63,52 +63,56 @@ export class TickRetentionJob {
       WHERE candles.id = expired.id
     `;
 
-    const deleteInBatches = async (query: string, retention: number): Promise<number> => {
-      let totalDeleted = 0;
-      let batchDeleted: number;
+      const deleteInBatches = async (query: string, retention: number): Promise<number> => {
+        let totalDeleted = 0;
+        let batchDeleted: number;
 
-      do {
-        const client = await pgPool.connect();
-        try {
-          await client.query('BEGIN');
-          await client.query("SET LOCAL statement_timeout = '30s'");
-          await client.query("SET LOCAL lock_timeout = '5s'");
-          const result = await client.query(query, [retention]);
-          batchDeleted = result.rowCount ?? 0;
-          await client.query('COMMIT');
-        } catch (error) {
+        do {
+          const client = await pgPool.connect();
           try {
-            await client.query('ROLLBACK');
-          } catch (rollbackError) {
-            logger.error('Failed to roll back retention batch', {
-              error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
-            });
+            await client.query('BEGIN');
+            await client.query("SET LOCAL statement_timeout = '30s'");
+            await client.query("SET LOCAL lock_timeout = '5s'");
+            const result = await client.query(query, [retention]);
+            batchDeleted = result.rowCount ?? 0;
+            await client.query('COMMIT');
+          } catch (error) {
+            try {
+              await client.query('ROLLBACK');
+            } catch (rollbackError) {
+              logger.error('Failed to roll back retention batch', {
+                error:
+                  rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+              });
+            }
+            throw error;
+          } finally {
+            client.release();
           }
-          throw error;
-        } finally {
-          client.release();
-        }
 
-        totalDeleted += batchDeleted;
-        if (batchDeleted === 5000) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
-      } while (batchDeleted === 5000);
+          totalDeleted += batchDeleted;
+          if (batchDeleted === 5000) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+        } while (batchDeleted === 5000);
 
-      return totalDeleted;
-    };
+        return totalDeleted;
+      };
 
-    const deletedTicks = await deleteInBatches(tickQuery, tickRetentionHours);
-    const deletedCandles = await deleteInBatches(candleQuery, candleRetentionDays);
+      const deletedTicks = await deleteInBatches(tickQuery, tickRetentionHours);
+      const deletedCandles = await deleteInBatches(candleQuery, candleRetentionDays);
 
-    logger.info('TickRetentionJob completed cleanup', {
-      deletedTicks,
-      deletedCandles,
-      tickRetentionHours,
-      candleRetentionDays,
-    });
+      logger.info('TickRetentionJob completed cleanup', {
+        deletedTicks,
+        deletedCandles,
+        tickRetentionHours,
+        candleRetentionDays,
+      });
 
-    return { deletedTicks, deletedCandles };
+      return { deletedTicks, deletedCandles };
+    } finally {
+      this.isRunning = false;
+    }
   }
 }
 

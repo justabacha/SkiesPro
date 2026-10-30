@@ -16,6 +16,8 @@ export class OHLCService {
     }
   > = new Map();
 
+  private isFlushing = false;
+
   constructor(private candleRepo: CandleRepository) {}
 
   async processTick(
@@ -93,16 +95,23 @@ export class OHLCService {
 
   // Called periodically to flush finished candles
   async flush(): Promise<void> {
-    const now = new Date();
-    const granularity = 60;
-    const currentOpenTimeMs =
-      Math.floor(now.getTime() / (granularity * 1000)) * (granularity * 1000);
+    if (this.isFlushing) return;
+    this.isFlushing = true;
 
-    for (const [key, candle] of this.currentCandles.entries()) {
-      if (candle.openTime.getTime() < currentOpenTimeMs) {
-        await this.saveCandle(candle, granularity, candle.source);
-        this.currentCandles.delete(key);
+    try {
+      const now = new Date();
+      const granularity = 60;
+      const currentOpenTimeMs =
+        Math.floor(now.getTime() / (granularity * 1000)) * (granularity * 1000);
+
+      for (const [key, candle] of this.currentCandles.entries()) {
+        if (candle.openTime.getTime() < currentOpenTimeMs) {
+          await this.saveCandle(candle, granularity, candle.source);
+          this.currentCandles.delete(key);
+        }
       }
+    } finally {
+      this.isFlushing = false;
     }
   }
 }

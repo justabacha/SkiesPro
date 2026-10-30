@@ -26,6 +26,7 @@ export class PriceFeedIngestionService {
   private tickFlushInterval: NodeJS.Timeout | null = null;
   private candleFlushInterval: NodeJS.Timeout | null = null;
   private tickBuffer: Omit<TickRow, 'id' | 'created_at'>[] = [];
+  private isFlushing = false;
   private readonly batchSize = 50;
   private readonly flushInterval = 5000;
 
@@ -195,8 +196,9 @@ export class PriceFeedIngestionService {
   }
 
   private async flushTicks() {
-    if (this.tickBuffer.length === 0) return;
+    if (this.isFlushing || this.tickBuffer.length === 0) return;
 
+    this.isFlushing = true;
     const ticksToSave = [...this.tickBuffer];
 
     try {
@@ -210,6 +212,8 @@ export class PriceFeedIngestionService {
       if (this.tickBuffer.length > 5000) {
         this.tickBuffer = this.tickBuffer.slice(-2000);
       }
+    } finally {
+      this.isFlushing = false;
     }
   }
 
