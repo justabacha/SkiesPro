@@ -75,8 +75,13 @@ export class WebSocketClient {
     this.clearReconnectTimeout();
 
     if (this.ws) {
-      this.ws.close(1000, 'Normal closure');
+      const ws = this.ws;
       this.ws = null;
+      ws.onopen = null;
+      ws.onmessage = null;
+      ws.onerror = null;
+      ws.onclose = null;
+      ws.close(1000, 'Normal closure');
     }
   }
 

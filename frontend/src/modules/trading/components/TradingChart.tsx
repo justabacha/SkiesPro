@@ -67,10 +67,24 @@ const toUnixSeconds = (value: unknown): number | null => {
   return Number.isSafeInteger(seconds) ? seconds : null;
 };
 
+const createFlatHistory = (
+  anchorTime: number,
+  price: number,
+  count: number,
+  step: number
+): Array<{ time: Time; open: number; high: number; low: number; close: number }> =>
+  Array.from({ length: count }, (_, index) => {
+    const time = (anchorTime - (count - index) * step) as Time;
+    return { time, open: price, high: price, low: price, close: price };
+  });
+
 const normalizeCandles = (
   candles: Awaited<ReturnType<typeof tradingService.getCandles>>,
-  granularitySeconds = 60
+  granularitySeconds = 60,
+  fallbackPrice = 0,
+  fallbackTime: unknown = Date.now()
 ): Array<{ time: Time; open: number; high: number; low: number; close: number }> => {
+  const step = Math.max(60, granularitySeconds);
   const byTime = new Map<
     number,
     { time: Time; open: number; high: number; low: number; close: number }
@@ -95,11 +109,25 @@ const normalizeCandles = (
     });
   }
 
-  const sorted = [...byTime.values()].sort((a, b) => Number(a.time) - Number(b.time));
-  if (sorted.length < 2) return sorted;
+  let sorted = [...byTime.values()].sort((a, b) => Number(a.time) - Number(b.time));
+  if (sorted.length === 0 && Number.isFinite(fallbackPrice) && fallbackPrice > 0) {
+    const fallbackSeconds = toUnixSeconds(fallbackTime) ?? Math.floor(Date.now() / 1000);
+    const anchorTime = Math.floor(fallbackSeconds / step) * step;
+    sorted = [
+      ...createFlatHistory(anchorTime, fallbackPrice, 100, step),
+      {
+        time: anchorTime as Time,
+        open: fallbackPrice,
+        high: fallbackPrice,
+        low: fallbackPrice,
+        close: fallbackPrice,
+      },
+    ];
+  } else if (sorted.length > 0 && sorted.length < 50) {
+    sorted = [...createFlatHistory(Number(sorted[0].time), sorted[0].open, 100, step), ...sorted];
+  }
 
   const filled: Array<{ time: Time; open: number; high: number; low: number; close: number }> = [];
-  const step = Math.max(60, granularitySeconds);
 
   for (let i = 0; i < sorted.length; i++) {
     const current = sorted[i];
@@ -163,9 +191,11 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   const activeContractsRef = useRef(activeContracts);
   const symbolRef = useRef(symbol);
   const lastAppliedPipPlacesRef = useRef<number | null>(null);
+  const currentPriceRef = useRef(currentPrice);
 
   activeContractsRef.current = activeContracts;
   symbolRef.current = symbol;
+  currentPriceRef.current = currentPrice;
   const granularity = TIMEFRAMES[selectedTimeframe] || TIMEFRAMES['1m'];
 
   const applyTick = React.useCallback(
@@ -195,7 +225,17 @@ export const TradingChart: React.FC<TradingChartProps> = ({
       if (lastAppliedTickRef.current === tickKey) return;
 
       const candleStart = (Math.floor(seconds / granularity) * granularity) as Time;
-      const current = currentCandleRef.current;
+      let current = currentCandleRef.current;
+      if (!current && dataLengthRef.current === 0) {
+        const synthetic = createFlatHistory(Number(candleStart), tick.price, 100, granularity);
+        for (const candle of synthetic) {
+          candleSeries.update(candle);
+          areaSeries.update({ time: candle.time, value: tick.price });
+        }
+        dataLengthRef.current = synthetic.length;
+        current = synthetic[synthetic.length - 1] ?? null;
+        currentCandleRef.current = current;
+      }
       if (current && Number(candleStart) < Number(current.time)) return;
 
       if (current && candleStart === current.time) {
@@ -287,6 +327,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         timeVisible: true,
         barSpacing: window.innerWidth < 640 ? 16 : 10,
         rightOffset: 2,
+        shiftVisibleRangeOnNewBar: true,
       },
       crosshair: { mode: 1 },
     });
@@ -464,7 +505,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     void loadHistory
       .then((data) => {
         if (!isCurrent) return;
-        let candles = normalizeCandles(data, granularity);
+        let candles = normalizeCandles(data, granularity, currentPriceRef.current);
         if (accountMode === 'demo' && candles.length > 0) {
           candles = candles.map((c) => ({
             ...c,

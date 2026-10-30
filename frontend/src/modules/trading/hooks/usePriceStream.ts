@@ -159,6 +159,9 @@ export const usePriceStream = (initialSymbol: string = 'EUR/USD'): UsePriceStrea
       return;
     }
     websocketService.initialize(accessToken);
+    return () => {
+      websocketService.disconnect();
+    };
   }, [isAuthenticated, user?.id]);
 
   useEffect(() => {

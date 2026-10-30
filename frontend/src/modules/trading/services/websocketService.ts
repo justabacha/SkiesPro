@@ -30,10 +30,11 @@ class WebsocketService {
 
     const url = wsUrl || defaultWsUrl;
 
-    this.client = new WebSocketClient({
+    const client = new WebSocketClient({
       url,
       token,
       onConnected: () => {
+        if (this.client !== client) return;
         this.isConnected = true;
         this.notifyConnectionState(true);
         this.notifyLatency({ latencyMs: 0, status: 'connected', isConnected: true });
@@ -44,9 +45,11 @@ class WebsocketService {
         }
       },
       onMessage: (msg: WebSocketMessage) => {
+        if (this.client !== client) return;
         this.handleMessage(msg);
       },
       onDisconnected: () => {
+        if (this.client !== client) return;
         this.isConnected = false;
         this.stopPingInterval();
         this.notifyConnectionState(false);
@@ -57,11 +60,13 @@ class WebsocketService {
         });
       },
       onError: (err) => {
+        if (this.client !== client) return;
         console.warn('Trading WebSocket error:', err);
       },
     });
 
-    this.client.connect();
+    this.client = client;
+    client.connect();
   }
 
   public subscribeSymbol(symbol: string, mode: AccountMode = 'real'): void {
@@ -144,12 +149,15 @@ class WebsocketService {
   public disconnect(): void {
     this.stopPingInterval();
     if (this.client) {
-      this.client.disconnect();
+      const client = this.client;
       this.client = null;
+      client.disconnect();
     }
     this.isConnected = false;
     this.currentSymbol = null;
     this.currentMode = 'real';
+    this.notifyConnectionState(false);
+    this.notifyLatency({ latencyMs: 0, status: 'disconnected', isConnected: false });
   }
 
   private handleMessage(msg: WebSocketMessage): void {

@@ -1,8 +1,13 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OrderForm } from '@/modules/trading/components/OrderForm';
 import { TradingChart } from '@/modules/trading/components/TradingChart';
 import { Asset } from '@/modules/trading/types/trading.types';
+
+const lightweightChartMocks = vi.hoisted(() => ({
+  candleData: [] as Array<unknown[]>,
+  scrollToRealTime: vi.fn(),
+}));
 
 vi.mock('@/shared/hooks/useAuth', () => ({
   useAuth: () => ({ user: { kycStatus: 'verified' } }),
@@ -24,8 +29,12 @@ vi.mock('@/shared/context/AccountModeContext', () => ({
 
 vi.mock('lightweight-charts', () => ({
   createChart: () => ({
-    addSeries: () => ({
-      setData: vi.fn(),
+    addSeries: (seriesType: string) => ({
+      setData: (data: unknown[]) => {
+        if (seriesType === 'CandlestickSeries') {
+          lightweightChartMocks.candleData.push(data);
+        }
+      },
       update: vi.fn(),
       applyOptions: vi.fn(),
       createPriceLine: vi.fn(() => ({})),
@@ -35,7 +44,7 @@ vi.mock('lightweight-charts', () => ({
     priceScale: () => ({ applyOptions: vi.fn() }),
     timeScale: () => ({
       setVisibleLogicalRange: vi.fn(),
-      scrollToRealTime: vi.fn(),
+      scrollToRealTime: lightweightChartMocks.scrollToRealTime,
       applyOptions: vi.fn(),
     }),
     remove: vi.fn(),
@@ -150,6 +159,8 @@ describe('OrderForm Trade Button Resilience', () => {
 
 describe('TradingChart Empty History Resilience', () => {
   beforeEach(() => {
+    lightweightChartMocks.candleData.length = 0;
+    lightweightChartMocks.scrollToRealTime.mockClear();
     global.ResizeObserver = class {
       observe() {}
       unobserve() {}
@@ -173,6 +184,84 @@ describe('TradingChart Empty History Resilience', () => {
 
     expect(screen.getByTestId('trading-chart')).toBeTruthy();
     expect(screen.getByTestId('chart-empty-overlay')).toBeTruthy();
+  });
+
+  it('creates a 100-candle fallback baseline when the history API returns no candles', async () => {
+    const { tradingService } = await import('@/modules/trading/services/tradingService');
+    vi.mocked(tradingService.getCandles).mockResolvedValueOnce([]);
+
+    render(
+      <TradingChart
+        symbol="EUR/USD"
+        priceHistory={[]}
+        currentPrice={1.119}
+        activeContracts={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(lightweightChartMocks.candleData.at(-1)).toHaveLength(101);
+    });
+
+    const candles = lightweightChartMocks.candleData.at(-1) as Array<{
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }>;
+    expect(candles.every((candle) => candle.open === 1.119 && candle.close === 1.119)).toBe(true);
+    expect(candles.every((candle, index) => index === 0 || candle.time > candles[index - 1].time))
+      .toBe(true);
+    expect(lightweightChartMocks.scrollToRealTime).toHaveBeenCalled();
+  });
+
+  it('prepends 100 synthetic candles when history contains only one candle', async () => {
+    const { tradingService } = await import('@/modules/trading/services/tradingService');
+    const openTime = Math.floor(Date.now() / 60_000) * 60_000;
+    vi.mocked(tradingService.getCandles).mockResolvedValueOnce([
+      {
+        symbol: 'EUR/USD',
+        granularity_seconds: 60,
+        open_time: new Date(openTime).toISOString(),
+        close_time: new Date(openTime + 59_000).toISOString(),
+        open: 1.119,
+        high: 1.12,
+        low: 1.118,
+        close: 1.1195,
+        volume: 100,
+      },
+    ]);
+
+    render(
+      <TradingChart
+        symbol="EUR/USD"
+        priceHistory={[]}
+        currentPrice={1.1195}
+        activeContracts={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(lightweightChartMocks.candleData.at(-1)).toHaveLength(101);
+    });
+
+    const candles = lightweightChartMocks.candleData.at(-1) as Array<{
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+    }>;
+    expect(candles[100]).toMatchObject({
+      time: Math.floor(openTime / 1000),
+      open: 1.119,
+      high: 1.12,
+      low: 1.118,
+      close: 1.1195,
+    });
+    expect(candles.every((candle, index) => index === 0 || candle.time > candles[index - 1].time))
+      .toBe(true);
   });
 
   it('renders TradingChart successfully when getCandles returns gapped candles', async () => {
