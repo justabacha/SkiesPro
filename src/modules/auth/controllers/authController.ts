@@ -72,8 +72,23 @@ export class AuthController {
 
       res.status(200).json({ data: result, meta: { request_id: req.correlationId } });
     } catch (error) {
-      logger.warn('Login failed', { email: req.body.email, error: (error as Error).message });
-      res.status(401).json({ error: (error as Error).message });
+      const message = error instanceof Error ? error.message : String(error);
+      if (/(timeout|connection|econnrefused)/i.test(message)) {
+        logger.error('Login failed due to infrastructure error', { error: message });
+        res.status(500).json({
+          error: 'Service temporarily unavailable. Please try again later.',
+        });
+        return;
+      }
+
+      if (message === 'Invalid credentials') {
+        logger.warn('Login failed', { email: req.body.email, error: message });
+        res.status(401).json({ error: message });
+        return;
+      }
+
+      logger.error('Login failed due to unexpected error', { error: message });
+      res.status(500).json({ error: 'An unexpected error occurred.' });
     }
   }
 

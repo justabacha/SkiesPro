@@ -37,19 +37,69 @@ export class TickRetentionJob {
     const candleRetentionDays = parseInt(process.env.CANDLE_RETENTION_DAYS || '30', 10);
 
     const tickQuery = `
-      DELETE FROM pricing.price_ticks
-      WHERE tick_time < NOW() - ($1 || ' hours')::INTERVAL
+      WITH expired AS (
+        SELECT id
+        FROM pricing.price_ticks
+        WHERE tick_time < NOW() - ($1 || ' hours')::INTERVAL
+        ORDER BY tick_time
+        LIMIT 5000
+        FOR UPDATE SKIP LOCKED
+      )
+      DELETE FROM pricing.price_ticks AS ticks
+      USING expired
+      WHERE ticks.id = expired.id
     `;
     const candleQuery = `
-      DELETE FROM pricing.candles
-      WHERE open_time < NOW() - ($1 || ' days')::INTERVAL
+      WITH expired AS (
+        SELECT id
+        FROM pricing.candles
+        WHERE open_time < NOW() - ($1 || ' days')::INTERVAL
+        ORDER BY open_time
+        LIMIT 5000
+        FOR UPDATE SKIP LOCKED
+      )
+      DELETE FROM pricing.candles AS candles
+      USING expired
+      WHERE candles.id = expired.id
     `;
 
-    const tickResult = await pgPool.query(tickQuery, [tickRetentionHours]);
-    const candleResult = await pgPool.query(candleQuery, [candleRetentionDays]);
+    const deleteInBatches = async (query: string, retention: number): Promise<number> => {
+      let totalDeleted = 0;
+      let batchDeleted: number;
 
-    const deletedTicks = tickResult.rowCount ?? 0;
-    const deletedCandles = candleResult.rowCount ?? 0;
+      do {
+        const client = await pgPool.connect();
+        try {
+          await client.query('BEGIN');
+          await client.query("SET LOCAL statement_timeout = '30s'");
+          await client.query("SET LOCAL lock_timeout = '5s'");
+          const result = await client.query(query, [retention]);
+          batchDeleted = result.rowCount ?? 0;
+          await client.query('COMMIT');
+        } catch (error) {
+          try {
+            await client.query('ROLLBACK');
+          } catch (rollbackError) {
+            logger.error('Failed to roll back retention batch', {
+              error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+            });
+          }
+          throw error;
+        } finally {
+          client.release();
+        }
+
+        totalDeleted += batchDeleted;
+        if (batchDeleted === 5000) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      } while (batchDeleted === 5000);
+
+      return totalDeleted;
+    };
+
+    const deletedTicks = await deleteInBatches(tickQuery, tickRetentionHours);
+    const deletedCandles = await deleteInBatches(candleQuery, candleRetentionDays);
 
     logger.info('TickRetentionJob completed cleanup', {
       deletedTicks,
