@@ -198,15 +198,18 @@ export class PriceFeedIngestionService {
     if (this.tickBuffer.length === 0) return;
 
     const ticksToSave = [...this.tickBuffer];
-    this.tickBuffer = [];
 
     try {
       await this.tickRepo.saveBatch(ticksToSave);
+      this.tickBuffer = this.tickBuffer.filter((t) => !ticksToSave.includes(t));
     } catch (error: any) {
-      logger.error('Failed to save tick batch', {
+      logger.error('Failed to save tick batch, keeping in buffer', {
         error: error.message,
         count: ticksToSave.length,
       });
+      if (this.tickBuffer.length > 5000) {
+        this.tickBuffer = this.tickBuffer.slice(-2000);
+      }
     }
   }
 

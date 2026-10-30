@@ -41,6 +41,7 @@ export class PricingController {
         from: req.query.from as string,
         to: req.query.to as string,
         limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        source: (req.query.source as 'live' | 'demo') || 'live',
       };
       const candles = await this.pricingService.getCandles(query);
       res.status(200).json({ data: candles });

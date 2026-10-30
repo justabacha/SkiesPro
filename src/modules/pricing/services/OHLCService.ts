@@ -46,12 +46,16 @@ export class OHLCService {
         await this.saveCandle(current, granularity, source);
       }
 
-      // Start new candle
+      // Start new candle: set open price to previous candle's close if available for smooth body continuity
+      const openPrice = current ? current.close : priceDec;
+      const highPrice = Decimal.max(openPrice, priceDec);
+      const lowPrice = Decimal.min(openPrice, priceDec);
+
       this.currentCandles.set(key, {
         symbol,
-        open: priceDec,
-        high: priceDec,
-        low: priceDec,
+        open: openPrice,
+        high: highPrice,
+        low: lowPrice,
         close: priceDec,
         volume: volBig,
         openTime,

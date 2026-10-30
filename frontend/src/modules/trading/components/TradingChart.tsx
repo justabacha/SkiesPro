@@ -471,7 +471,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
             from: Math.max(0, totalBars - 50),
             to: totalBars + 1,
           });
-          chart.timeScale().scrollToRealTime();
+          chart.timeScale().scrollToRealTime?.();
         }
       })
       .catch((error: unknown) => {

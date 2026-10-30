@@ -242,11 +242,16 @@ class TradingService {
   /**
    * Fetch historical OHLC candles for specified asset symbol
    */
-  async getCandles(symbol: string, granularity = 60, limit = 60): Promise<Candle[]> {
+  async getCandles(
+    symbol: string,
+    granularity = 60,
+    limit = 60,
+    source: 'live' | 'demo' = 'live'
+  ): Promise<Candle[]> {
     try {
       const encodedSymbol = encodeURIComponent(symbol);
       const response = await apiClient.get<ApiResponse<Candle[]> | Candle[]>(
-        `/api/v1/pricing/assets/${encodedSymbol}/candles?granularity=${granularity}&limit=${limit}`
+        `/api/v1/pricing/assets/${encodedSymbol}/candles?granularity=${granularity}&limit=${limit}&source=${source}`
       );
 
       if (Array.isArray(response)) {

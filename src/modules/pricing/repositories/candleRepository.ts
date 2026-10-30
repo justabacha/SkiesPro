@@ -56,19 +56,20 @@ export class CandleRepository {
     granularity: number,
     from: Date,
     to: Date,
-    limit: number = 500
+    limit: number = 500,
+    source: 'live' | 'demo' = 'live'
   ): Promise<CandleRow[]> {
     const result = await this.client.query<CandleRow>(
       `SELECT * FROM (
          SELECT id, symbol, granularity_seconds, open_time, close_time, open_price,
                 high_price, low_price, close_price, volume, source, created_at
          FROM pricing.candles
-         WHERE symbol = $1 AND granularity_seconds = $2 AND open_time >= $3 AND open_time <= $4
+         WHERE symbol = $1 AND granularity_seconds = $2 AND open_time >= $3 AND open_time <= $4 AND source = $6
          ORDER BY open_time DESC
          LIMIT $5
        ) recent
        ORDER BY open_time ASC`,
-      [symbol, granularity, from, to, limit]
+      [symbol, granularity, from, to, limit, source]
     );
     return result.rows;
   }
@@ -78,7 +79,8 @@ export class CandleRepository {
     granularity: number,
     from: Date,
     to: Date,
-    limit: number = 500
+    limit: number = 500,
+    source: 'live' | 'demo' = 'live'
   ): Promise<CandleRow[]> {
     const result = await this.client.query<CandleRow>(
       `SELECT
@@ -109,12 +111,13 @@ export class CandleRepository {
            AND granularity_seconds = 60
            AND open_time >= $3
            AND open_time <= $4
+           AND source = $6
          GROUP BY floor(extract(epoch from open_time) / $2), source
          ORDER BY open_time DESC
          LIMIT $5
        ) recent
        ORDER BY open_time ASC`,
-      [symbol, granularity, from, to, limit]
+      [symbol, granularity, from, to, limit, source]
     );
     return result.rows;
   }

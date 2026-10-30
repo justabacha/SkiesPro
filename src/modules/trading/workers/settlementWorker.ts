@@ -127,10 +127,22 @@ export class SettlementWorker {
 
       if (!settlementTick) {
         logger.warn('Missing settlement tick, falling back to latest tick', { contractId });
-        settlementTick = await this.tickRepo.getLatest(
+        const latestTick = await this.tickRepo.getLatest(
           contract.assetSymbol,
           accountType === 'real' ? 'live' : 'demo'
         );
+        if (
+          latestTick &&
+          new Date(latestTick.tick_time).getTime() <= contract.expiryTime.getTime()
+        ) {
+          settlementTick = latestTick;
+        } else if (latestTick) {
+          logger.warn('Latest tick is after contract expiry time; cannot use for settlement', {
+            contractId,
+            expiryTime: contract.expiryTime,
+            tickTime: latestTick.tick_time,
+          });
+        }
       }
 
       if (!settlementTick) {

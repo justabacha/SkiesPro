@@ -39,4 +39,5 @@ export interface CandleRequestDto {
   from?: string;
   to?: string;
   limit?: number;
+  source?: 'live' | 'demo';
 }

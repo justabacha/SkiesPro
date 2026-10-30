@@ -48,6 +48,7 @@ export class PricingService {
     const granularity = query.granularity || 60;
     const limit = Math.min(Math.max(query.limit || 500, 1), 1000);
     const to = query.to ? new Date(query.to) : new Date();
+    const source: 'live' | 'demo' = query.source === 'demo' ? 'demo' : 'live';
 
     const bufferFactor = 1.2;
     const rangeMs = Math.ceil(granularity * limit * 1000 * bufferFactor);
@@ -55,13 +56,14 @@ export class PricingService {
 
     const candles =
       granularity === 60
-        ? await this.candleRepo.getCandles(normalizedSymbol, granularity, from, to, limit)
+        ? await this.candleRepo.getCandles(normalizedSymbol, granularity, from, to, limit, source)
         : await this.candleRepo.getAggregatedCandles(
             normalizedSymbol,
             granularity,
             from,
             to,
-            limit
+            limit,
+            source
           );
 
     return candles.map((c) => ({

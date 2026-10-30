@@ -49,27 +49,27 @@ describe('CandleRepository and PricingService (WP-08 Candle Fixes)', () => {
       );
     });
 
-    it('getCandles queries newest N candles and returns ASC order', async () => {
+    it('getCandles queries newest N candles filtered by source and returns ASC order', async () => {
       const from = new Date('2026-10-04T00:00:00Z');
       const to = new Date('2026-10-04T12:00:00Z');
 
-      await repo.getCandles('EUR/USD', 60, from, to, 200);
+      await repo.getCandles('EUR/USD', 60, from, to, 200, 'demo');
 
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringMatching(/ORDER BY open_time DESC\s+LIMIT \$5[\s\S]*ORDER BY open_time ASC/i),
-        ['EUR/USD', 60, from, to, 200]
+        expect.stringMatching(/WHERE symbol = \$1 AND granularity_seconds = \$2 AND open_time >= \$3 AND open_time <= \$4 AND source = \$6/i),
+        ['EUR/USD', 60, from, to, 200, 'demo']
       );
     });
 
-    it('getAggregatedCandles aggregates 60s candles into buckets for granularity > 60', async () => {
+    it('getAggregatedCandles aggregates 60s candles filtered by source', async () => {
       const from = new Date('2026-10-04T00:00:00Z');
       const to = new Date('2026-10-04T12:00:00Z');
 
-      await repo.getAggregatedCandles('EUR/USD', 300, from, to, 100);
+      await repo.getAggregatedCandles('EUR/USD', 300, from, to, 100, 'live');
 
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringMatching(/GROUP BY floor\(extract\(epoch from open_time\) \/ \$2\)/i),
-        ['EUR/USD', 300, from, to, 100]
+        expect.stringMatching(/AND source = \$6/i),
+        ['EUR/USD', 300, from, to, 100, 'live']
       );
     });
   });
@@ -116,7 +116,8 @@ describe('CandleRepository and PricingService (WP-08 Candle Fixes)', () => {
         60,
         expect.any(Date),
         to,
-        200
+        200,
+        'live'
       );
 
       // Check scaled from calculation: 60 * 200 * 1000 * 1.2 = 14400000ms = 4 hours prior
@@ -144,7 +145,8 @@ describe('CandleRepository and PricingService (WP-08 Candle Fixes)', () => {
         3600,
         expect.any(Date),
         to,
-        50
+        50,
+        'live'
       );
       expect(res).toEqual([]);
     });
@@ -163,7 +165,8 @@ describe('CandleRepository and PricingService (WP-08 Candle Fixes)', () => {
         60,
         expect.any(Date),
         expect.any(Date),
-        1000
+        1000,
+        'live'
       );
     });
   });
