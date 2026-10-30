@@ -107,7 +107,7 @@ export const TradingPage: React.FC = () => {
             onSelectAsset={handleSelectAsset}
             currentPrice={currentPrice}
           />
-          <LatencyIndicator latencyState={latencyState} />
+          <LatencyIndicator latencyState={latencyState} isConnected={isConnected} />
         </div>
 
         <div className="flex w-fit max-w-full items-center space-x-4 bg-bg-light-secondary dark:bg-bg-dark-secondary px-4 py-2.5 rounded-xl border border-border-light dark:border-border-dark shadow-sm">

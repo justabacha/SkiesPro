@@ -4,10 +4,15 @@ import { LatencyState } from '../types/trading.types';
 
 export interface LatencyIndicatorProps {
   latencyState: LatencyState;
+  isConnected?: boolean;
 }
 
-export const LatencyIndicator: React.FC<LatencyIndicatorProps> = ({ latencyState }) => {
-  const { latencyMs, status, isConnected } = latencyState;
+export const LatencyIndicator: React.FC<LatencyIndicatorProps> = ({
+  latencyState,
+  isConnected: isConnectedProp,
+}) => {
+  const isConnected = isConnectedProp !== undefined ? isConnectedProp : latencyState.isConnected;
+  const { latencyMs, status } = latencyState;
 
   const getStatusDetails = () => {
     if (!isConnected || status === 'disconnected') {

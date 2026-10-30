@@ -12,7 +12,7 @@ import {
 } from 'lightweight-charts';
 import { PriceTick, BinaryContract } from '../types/trading.types';
 import { tradingService } from '../services/tradingService';
-import { getPipSize, getPriceDecimalPlaces } from '../utils/pricePrecision';
+import { getPriceDecimalPlaces, formatPriceDelta } from '../utils/pricePrecision';
 import { useAccountMode } from '@/shared/context/AccountModeContext';
 
 export interface TradingChartProps {
@@ -203,6 +203,24 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         current.close = tick.price;
         candleSeries.update({ ...current, time: Number(current.time) as Time });
       } else {
+        if (current && Number(candleStart) > Number(current.time) + granularity) {
+          const gapSeconds = Number(candleStart) - Number(current.time);
+          const missingCount = Math.min(Math.floor(gapSeconds / granularity) - 1, 50);
+          for (let j = 1; j <= missingCount; j++) {
+            const gapStart = (Number(current.time) + j * granularity) as Time;
+            const flatCandle = {
+              time: gapStart,
+              open: current.close,
+              high: current.close,
+              low: current.close,
+              close: current.close,
+            };
+            candleSeries.update(flatCandle);
+            areaSeries.update({ time: gapStart, value: current.close });
+            dataLengthRef.current += 1;
+          }
+        }
+
         const next = {
           time: Number(candleStart) as Time,
           open: tick.price,
@@ -403,15 +421,19 @@ export const TradingChart: React.FC<TradingChartProps> = ({
 
   const latestContract = symbolContracts[symbolContracts.length - 1];
   const pipPlaces = getPriceDecimalPlaces(symbol, pipDecimalPlaces, currentPrice);
-  const pipSize = getPipSize(symbol, pipPlaces, currentPrice);
   const strike = latestContract ? Number(latestContract.strike_price) : NaN;
   const isHigher = latestContract?.contract_type === 'higher';
   const isWinning =
     currentPrice > 0 &&
     latestContract !== undefined &&
     (isHigher ? currentPrice > strike : currentPrice < strike);
-  const pipDelta =
-    latestContract && Number.isFinite(strike) ? (currentPrice - strike) / pipSize : 0;
+  const rawDiff =
+    latestContract && Number.isFinite(strike)
+      ? isHigher
+        ? currentPrice - strike
+        : strike - currentPrice
+      : 0;
+  const formattedDelta = formatPriceDelta(symbol, rawDiff, pipPlaces, currentPrice);
   const payout = latestContract ? Number(latestContract.potential_payout || 0) : 0;
 
   useEffect(() => {
@@ -438,7 +460,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
     void loadHistory
       .then((data) => {
         if (!isCurrent) return;
-        let candles = normalizeCandles(data);
+        let candles = normalizeCandles(data, granularity);
         if (accountMode === 'demo' && candles.length > 0) {
           candles = candles.map((c) => ({
             ...c,
@@ -619,10 +641,7 @@ export const TradingChart: React.FC<TradingChartProps> = ({
                 isWinning ? 'bg-emerald-600/95' : 'bg-rose-600/95'
               }`}
             >
-              <span>
-                {pipDelta >= 0 ? '+' : ''}
-                {pipDelta.toFixed(1)} Pips
-              </span>
+              <span>{formattedDelta}</span>
               <span>({isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})</span>
             </div>
           ) : (

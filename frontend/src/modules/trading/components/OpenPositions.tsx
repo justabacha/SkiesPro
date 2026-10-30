@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Clock, ShieldAlert } from 'lucide-react';
 import { BinaryContract } from '../types/trading.types';
-import { getPipSize, getPriceDecimalPlaces } from '../utils/pricePrecision';
+import { getPriceDecimalPlaces, formatPriceDelta } from '../utils/pricePrecision';
 
 export interface OpenPositionsProps {
   contracts: BinaryContract[];
@@ -155,10 +155,13 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
           const priceAvailable = liveSpot !== null;
           const pipPlaces = getPriceDecimalPlaces(positionSymbol, undefined, liveSpot || 0);
           const isWinning = liveSpot !== null && (isHigher ? liveSpot > strike : liveSpot < strike);
-          const pipDelta =
+          const rawDiff =
             liveSpot === null
               ? 0
-              : (liveSpot - strike) / getPipSize(positionSymbol, pipPlaces, liveSpot);
+              : isHigher
+                ? liveSpot - strike
+                : strike - liveSpot;
+          const formattedDelta = formatPriceDelta(positionSymbol, rawDiff, pipPlaces, liveSpot || 0);
           const payout = parseFloat(contract.potential_payout || '0');
 
           return (
@@ -226,7 +229,7 @@ export const OpenPositions: React.FC<OpenPositionsProps> = ({
                   }`}
                 >
                   {priceAvailable
-                    ? `${pipDelta >= 0 ? '+' : ''}${pipDelta.toFixed(1)} Pips (${isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})`
+                    ? `${formattedDelta} (${isWinning ? `WINNING +KES ${payout.toFixed(2)}` : 'LOSING'})`
                     : 'LIVE PRICE UNAVAILABLE'}
                 </span>
 

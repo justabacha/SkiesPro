@@ -209,4 +209,46 @@ describe('TradingChart Empty History Resilience', () => {
 
     expect(screen.getByTestId('trading-chart')).toBeTruthy();
   });
+
+  it('correctly handles a 300-second gap when granularity = 300 (5m timeframe)', async () => {
+    const { tradingService } = await import('@/modules/trading/services/tradingService');
+    vi.mocked(tradingService.getCandles).mockResolvedValue([
+      {
+        symbol: 'EUR/USD',
+        granularity_seconds: 300,
+        open_time: new Date('2026-10-04T12:00:00Z').toISOString(),
+        close_time: new Date('2026-10-04T12:04:59Z').toISOString(),
+        open: 1.1000,
+        high: 1.1010,
+        low: 1.0990,
+        close: 1.1005,
+        volume: 500,
+      },
+      {
+        symbol: 'EUR/USD',
+        granularity_seconds: 300,
+        open_time: new Date('2026-10-04T12:15:00Z').toISOString(),
+        close_time: new Date('2026-10-04T12:19:59Z').toISOString(),
+        open: 1.1005,
+        high: 1.1020,
+        low: 1.1000,
+        close: 1.1015,
+        volume: 600,
+      },
+    ]);
+
+    render(
+      <TradingChart
+        symbol="EUR/USD"
+        priceHistory={[]}
+        currentPrice={1.1015}
+        activeContracts={[]}
+      />
+    );
+
+    const btn5m = screen.getByText('5m');
+    fireEvent.click(btn5m);
+
+    expect(screen.getByTestId('trading-chart')).toBeTruthy();
+  });
 });

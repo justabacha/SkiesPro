@@ -156,7 +156,7 @@ export class WebSocketClient {
           break;
 
         case 'pong':
-          // Ping/pong handled automatically by browser
+          this.config.onMessage(message);
           break;
 
         case 'error':

@@ -19,3 +19,30 @@ export function getPipSize(
   const places = getPriceDecimalPlaces(symbol, configuredPlaces, price);
   return places >= 4 ? 10 ** (1 - places) : 10 ** -places;
 }
+
+export function isCryptoOrCommodity(symbol: string | null | undefined): boolean {
+  const normalized = (symbol ?? '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+  return (
+    normalized.startsWith('BTC') ||
+    normalized.startsWith('ETH') ||
+    normalized.startsWith('XAU') ||
+    normalized.includes('GOLD') ||
+    normalized.startsWith('WTI')
+  );
+}
+
+export function formatPriceDelta(
+  symbol: string | null | undefined,
+  rawDiff: number,
+  pipPlaces = 5,
+  price = 0
+): string {
+  if (isCryptoOrCommodity(symbol)) {
+    const sign = rawDiff >= 0 ? '+' : '-';
+    return `${sign}$${Math.abs(rawDiff).toFixed(2)}`;
+  }
+  const pipSize = getPipSize(symbol, pipPlaces, price);
+  const pips = rawDiff / pipSize;
+  const sign = pips >= 0 ? '+' : '';
+  return `${sign}${pips.toFixed(1)} Pips`;
+}
